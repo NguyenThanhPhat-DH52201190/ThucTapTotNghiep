@@ -48,6 +48,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie,warehouse')
         ->name('masterplan.view');
 
+    Route::get('/master-plan/export', [MasterPlanController::class, 'export'])
+        ->middleware('role:admin,ie,warehouse')
+        ->name('masterplan.export');
+
     Route::get('/revenue-view', [RevenueController::class, 'index'])
         ->middleware('role:admin,ie,warehouse')
         ->name('revenue.view');
@@ -68,11 +72,17 @@ Route::middleware('auth')->group(function () {
         // MasterPlan
         Route::resource('masterplan', MasterPlanController::class);
 
+        Route::get('ocs/export', [OCSController::class, 'export'])->name('ocs.export');
+
         // OCS
         Route::resource('ocs', OCSController::class);
 
+        Route::get('revenue/export', [RevenueController::class, 'export'])->name('revenue.export');
+
         // Revenue
         Route::resource('revenue', RevenueController::class);
+
+        Route::get('holidays/export', [HolidayController::class, 'export'])->name('holidays.export');
 
         // Holidays
         Route::resource('holidays', HolidayController::class);

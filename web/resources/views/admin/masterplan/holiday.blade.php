@@ -7,7 +7,10 @@
 @if(session('success'))
 <div class="alert alert-success">{{ session('success') }}</div>
 @endif
-<a href="{{ route('admin.holidays.create') }}" class="btn btn-success mb-3">Add Holiday</a>
+<div class="d-flex gap-2 mb-3">
+    <a href="{{ route('admin.holidays.create') }}" class="btn btn-success">Add Holiday</a>
+    <a href="{{ route('admin.holidays.export') }}" class="btn btn-outline-success">Export Excel</a>
+</div>
 
 <table class="table">
     <thead>

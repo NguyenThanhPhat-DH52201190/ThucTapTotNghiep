@@ -30,17 +30,17 @@
 
         <div class="mb-3">
             <label>Rdate</label>
-            <input type="date" name="Rdate" class="form-control" required>
+            <input type="date" name="Rdate" class="form-control" value="{{ old('Rdate') }}">
         </div>
 
         <div class="mb-3">
             <label>ETADate</label>
-            <input type="date" name="ETADate" class="form-control" required>
+            <input type="date" name="ETADate" class="form-control" value="{{ old('ETADate') }}">
         </div>
 
         <div class="mb-3">
             <label>ActDate</label>
-            <input type="date" name="ActDate" class="form-control" required>
+            <input type="date" name="ActDate" class="form-control" value="{{ old('ActDate') }}">
         </div>
 
         <div class="mb-3">
@@ -50,12 +50,12 @@
 
         <div class="mb-3">
             <label>LT</label>
-            <input type="number" name="lt" class="form-control" min="0">
+            <input type="number" name="lt" class="form-control" min="0" value="{{ old('lt') }}">
         </div>
 
         <div class="mb-3">
             <label>FirstOPT</label>
-            <input type="date" name="FirstOPT" class="form-control" min="0">
+            <input type="date" name="FirstOPT" class="form-control" value="{{ old('FirstOPT') }}">
         </div>
 
         <div class="mb-3">

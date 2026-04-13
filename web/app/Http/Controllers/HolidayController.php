@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class HolidayController extends Controller
 {
@@ -14,6 +16,43 @@ class HolidayController extends Controller
     {
         $holidays = DB::table('holidays')->orderBy('holiday')->get();
         return view('admin.masterplan.holiday', compact('holidays'));
+    }
+
+    public function export()
+    {
+        $holidays = DB::table('holidays')->orderBy('holiday')->get();
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Holidays');
+
+        $headers = ['Date', 'Name'];
+
+        foreach ($headers as $index => $header) {
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($index + 1) . '1', $header);
+        }
+
+        $rowIndex = 2;
+        foreach ($holidays as $holiday) {
+            $sheet->setCellValue('A' . $rowIndex, $holiday->holiday ?? '');
+            $sheet->setCellValue('B' . $rowIndex, $holiday->name ?? '');
+            $rowIndex++;
+        }
+
+        foreach (range('A', 'B') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        $filename = 'holidays-' . now()->format('Ymd_His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     /**

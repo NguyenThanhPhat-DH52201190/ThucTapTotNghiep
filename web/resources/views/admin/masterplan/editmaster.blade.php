@@ -27,19 +27,19 @@
     <div class="mb-3">
         <label>Rdate</label>
         <input type="date" name="Rdate" class="form-control"
-            value="{{ $plan ->Rdate }}"
+            value="{{ old('Rdate', $plan->Rdate) }}"
             min="{{ date('Y-m-d') }}">
     </div>
     <div class="mb-3">
         <label>ETADate</label>
         <input type="date" name="ETADate" class="form-control"
-            value="{{ $plan->ETADate }}"
+            value="{{ old('ETADate', $plan->ETADate) }}"
             min="{{ date('Y-m-d') }}">
     </div>
     <div class="mb-3">
         <label>ActDate</label>
         <input type="date" name="ActDate" class="form-control"
-            value="{{ $plan->ActDate }}"
+            value="{{ old('ActDate', $plan->ActDate) }}"
             min="{{ date('Y-m-d') }}">
     </div>
 
@@ -50,12 +50,12 @@
 
     <div class="mb-3">
         <label>LT</label>
-        <input type="number" name="lt" class="form-control" min="0" value="{{ $plan->lt }}">
+        <input type="number" name="lt" class="form-control" min="0" value="{{ old('lt', $plan->lt) }}">
     </div>
 
     <div class="mb-3">
         <label>FirstOPT</label>
-        <input type="date" name="FirstOPT" class="form-control" min="0" value="{{ \Carbon\Carbon::parse($plan->FirstOPT)->format('Y-m-d') }}"">
+        <input type="date" name="FirstOPT" class="form-control" value="{{ old('FirstOPT', $plan->FirstOPT ? \Carbon\Carbon::parse($plan->FirstOPT)->format('Y-m-d') : '') }}">
     </div>
 
     <div class="mb-3">

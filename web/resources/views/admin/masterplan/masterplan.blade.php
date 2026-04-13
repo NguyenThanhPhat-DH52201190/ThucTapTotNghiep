@@ -51,6 +51,11 @@ $canManage = auth()->user()->role === 'admin';
             Reset
         </a>
 
+        <a href="{{ route('masterplan.export', request()->query()) }}"
+            class="btn btn-success">
+            Export Excel
+        </a>
+
         @if($canManage)
         <a href="{{ route('admin.masterplan.create') }}" class="btn btn-primary">
             Add
@@ -226,7 +231,11 @@ $canManage = auth()->user()->role === 'admin';
         let firstOPT = document.querySelector('[name="FirstOPT"]').value;
         let lt = document.querySelector('[name="lt"]').value;
 
-        if (!firstOPT || !lt) return;
+        if (!firstOPT || !lt) {
+            document.getElementById('finishSew').value = '';
+            document.getElementById('exFact').value = '';
+            return;
+        }
 
         fetch(`/calc-date?firstOPT=${firstOPT}&lt=${lt}`)
             .then(res => res.json())

@@ -37,6 +37,11 @@ $canManage = auth()->user()->role === 'admin';
             Reset
         </a>
 
+        <a href="{{ route('admin.revenue.export', request()->query()) }}"
+            class="btn btn-success">
+            Export Excel
+        </a>
+
         @if($canManage)
         <a href="{{ route('admin.revenue.create') }}" class="btn btn-primary">
             Add

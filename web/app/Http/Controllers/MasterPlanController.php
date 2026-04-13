@@ -3,13 +3,25 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class MasterPlanController extends Controller
 {
-    public function index(Request $request)
+    private function nullableDate($value): ?string
+    {
+        return filled($value) ? $value : null;
+    }
+
+    private function nullableInteger($value): ?int
+    {
+        return filled($value) ? (int) $value : null;
+    }
+
+    private function getMasterPlan(Request $request): Collection
     {
         $plan = DB::table('mtp')
             ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
@@ -30,12 +42,10 @@ class MasterPlanController extends Controller
             ->orderBy('mtp.Line', 'asc')
             ->get();
 
-        // 🔥 DANH SÁCH NGÀY LỄ
         $holidays = DB::table('holidays')
             ->pluck('holiday')
             ->toArray();
 
-        // Ưu tiên line màu lên trên, line khác xuống dưới.
         $colorLinePriority = [
             'blue' => 1,
             'yellow' => 2,
@@ -51,12 +61,10 @@ class MasterPlanController extends Controller
                 $isColorA = array_key_exists($lineA, $colorLinePriority);
                 $isColorB = array_key_exists($lineB, $colorLinePriority);
 
-                // Line màu luôn đứng trước line không màu.
                 if ($isColorA !== $isColorB) {
                     return $isColorA ? -1 : 1;
                 }
 
-                // Trong cùng nhóm (màu hoặc không màu), ưu tiên FirstOPT tăng dần.
                 $dateCompare = strcmp((string) ($a->FirstOPT ?? ''), (string) ($b->FirstOPT ?? ''));
                 if ($dateCompare !== 0) {
                     return $dateCompare;
@@ -65,12 +73,10 @@ class MasterPlanController extends Controller
                 $rankA = $colorLinePriority[$lineA] ?? 999;
                 $rankB = $colorLinePriority[$lineB] ?? 999;
 
-                // Nếu cùng ngày thì áp dụng ưu tiên thứ tự line màu.
                 if ($isColorA && $rankA !== $rankB) {
                     return $rankA <=> $rankB;
                 }
 
-                // Cuối cùng sort theo tên line để kết quả ổn định.
                 if ($lineA !== $lineB) {
                     return $lineA <=> $lineB;
                 }
@@ -79,16 +85,12 @@ class MasterPlanController extends Controller
             })
             ->values();
 
-        // 🔥 GROUP THEO LINE
         $grouped = $plan->groupBy('Line');
 
-        foreach ($grouped as $line => $items) {
-
+        foreach ($grouped as $items) {
             $previousFinish = null;
 
             foreach ($items as $item) {
-
-                // 🔹 FirstOPT
                 if (!$previousFinish) {
                     $firstOPT = $item->FirstOPT
                         ? Carbon::parse($item->FirstOPT)
@@ -97,7 +99,6 @@ class MasterPlanController extends Controller
                     $firstOPT = $this->calcExFact($previousFinish, 1, $holidays);
                 }
 
-                // 🔹 Nếu không có FirstOPT thì bỏ qua
                 if (!$firstOPT || !$item->lt) {
                     $item->calc_FirstOPT = $firstOPT;
                     $item->calc_Finish_SEW = null;
@@ -106,9 +107,8 @@ class MasterPlanController extends Controller
                 }
 
                 $finishSew = $this->calcFinishSew($firstOPT, $item->lt, $holidays);
-                $exFact    = $this->calcExFact($finishSew, 3, $holidays);
+                $exFact = $this->calcExFact($finishSew, 3, $holidays);
 
-                // 👉 GÁN RA VIEW
                 $item->calc_FirstOPT = $firstOPT;
                 $item->calc_Finish_SEW = $finishSew;
                 $item->calc_EX_Fact = $exFact;
@@ -117,7 +117,74 @@ class MasterPlanController extends Controller
             }
         }
 
+        return $plan;
+    }
+
+    public function index(Request $request)
+    {
+        $plan = $this->getMasterPlan($request);
+
         return view('admin.masterplan.masterplan', compact('plan'));
+    }
+
+    public function export(Request $request)
+    {
+        $plan = $this->getMasterPlan($request);
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('MasterPlan');
+
+        $headers = [
+            'CU',
+            'Line',
+            'Rdate',
+            'ETADate',
+            'ActDate',
+            'PO',
+            'LT',
+            'FirstOPT',
+            'Finish_SEW',
+            'EX_Fact',
+            'Qty_dis',
+            'Style',
+        ];
+
+        foreach ($headers as $columnIndex => $header) {
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($columnIndex + 1) . '1', $header);
+        }
+
+        $rowIndex = 2;
+        foreach ($plan as $item) {
+            $sheet->setCellValue('A' . $rowIndex, $item->CU ?? '');
+            $sheet->setCellValue('B' . $rowIndex, $item->Line ?? '');
+            $sheet->setCellValue('C' . $rowIndex, $item->Rdate ?? '');
+            $sheet->setCellValue('D' . $rowIndex, $item->ETADate ?? '');
+            $sheet->setCellValue('E' . $rowIndex, $item->ActDate ?? '');
+            $sheet->setCellValue('F' . $rowIndex, $item->PO ?? '');
+            $sheet->setCellValue('G' . $rowIndex, $item->lt ?? '');
+            $sheet->setCellValue('H' . $rowIndex, $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '');
+            $sheet->setCellValue('I' . $rowIndex, $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '');
+            $sheet->setCellValue('J' . $rowIndex, $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '');
+            $sheet->setCellValue('K' . $rowIndex, $item->Qty_dis ?? '');
+            $sheet->setCellValue('L' . $rowIndex, $item->Style ?? '');
+            $rowIndex++;
+        }
+
+        foreach (range('A', 'L') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        $filename = 'masterplan-' . now()->format('Ymd_His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     public function create()
@@ -131,7 +198,7 @@ class MasterPlanController extends Controller
         $request->validate([
             'CU' => 'required',
             'Line' => 'required',
-            'Rdate' => 'required|date',
+            'Rdate' => 'nullable|date',
             'ETADate' => 'nullable|date',
             'ActDate' => 'nullable|date',
             'lt' => 'nullable|integer|min:0',
@@ -162,12 +229,12 @@ class MasterPlanController extends Controller
         DB::table('mtp')->insert([
             'CU' => $request->CU,
             'Line' => $request->Line,
-            'Rdate' => $request->Rdate,
-            'ETADate' => $request->ETADate,
-            'ActDate' => $request->ActDate,
-            'lt' => $request->lt,
-            'FirstOPT' => $request->FirstOPT,
-            'Qty_dis' => $request->Qty_dis,
+            'Rdate' => $this->nullableDate($request->Rdate),
+            'ETADate' => $this->nullableDate($request->ETADate),
+            'ActDate' => $this->nullableDate($request->ActDate),
+            'lt' => $this->nullableInteger($request->lt),
+            'FirstOPT' => $this->nullableDate($request->FirstOPT),
+            'Qty_dis' => $this->nullableInteger($request->Qty_dis),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -196,7 +263,7 @@ class MasterPlanController extends Controller
         $request->validate([
             'CU' => 'required',
             'Line' => 'required',
-            'Rdate' => 'required|date',
+            'Rdate' => 'nullable|date',
             'ETADate' => 'nullable|date',
             'ActDate' => 'nullable|date',
             'lt' => 'nullable|integer|min:0',
@@ -230,12 +297,12 @@ class MasterPlanController extends Controller
         DB::table('mtp')->where('id', $id)->update([
             'CU' => $request->CU,
             'Line' => $request->Line,
-            'Rdate' => $request->Rdate,
-            'ETADate' => $request->ETADate,
-            'ActDate' => $request->ActDate,
-            'lt' => $request->lt,
-            'FirstOPT' => $request->FirstOPT,
-            'Qty_dis' => $request->Qty_dis,
+            'Rdate' => $this->nullableDate($request->Rdate),
+            'ETADate' => $this->nullableDate($request->ETADate),
+            'ActDate' => $this->nullableDate($request->ActDate),
+            'lt' => $this->nullableInteger($request->lt),
+            'FirstOPT' => $this->nullableDate($request->FirstOPT),
+            'Qty_dis' => $this->nullableInteger($request->Qty_dis),
             'updated_at' => now(),
         ]);
 
@@ -262,9 +329,16 @@ class MasterPlanController extends Controller
     public function calcDateAjax(Request $request)
     {
         $request->validate([
-            'firstOPT' => 'required|date',
-            'lt' => 'required|integer|min:0',
+            'firstOPT' => 'nullable|date',
+            'lt' => 'nullable|integer|min:0',
         ]);
+
+        if (!$request->filled('firstOPT') || !$request->filled('lt')) {
+            return response()->json([
+                'finish' => null,
+                'ex' => null,
+            ]);
+        }
 
         $holidays = DB::table('holidays')
             ->pluck('holiday')

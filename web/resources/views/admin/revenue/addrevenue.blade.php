@@ -3,7 +3,7 @@
 
 @section('content')
 
-<h3>Thêm Revenue</h3>
+<h3>Add Revenue</h3>
 
 @if($errors->any())
 <div class="alert alert-danger">
@@ -26,6 +26,9 @@
             <option value="{{ $item->CS }}" {{ old('CS') == $item->CS ? 'selected' : '' }}>{{ $item->CS }}</option>
             @endforeach
         </select>
+        @error('CS')
+        <div class="text-danger">{{ $message }}</div>
+        @enderror
     </div>
 
     <div class="mb-3">

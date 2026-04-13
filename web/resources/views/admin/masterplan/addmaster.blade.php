@@ -11,7 +11,7 @@
         <div class="mb-3">
             <label>CU</label>
             <select name="CU" id="cuSelect" class="form-control">
-                <option value="">-- Chọn CU --</option>
+                <option value="">-- Select CU --</option>
                 @foreach($ocs as $item)
                 <option value="{{ $item->CS }}">
                     {{ $item->CS }}

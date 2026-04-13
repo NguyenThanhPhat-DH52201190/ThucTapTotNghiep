@@ -37,7 +37,7 @@ $canManage = auth()->user()->role === 'admin';
             Reset
         </a>
 
-        <a href="{{ route('admin.revenue.export', request()->query()) }}"
+        <a href="{{ route('revenue.export', request()->query()) }}"
             class="btn btn-success">
             Export Excel
         </a>

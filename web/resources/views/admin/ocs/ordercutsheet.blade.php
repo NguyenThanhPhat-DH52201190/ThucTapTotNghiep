@@ -40,7 +40,7 @@ $canManage = auth()->user()->role === 'admin';
             Reset
         </a>
 
-        <a href="{{ route('admin.ocs.export', request()->query()) }}"
+        <a href="{{ route('ordercutsheet.export', request()->query()) }}"
             class="btn btn-success">
             Export Excel
         </a>

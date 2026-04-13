@@ -21,7 +21,7 @@
 
     <div class="row">
 
-        <!-- CS (không cho sửa) -->
+        <!-- CS (read-only) -->
         <div class="col-md-4 mb-3">
             <label>CS</label>
             <input type="text" class="form-control"

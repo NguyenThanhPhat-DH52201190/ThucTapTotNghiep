@@ -209,20 +209,20 @@ class MasterPlanController extends Controller
         $ocs = DB::table('ocs')->where('CS', $request->CU)->first();
 
         if (!$ocs) {
-            return back()->withErrors(['CU' => 'CS không tồn tại trong OCS'])->withInput();
+            return back()->withErrors(['CU' => 'CS not found in OCS'])->withInput();
         }
 
-        // tính tổng Qty_dis hiện tại của CU
+        // total Qty_dis for current CU
         $totalQtyDis = DB::table('mtp')
             ->where('CU', $request->CU)
             ->sum('Qty_dis');
 
-        // tổng mới sau khi thêm
+        // new total after adding
         $newTotal = $totalQtyDis + ($request->Qty_dis ?? 0);
 
         if ($newTotal > $ocs->Qty) {
             return back()->withErrors([
-                'Qty_dis' => 'Tổng Qty_dis (' . $newTotal . ') vượt quá Qty OCS (' . $ocs->Qty . ')'
+                'Qty_dis' => 'Total Qty_dis (' . $newTotal . ') exceeds OCS Qty (' . $ocs->Qty . ')'
             ])->withInput();
         }
 
@@ -270,27 +270,27 @@ class MasterPlanController extends Controller
             'FirstOPT' => 'nullable|date',
             'Qty_dis' => 'nullable|integer|min:0',
         ], [
-            'CU.unique' => 'CU đã tồn tại!',
+            'CU.unique' => 'CU already exists!',
         ]);
 
         $ocs = DB::table('ocs')->where('CS', $request->CU)->first();
 
         if (!$ocs) {
-            return back()->withErrors(['CU' => 'CS không tồn tại trong OCS'])->withInput();
+            return back()->withErrors(['CU' => 'CS not found in OCS'])->withInput();
         }
 
-        // tổng Qty_dis trừ bản ghi hiện tại
+        // total Qty_dis excluding current record
         $totalQtyDis = DB::table('mtp')
             ->where('CU', $request->CU)
             ->where('id', '!=', $id)
             ->sum('Qty_dis');
 
-        // cộng lại với giá trị mới
+        // add with new value
         $newTotal = $totalQtyDis + ($request->Qty_dis ?? 0);
 
         if ($newTotal > $ocs->Qty) {
             return back()->withErrors([
-                'Qty_dis' => 'Tổng Qty_dis (' . $newTotal . ') vượt quá Qty OCS (' . $ocs->Qty . ')'
+                'Qty_dis' => 'Total Qty_dis (' . $newTotal . ') exceeds OCS Qty (' . $ocs->Qty . ')'
             ])->withInput();
         }
 

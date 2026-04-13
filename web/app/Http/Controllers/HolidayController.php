@@ -77,6 +77,8 @@ class HolidayController extends Controller
         DB::table('holidays')->insert([
             'holiday' => $request->holiday,
             'name' => $request->name,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return redirect()->route('admin.holidays.index')

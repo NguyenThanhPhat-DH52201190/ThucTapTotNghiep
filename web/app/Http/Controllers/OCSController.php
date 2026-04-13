@@ -105,8 +105,10 @@ class OCSController extends Controller
             'Customer' => $request->Customer,
             'Color' => $request->Color,
             'ONum' => $request->ONum,
-            'CMT' => $request->CMT,   // ✅ thêm
-            'Qty' => $request->Qty
+            'CMT' => $request->CMT,   // added
+            'Qty' => $request->Qty,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return redirect()->route('admin.ocs.index')
@@ -139,7 +141,7 @@ class OCSController extends Controller
             'CMT' => 'nullable|numeric|min:0',
             'Qty' => 'required|integer|min:0'
         ], [
-            'CS.unique' => 'CS da ton tai, vui long nhap CS khac.',
+            'CS.unique' => 'CS already exists, please enter another CS.',
         ]);
 
         DB::table('ocs')->where('id', $id)->update([
@@ -151,7 +153,8 @@ class OCSController extends Controller
             'Color' => $request->Color,
             'ONum' => $request->ONum,
             'CMT' => $request->CMT,   
-            'Qty' => $request->Qty
+            'Qty' => $request->Qty,
+            'updated_at' => now(),
         ]);
 
         return redirect()->route('admin.ocs.index')

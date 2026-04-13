@@ -85,7 +85,7 @@ class RevenueController extends Controller
         return view('admin.revenue.addrevenue', compact('ocs'));
     }
 
-    // 📌 Lưu
+    // Save
     public function store(Request $request)
     {
         $request->validate([
@@ -102,6 +102,8 @@ class RevenueController extends Controller
             'actualout' => $request->actualout,
             'sewingmp' => $request->sewingmp,
             'workhrs' => $request->workhrs,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return redirect()
@@ -121,7 +123,7 @@ class RevenueController extends Controller
         ->first();
 
     if (!$revenue) {
-        dd('Không tìm thấy dữ liệu');
+        dd('Data not found');
     }
 
     return view('admin.revenue.editrevenue', compact('revenue'));
@@ -141,13 +143,14 @@ class RevenueController extends Controller
             'actualout' => $request->actualout,
             'sewingmp' => $request->sewingmp,
             'workhrs' => $request->workhrs,
+            'updated_at' => now(),
         ]);
 
         return redirect()->route('admin.revenue.index')
             ->with('success', 'Updated successfully');
     }
 
-    // 📌 Xoá (bonus cho bạn)
+    // Delete
     public function destroy($id)
     {
         $revenue = DB::table('revenue')->where('id', $id)->first();

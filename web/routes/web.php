@@ -44,6 +44,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ppic')
         ->name('ordercutsheet.view');
 
+    Route::get('/order-cutsheet/export', [OCSController::class, 'export'])
+        ->middleware('role:admin,ppic')
+        ->name('ordercutsheet.export');
+
     Route::get('/master-plan', [MasterPlanController::class, 'index'])
         ->middleware('role:admin,ie,warehouse')
         ->name('masterplan.view');
@@ -55,6 +59,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/revenue-view', [RevenueController::class, 'index'])
         ->middleware('role:admin,ie,warehouse')
         ->name('revenue.view');
+
+    Route::get('/revenue-view/export', [RevenueController::class, 'export'])
+        ->middleware('role:admin,ie,warehouse')
+        ->name('revenue.export');
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

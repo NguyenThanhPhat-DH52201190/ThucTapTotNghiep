@@ -68,7 +68,7 @@ class AuthController extends Controller
 
         if (! Auth::attempt($credentials, $remember)) {
             return back()->withErrors([
-                'username' => 'Username hoặc mật khẩu không đúng.',
+                'username' => 'Invalid username or password.',
             ])->onlyInput('username');
         }
 

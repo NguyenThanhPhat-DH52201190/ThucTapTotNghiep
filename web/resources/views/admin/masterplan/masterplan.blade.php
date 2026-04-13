@@ -175,7 +175,7 @@ $canManage = auth()->user()->role === 'admin';
         </tr>
         @endforeach
 
-        {{-- DÒNG TỔNG --}}
+        {{-- TOTAL ROW --}}
         <tr class="fw-bold 
             @if($line == 'Green') table-success
             @elseif($line == 'Blue') table-primary
@@ -245,7 +245,7 @@ $canManage = auth()->user()->role === 'admin';
             });
     }
 
-    // Chỉ bind sự kiện khi các input có tồn tại trên trang.
+    // Only bind events when inputs exist on the page.
     const firstOptInput = document.querySelector('[name="FirstOPT"]');
     const ltInput = document.querySelector('[name="lt"]');
 

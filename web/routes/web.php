@@ -64,6 +64,30 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie,warehouse')
         ->name('revenue.export');
 
+    Route::get('/revenue/sewing-lines/{cs}', [RevenueController::class, 'getSewingLinesByCs'])
+        ->middleware('role:admin,ie,warehouse')
+        ->name('revenue.sewing-lines');
+
+    Route::get('/revenue/distribution', [RevenueController::class, 'getDistributionByCsAndLine'])
+        ->middleware('role:admin,ie,warehouse')
+        ->name('revenue.distribution');
+
+    Route::get('/revenue/daily', [RevenueController::class, 'dailyRevenue'])
+        ->middleware('role:admin,ie,warehouse')
+        ->name('revenue.daily.line');
+
+    Route::get('/revenue/monthly-report', [RevenueController::class, 'monthlyReport'])
+        ->middleware('role:admin,ie,warehouse')
+        ->name('revenue.monthly-report');
+
+    Route::post('/revenue/daily', [RevenueController::class, 'storeDailyRevenue'])
+        ->middleware('role:admin')
+        ->name('revenue.daily.store');
+
+    Route::post('/revenue/daily/matrix', [RevenueController::class, 'storeDailyRevenueMatrix'])
+        ->middleware('role:admin')
+        ->name('revenue.daily.matrix.store');
+
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 

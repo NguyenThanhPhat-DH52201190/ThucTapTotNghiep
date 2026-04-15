@@ -35,6 +35,19 @@
         </div>
 
         <div class="col-md-4 mb-3">
+            <label>SewingLine</label>
+            <div class="line-badge js-line-color" data-line-color="{{ $revenue->LineColor ?? '#808080' }}">
+                {{ $revenue->SewingLine }}
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label>Distribution</label>
+            <input type="number" class="form-control"
+                value="{{ $revenue->Distribution }}" readonly>
+        </div>
+
+        <div class="col-md-4 mb-3">
             <label>Plan Out</label>
             <input type="number" name="planout" class="form-control"
                 value="{{ old('planout', $revenue->planout) }}" required>
@@ -42,8 +55,9 @@
 
         <div class="col-md-4 mb-3">
             <label>Actual Out</label>
-            <input type="number" name="actualout" class="form-control"
-                value="{{ old('actualout', $revenue->actualout) }}" required>
+            <input type="number" class="form-control"
+                value="{{ $revenue->actualout }}" readonly>
+            <small class="text-muted">Auto-updated from Daily Revenue by month.</small>
         </div>
 
         <div class="col-md-4 mb-3">
@@ -74,5 +88,21 @@
     </a>
 
 </form>
+
+<style>
+.line-badge {
+    border-radius: 4px;
+    text-align: center;
+    color: #fff;
+    font-weight: 500;
+    padding: 8px 12px;
+}
+</style>
+
+<script>
+document.querySelectorAll('.js-line-color').forEach(function (el) {
+    el.style.backgroundColor = el.dataset.lineColor || '#808080';
+});
+</script>
 
 @endsection

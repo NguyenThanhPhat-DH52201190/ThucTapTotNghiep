@@ -25,25 +25,36 @@ $canManage = auth()->user()->role === 'admin';
         value="{{ request('cs') }}">
 </div>
 
-    <div class="col-md-4 d-flex align-items-end gap-2">
+    <div class="col-md-2">
+    <label>Month</label>
+    <input type="month" name="month" class="form-control"
+        value="{{ request('month', now()->format('Y-m')) }}">
+</div>
+
+    <div class="col-md-8 d-flex align-items-end gap-2 flex-wrap revenue-actions">
 
         <!-- SEARCH -->
-        <button type="submit" class="btn btn-dark">
+        <button type="submit" class="btn btn-dark revenue-action-btn">
             Search
         </button>
 
         <a href="{{ request()->url() }}"
-            class="btn btn-outline-secondary">
+            class="btn btn-outline-secondary revenue-action-btn">
             Reset
         </a>
 
         <a href="{{ route('revenue.export', request()->query()) }}"
-            class="btn btn-success">
+            class="btn btn-success revenue-action-btn">
             Export Excel
         </a>
 
+        <a href="{{ route('revenue.monthly-report', ['year' => substr(request('month', now()->format('Y-m')), 0, 4)]) }}"
+            class="btn btn-outline-dark revenue-action-btn text-nowrap">
+            Monthly Report
+        </a>
+
         @if($canManage)
-        <a href="{{ route('admin.revenue.create') }}" class="btn btn-primary">
+        <a href="{{ route('admin.revenue.create') }}" class="btn btn-primary revenue-action-btn">
             Add
         </a>
         @endif
@@ -53,11 +64,13 @@ $canManage = auth()->user()->role === 'admin';
 <table class="table">
     <thead>
         <tr>
+            <th scope="col">SewingLine</th>
             <th scope="col">CS</th>
-            <th scope="col">planout</th>
-            <th scope="col">actualout</th>
             <th scope="col">sewingmp</th>
             <th scope="col">workhrs</th>
+            <th scope="col">Distribution</th>
+            <th scope="col">planout</th>
+            <th scope="col">actualout</th>
             <th scope="col">cmp</th>
             @if($canManage)
             <th scope="col">Edit</th>
@@ -66,13 +79,28 @@ $canManage = auth()->user()->role === 'admin';
         </tr>
     </thead>
     <tbody>
-        @foreach($revenues as $item) 
+        @php
+        $grouped = collect($revenues)->groupBy('SewingLine');
+        @endphp
+
+        @foreach($grouped as $line => $items)
+        <tr class="table-light fw-bold">
+            <td colspan="{{ $canManage ? 10 : 8 }}">
+                Line: {{ $line }}
+            </td>
+        </tr>
+
+        @foreach($items as $item)
         <tr>
+            <td class="line-badge js-line-color" data-line-color="{{ $item->LineColor ?? '#808080' }}">
+                {{ $item->SewingLine }}
+            </td>
             <td>{{ $item->CS }}</td>
-            <td>{{ $item->planout }}</td>
-            <td>{{ $item->actualout }}</td>
             <td>{{ $item->sewingmp }}</td>
             <td>{{ $item->workhrs }}</td>
+            <td>{{ $item->Distribution }}</td>
+            <td>{{ $item->planout }}</td>
+            <td>{{ $item->actualout }}</td>
             <td>{{ $item->cmp }}</td>
             @if($canManage)
             <td>
@@ -94,7 +122,44 @@ $canManage = auth()->user()->role === 'admin';
             @endif
         </tr>
         @endforeach
+
+        <tr>
+            <td colspan="{{ $canManage ? 10 : 8 }}" class="text-end">
+                <a href="{{ route('revenue.daily.line', ['line' => $line, 'month' => request('month', now()->format('Y-m'))]) }}" class="btn btn-outline-primary btn-sm">
+                    Daily Revenue - {{ $line }}
+                </a>
+            </td>
+        </tr>
+        @endforeach
     </tbody>
 </table>
+
+<style>
+.line-badge {
+    border-radius: 4px;
+    text-align: center;
+    color: #fff;
+    font-weight: 500;
+}
+
+.revenue-action-btn {
+    min-height: 40px;
+    padding: 0.375rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+}
+
+.revenue-actions {
+    row-gap: 0.5rem;
+}
+</style>
+
+<script>
+document.querySelectorAll('.js-line-color').forEach(function (el) {
+    el.style.backgroundColor = el.dataset.lineColor || '#808080';
+});
+</script>
 
 @endsection

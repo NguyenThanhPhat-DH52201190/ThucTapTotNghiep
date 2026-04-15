@@ -109,4 +109,4 @@ Route::middleware('auth')->group(function () {
     Route::get('/calc-date', [MasterPlanController::class, 'calcDateAjax']);
 });
 
-// routes/web.php
+Route::post('/ocs/import', [OCSController::class, 'import'])->name('ocs.import');

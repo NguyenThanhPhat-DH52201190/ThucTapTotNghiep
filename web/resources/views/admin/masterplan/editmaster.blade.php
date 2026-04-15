@@ -5,6 +5,11 @@
 
 
 <h3>Edit Master Plan</h3>
+@if(session('error'))
+<div class="alert alert-danger">
+    {{ session('error') }}
+</div>
+@endif
 @error('Qty_dis')
 <div class="text-danger">{{ $message }}</div>
 @enderror

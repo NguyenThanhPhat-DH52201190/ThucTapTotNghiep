@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\OCSImport;
 
 class OCSController extends Controller
 {
@@ -94,25 +97,36 @@ class OCSController extends Controller
             'CMT' => 'nullable|numeric|min:0',
             'Qty' => 'required|integer|min:0'
         ], [
-            'CS.unique' => 'CS da ton tai, vui long nhap CS khac.',
+            'CS.unique' => 'CS already exists. Please enter a different CS.',
         ]);
 
-        DB::table('ocs')->insert([
-            'CS' => $request->CS,
-            'CsDate' => $request->CsDate,
-            'SNo' => $request->SNo,
-            'Sname' => $request->Sname,
-            'Customer' => $request->Customer,
-            'Color' => $request->Color,
-            'ONum' => $request->ONum,
-            'CMT' => $request->CMT,   // added
-            'Qty' => $request->Qty,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('ocs')->insert([
+                'CS' => $request->CS,
+                'CsDate' => $request->CsDate,
+                'SNo' => $request->SNo,
+                'Sname' => $request->Sname,
+                'Customer' => $request->Customer,
+                'Color' => $request->Color,
+                'ONum' => $request->ONum,
+                'CMT' => $request->CMT,
+                'Qty' => $request->Qty,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('admin.ocs.index')
-            ->with('success', 'Order added successfully');
+            return redirect()->route('admin.ocs.index')
+                ->with('success', 'Order added successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to create OCS order', [
+                'message' => $e->getMessage(),
+                'input' => $request->except(['_token']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to save the order. Please check your input and try again.');
+        }
     }
 
     public function edit(string $id)
@@ -127,7 +141,7 @@ class OCSController extends Controller
 
         if (!$currentOrder) {
             return redirect()->route('admin.ocs.index')
-                ->with('error', 'Data not found');
+                ->with('error', 'Record not found.');
         }
 
         $request->validate([
@@ -144,28 +158,70 @@ class OCSController extends Controller
             'CS.unique' => 'CS already exists, please enter another CS.',
         ]);
 
-        DB::table('ocs')->where('id', $id)->update([
-            'CS' => $request->CS,
-            'CsDate' => $request->CsDate,
-            'SNo' => $request->SNo,
-            'Sname' => $request->Sname,
-            'Customer' => $request->Customer,
-            'Color' => $request->Color,
-            'ONum' => $request->ONum,
-            'CMT' => $request->CMT,   
-            'Qty' => $request->Qty,
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('ocs')->where('id', $id)->update([
+                'CS' => $request->CS,
+                'CsDate' => $request->CsDate,
+                'SNo' => $request->SNo,
+                'Sname' => $request->Sname,
+                'Customer' => $request->Customer,
+                'Color' => $request->Color,
+                'ONum' => $request->ONum,
+                'CMT' => $request->CMT,
+                'Qty' => $request->Qty,
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('admin.ocs.index')
-            ->with('success', 'Order updated successfully');
+            return redirect()->route('admin.ocs.index')
+                ->with('success', 'Order updated successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update OCS order', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+                'input' => $request->except(['_token', '_method']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the order. Please check your input and try again.');
+        }
     }
 
     public function destroy(string $id)
     {
-        DB::table('ocs')->where('id', $id)->delete();
+        try {
+            $deleted = DB::table('ocs')->where('id', $id)->delete();
 
-        return redirect()->route('admin.ocs.index')
-            ->with('success', 'Deleted successfully');
+            if (!$deleted) {
+                return redirect()->route('admin.ocs.index')
+                    ->with('error', 'Record not found.');
+            }
+
+            return redirect()->route('admin.ocs.index')
+                ->with('success', 'Deleted successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to delete OCS order', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+            ]);
+
+            return redirect()->route('admin.ocs.index')
+                ->with('error', 'Unable to delete the order. Please try again.');
+        }
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls|max:2048'
+        ]);
+
+        try {
+            Excel::import(new OCSImport, $request->file('file'));
+
+            return back()->with('success', 'Excel import completed successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Import failed: ' . $e->getMessage());
+        }
     }
 }

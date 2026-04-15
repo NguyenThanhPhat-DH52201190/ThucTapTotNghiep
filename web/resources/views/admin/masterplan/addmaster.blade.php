@@ -5,6 +5,12 @@
 <div class="container">
     <h3 class="mb-4">Add Master Plan</h3>
 
+    @if(session('error'))
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
+    @endif
+
     <form method="POST" action="{{ route('admin.masterplan.store') }}">
         @csrf
 

@@ -14,12 +14,14 @@
     </div>
 
     <div>
-    <select name="role">
-        <option value="admin">Admin</option>
-        <option value="iec">IEC</option>
-        <option value="warehouse">Warehouse</option>
-        <option value="ppic">PPIC</option>
-    </select>
+        <label for="role" class="form-label fw-semibold">Role</label>
+        <select id="role" name="role" class="form-select" required>
+            <option value="" disabled {{ old('role') ? '' : 'selected' }}>Select role</option>
+            <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
+            <option value="ie" {{ old('role', 'ie') === 'ie' ? 'selected' : '' }}>IE</option>
+            <option value="warehouse" {{ old('role') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
+            <option value="ppic" {{ old('role') === 'ppic' ? 'selected' : '' }}>PPIC</option>
+        </select>
     </div>
     
     <div>

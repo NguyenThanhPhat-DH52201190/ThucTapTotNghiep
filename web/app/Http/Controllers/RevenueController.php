@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -29,7 +30,7 @@ class RevenueController extends Controller
             ->get();
     }
 
-    // 📌 Danh sách
+    // List view
     public function index(Request $request)
     {
         $revenues = $this->getRevenues($request);
@@ -78,14 +79,14 @@ class RevenueController extends Controller
         ]);
     }
 
-    // 📌 Form add
+    // Create form
     public function create()
     {
         $ocs = DB::table('ocs')->get();
         return view('admin.revenue.addrevenue', compact('ocs'));
     }
 
-    // Save
+    // Store
     public function store(Request $request)
     {
         $request->validate([
@@ -96,19 +97,30 @@ class RevenueController extends Controller
             'workhrs' => 'required|numeric',
         ]);
 
-        DB::table('revenue')->insert([
-            'CS' => $request->CS,
-            'planout' => $request->planout,
-            'actualout' => $request->actualout,
-            'sewingmp' => $request->sewingmp,
-            'workhrs' => $request->workhrs,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('revenue')->insert([
+                'CS' => $request->CS,
+                'planout' => $request->planout,
+                'actualout' => $request->actualout,
+                'sewingmp' => $request->sewingmp,
+                'workhrs' => $request->workhrs,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        return redirect()
-            ->route('admin.revenue.index')
-            ->with('success', 'Added successfully');
+            return redirect()
+                ->route('admin.revenue.index')
+                ->with('success', 'Added successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to create revenue record', [
+                'message' => $e->getMessage(),
+                'input' => $request->except(['_token']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to save the record. Please check your input and try again.');
+        }
     }
 
     public function edit(string $id)
@@ -122,11 +134,12 @@ class RevenueController extends Controller
         ->where('revenue.id', $id)
         ->first();
 
-    if (!$revenue) {
-        dd('Data not found');
-    }
+        if (!$revenue) {
+            return redirect()->route('admin.revenue.index')
+                ->with('error', 'Record not found.');
+        }
 
-    return view('admin.revenue.editrevenue', compact('revenue'));
+        return view('admin.revenue.editrevenue', compact('revenue'));
     }
 
     public function update(Request $request, string $id)
@@ -138,30 +151,52 @@ class RevenueController extends Controller
             'workhrs' => 'required|numeric',
         ]);
 
-        DB::table('revenue')->where('id', $id)->update([
-            'planout' => $request->planout,
-            'actualout' => $request->actualout,
-            'sewingmp' => $request->sewingmp,
-            'workhrs' => $request->workhrs,
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('revenue')->where('id', $id)->update([
+                'planout' => $request->planout,
+                'actualout' => $request->actualout,
+                'sewingmp' => $request->sewingmp,
+                'workhrs' => $request->workhrs,
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('admin.revenue.index')
-            ->with('success', 'Updated successfully');
+            return redirect()->route('admin.revenue.index')
+                ->with('success', 'Updated successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update revenue record', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+                'input' => $request->except(['_token', '_method']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the record. Please check your input and try again.');
+        }
     }
 
     // Delete
     public function destroy($id)
     {
-        $revenue = DB::table('revenue')->where('id', $id)->first();
+        try {
+            $revenue = DB::table('revenue')->where('id', $id)->first();
 
-        if (!$revenue) {
-            return redirect()->back()->with('error', 'Data not found');
+            if (!$revenue) {
+                return redirect()->back()->with('error', 'Record not found.');
+            }
+
+            DB::table('revenue')->where('id', $id)->delete();
+
+            return redirect()->route('admin.revenue.index')
+                ->with('success', 'Deleted successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to delete revenue record', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Unable to delete the record. Please try again.');
         }
-
-        DB::table('revenue')->where('id', $id)->delete();
-
-        return redirect()->route('admin.revenue.index')
-            ->with('success', 'Deleted successfully');
     }
 }

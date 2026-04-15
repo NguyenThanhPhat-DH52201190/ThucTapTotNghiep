@@ -6,7 +6,9 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -31,20 +33,42 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'username' => ['required', 'string', 'min:3', 'max:50', 'unique:users,name'],
+            'role' => [
+                'required',
+                Rule::in([User::ROLE_ADMIN, User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_PPIC]),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === User::ROLE_ADMIN && User::where('role', User::ROLE_ADMIN)->exists()) {
+                        $fail('An admin account already exists. You cannot register another admin role.');
+                    }
+                },
+            ],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        $user = User::create([
-            'name' => $validated['username'],
-            'email' => Str::uuid().'@local.user',
-            'password' => $validated['password'],
-            'role' => User::ROLE_IE,
-        ]);
+        try {
+            $user = User::create([
+                'name' => $validated['username'],
+                'email' => Str::uuid().'@local.user',
+                'password' => $validated['password'],
+                'role' => $validated['role'],
+            ]);
 
-        Auth::login($user);
-        $request->session()->regenerate();
+            Auth::login($user);
+            $request->session()->regenerate();
 
-        return redirect()->route($this->routeByRole($user->role));
+            return redirect()->route($this->routeByRole($user->role));
+        } catch (\Throwable $e) {
+            Log::error('Failed to register user', [
+                'message' => $e->getMessage(),
+                'input' => $request->except(['_token', 'password', 'password_confirmation']),
+            ]);
+
+            return back()
+                ->withInput($request->only('username', 'role'))
+                ->withErrors([
+                    'username' => 'Unable to create the account. Please try again.',
+                ]);
+        }
     }
 
     public function showLogin(): View

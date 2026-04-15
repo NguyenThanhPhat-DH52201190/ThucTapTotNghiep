@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -227,22 +228,33 @@ class MasterPlanController extends Controller
             ])->withInput();
         }
 
-        DB::table('mtp')->insert([
-            'CU' => $request->CU,
-            'Line' => $request->Line,
-            'LineColor' => $request->LineColor,
-            'Rdate' => $this->nullableDate($request->Rdate),
-            'ETADate' => $this->nullableDate($request->ETADate),
-            'ActDate' => $this->nullableDate($request->ActDate),
-            'lt' => $this->nullableInteger($request->lt),
-            'FirstOPT' => $this->nullableDate($request->FirstOPT),
-            'Qty_dis' => $this->nullableInteger($request->Qty_dis),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('mtp')->insert([
+                'CU' => $request->CU,
+                'Line' => $request->Line,
+                'LineColor' => $request->LineColor,
+                'Rdate' => $this->nullableDate($request->Rdate),
+                'ETADate' => $this->nullableDate($request->ETADate),
+                'ActDate' => $this->nullableDate($request->ActDate),
+                'lt' => $this->nullableInteger($request->lt),
+                'FirstOPT' => $this->nullableDate($request->FirstOPT),
+                'Qty_dis' => $this->nullableInteger($request->Qty_dis),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('admin.masterplan.index')
-            ->with('success', 'Saved successfully');
+            return redirect()->route('admin.masterplan.index')
+                ->with('success', 'Saved successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to create MasterPlan record', [
+                'message' => $e->getMessage(),
+                'input' => $request->except(['_token']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to save the record. Please check your input and try again.');
+        }
     }
 
     public function edit(string $id)
@@ -297,37 +309,59 @@ class MasterPlanController extends Controller
             ])->withInput();
         }
 
-        DB::table('mtp')->where('id', $id)->update([
-            'CU' => $request->CU,
-            'Line' => $request->Line,
-            'LineColor' => $request->LineColor,
-            'Rdate' => $this->nullableDate($request->Rdate),
-            'ETADate' => $this->nullableDate($request->ETADate),
-            'ActDate' => $this->nullableDate($request->ActDate),
-            'lt' => $this->nullableInteger($request->lt),
-            'FirstOPT' => $this->nullableDate($request->FirstOPT),
-            'Qty_dis' => $this->nullableInteger($request->Qty_dis),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('mtp')->where('id', $id)->update([
+                'CU' => $request->CU,
+                'Line' => $request->Line,
+                'LineColor' => $request->LineColor,
+                'Rdate' => $this->nullableDate($request->Rdate),
+                'ETADate' => $this->nullableDate($request->ETADate),
+                'ActDate' => $this->nullableDate($request->ActDate),
+                'lt' => $this->nullableInteger($request->lt),
+                'FirstOPT' => $this->nullableDate($request->FirstOPT),
+                'Qty_dis' => $this->nullableInteger($request->Qty_dis),
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('admin.masterplan.index', [
-            'role' => 'admin',
-            'page' => 'masterplan'
-        ])->with('success', 'Updated successfully');
+            return redirect()->route('admin.masterplan.index', [
+                'role' => 'admin',
+                'page' => 'masterplan'
+            ])->with('success', 'Updated successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update MasterPlan record', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+                'input' => $request->except(['_token', '_method']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the record. Please check your input and try again.');
+        }
     }
 
     public function destroy(string $id)
     {
-        $plan = DB::table('mtp')->where('id', $id)->first();
+        try {
+            $plan = DB::table('mtp')->where('id', $id)->first();
 
-        if (!$plan) {
-            return redirect()->back()->with('error', 'Data not found');
+            if (!$plan) {
+                return redirect()->back()->with('error', 'Record not found.');
+            }
+
+            DB::table('mtp')->where('id', $id)->delete();
+
+            return redirect()->back()
+                ->with('success', 'Deleted successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to delete MasterPlan record', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Unable to delete the record. Please try again.');
         }
-
-        DB::table('mtp')->where('id', $id)->delete();
-
-        return redirect()->back()
-            ->with('success', 'Deleted successfully');
     }
 
     public function calcDateAjax(Request $request)
@@ -384,7 +418,7 @@ class MasterPlanController extends Controller
 
         $extra = 0;
 
-        for ($i = 1; $i <= $days; $i++) { // ✅ bỏ start
+        for ($i = 1; $i <= $days; $i++) { // Skip the start day
             $current = $start->copy()->addDays($i);
 
             if ($current->isSunday()) {

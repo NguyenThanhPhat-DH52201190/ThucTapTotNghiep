@@ -4,6 +4,12 @@
 
 <h3>Edit Holiday</h3>
 
+@if(session('error'))
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
+@endif
+
 <form method="POST" action="{{ route('admin.holidays.update', $holiday->id) }}">
     @csrf
     @method('PUT')

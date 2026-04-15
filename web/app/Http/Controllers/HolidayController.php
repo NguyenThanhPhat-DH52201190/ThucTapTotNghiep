@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -74,15 +75,26 @@ class HolidayController extends Controller
             'name' => 'nullable|string|max:255'
         ]);
 
-        DB::table('holidays')->insert([
-            'holiday' => $request->holiday,
-            'name' => $request->name,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('holidays')->insert([
+                'holiday' => $request->holiday,
+                'name' => $request->name,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('admin.holidays.index')
-            ->with('success', 'Added successfully');
+            return redirect()->route('admin.holidays.index')
+                ->with('success', 'Added successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to create holiday record', [
+                'message' => $e->getMessage(),
+                'input' => $request->except(['_token']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to save the holiday. Please check your input and try again.');
+        }
     }
 
 
@@ -113,16 +125,28 @@ class HolidayController extends Controller
             'name' => 'nullable|string|max:255'
         ]);
 
-        DB::table('holidays')->where('id', $id)->update([
-            'holiday' => $request->holiday,
-            'name' => $request->name,
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('holidays')->where('id', $id)->update([
+                'holiday' => $request->holiday,
+                'name' => $request->name,
+                'updated_at' => now(),
+            ]);
 
-        cache()->forget('holidays');
+            cache()->forget('holidays');
 
-        return redirect()->route('admin.holidays.index')
-            ->with('success', 'Updated successfully');
+            return redirect()->route('admin.holidays.index')
+                ->with('success', 'Updated successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update holiday record', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+                'input' => $request->except(['_token', '_method']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the holiday. Please check your input and try again.');
+        }
     }
 
     /**
@@ -130,10 +154,23 @@ class HolidayController extends Controller
      */
     public function destroy(string $id)
     {
-        DB::table('holidays')->where('id', $id)->delete();
+        try {
+            $deleted = DB::table('holidays')->where('id', $id)->delete();
 
-        cache()->forget('holidays');
+            if (!$deleted) {
+                return redirect()->back()->with('error', 'Record not found.');
+            }
 
-        return redirect()->back()->with('success', 'Deleted successfully');
+            cache()->forget('holidays');
+
+            return redirect()->back()->with('success', 'Deleted successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to delete holiday record', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+            ]);
+
+            return redirect()->back()->with('error', 'Unable to delete the holiday. Please try again.');
+        }
     }
 }

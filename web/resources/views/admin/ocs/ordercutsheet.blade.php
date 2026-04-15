@@ -57,13 +57,13 @@ $canManage = auth()->user()->role === 'admin';
     <thead>
         <tr>
             <th scope="col">CS</th>
-            <th scope="col">CsDate</th>
+            <th scope="col">ONum</th>
             <th scope="col">SNo</th>
             <th scope="col">SName</th>
             <th scope="col">Customer</th>
-            <th scope="col">Color</th>
-            <th scope="col">ONum</th>
+            <th scope="col">CsDate</th>
             <th scope="col">CMT</th>
+            <th scope="col">Color</th>
             <th scope="col">Qty</th>
             @if($canManage)
             <th scope="col">Edit</th>
@@ -75,13 +75,13 @@ $canManage = auth()->user()->role === 'admin';
         @foreach($orders as $item) 
         <tr>
             <td>{{ $item->CS }}</td>
-            <td>{{ $item->CsDate }}</td>
+            <td>{{ $item->ONum }}</td>
             <td>{{ $item->SNo }}</td>
             <td>{{ $item->Sname }}</td>
             <td>{{ $item->Customer }}</td>
-            <td>{{ $item->Color }}</td>
-            <td>{{ $item->ONum }}</td>
+            <td>{{ $item->CsDate }}</td>
             <td>{{ $item->CMT }}</td>
+            <td>{{ $item->Color }}</td>
             <td>{{ $item->Qty }}</td>
             @if($canManage)
             <td>

@@ -21,8 +21,62 @@
     <div class="mb-3">
         <label>Line</label>
         <input type="text" name="Line" class="form-control"
-            value="{{ $plan->Line }}">
+            value="{{ $plan->Line }}" required>
+        @error('Line')
+        <div class="text-danger">{{ $message }}</div>
+        @enderror
     </div>
+
+    <div class="mb-3">
+        <label>Line Color</label>
+        <div class="input-group">
+            <input type="color" name="LineColor" class="form-control form-control-color" value="{{ $plan->LineColor ?? '#808080' }}" style="width: 60px;" required>
+            <input type="text" class="form-control" id="lineColorText" placeholder="Hex color" readonly>
+            <button type="button" class="btn btn-outline-secondary" id="copyColorBtn" title="Copy hex color">
+                <i class="bi bi-files"></i> Copy
+            </button>
+        </div>
+        @error('LineColor')
+        <div class="text-danger">{{ $message }}</div>
+        @enderror
+    </div>
+    <script>
+        const colorInput = document.querySelector('input[name="LineColor"]');
+        const colorText = document.getElementById('lineColorText');
+        const copyBtn = document.getElementById('copyColorBtn');
+        
+        // Update hex text when color changes
+        colorInput.addEventListener('change', function() {
+            colorText.value = this.value;
+        });
+        colorInput.addEventListener('input', function() {
+            colorText.value = this.value;
+        });
+        colorText.value = colorInput.value;
+        
+        // Copy hex color to clipboard
+        copyBtn.addEventListener('click', function() {
+            navigator.clipboard.writeText(colorText.value).then(() => {
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, 2000);
+            });
+        });
+        
+        // Allow pasting hex color
+        document.addEventListener('paste', function(e) {
+            if (document.activeElement === colorInput) return;
+            const text = e.clipboardData.getData('text');
+            if (text.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
+                e.preventDefault();
+                colorInput.value = text;
+                colorText.value = text;
+                colorInput.dispatchEvent(new Event('change'));
+            }
+        });
+    </script>
 
     <div class="mb-3">
         <label>Rdate</label>

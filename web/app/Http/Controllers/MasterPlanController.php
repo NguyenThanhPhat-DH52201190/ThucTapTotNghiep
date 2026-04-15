@@ -138,16 +138,16 @@ class MasterPlanController extends Controller
         $headers = [
             'CU',
             'Line',
+            'Style',
+            'PO',
+            'Qty_dis',
             'Rdate',
             'ETADate',
             'ActDate',
-            'PO',
             'LT',
             'FirstOPT',
             'Finish_SEW',
             'EX_Fact',
-            'Qty_dis',
-            'Style',
         ];
 
         foreach ($headers as $columnIndex => $header) {
@@ -158,16 +158,16 @@ class MasterPlanController extends Controller
         foreach ($plan as $item) {
             $sheet->setCellValue('A' . $rowIndex, $item->CU ?? '');
             $sheet->setCellValue('B' . $rowIndex, $item->Line ?? '');
-            $sheet->setCellValue('C' . $rowIndex, $item->Rdate ?? '');
-            $sheet->setCellValue('D' . $rowIndex, $item->ETADate ?? '');
-            $sheet->setCellValue('E' . $rowIndex, $item->ActDate ?? '');
-            $sheet->setCellValue('F' . $rowIndex, $item->PO ?? '');
-            $sheet->setCellValue('G' . $rowIndex, $item->lt ?? '');
-            $sheet->setCellValue('H' . $rowIndex, $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '');
-            $sheet->setCellValue('I' . $rowIndex, $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '');
-            $sheet->setCellValue('J' . $rowIndex, $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '');
-            $sheet->setCellValue('K' . $rowIndex, $item->Qty_dis ?? '');
-            $sheet->setCellValue('L' . $rowIndex, $item->Style ?? '');
+            $sheet->setCellValue('C' . $rowIndex, $item->Style ?? '');
+            $sheet->setCellValue('D' . $rowIndex, $item->PO ?? '');
+            $sheet->setCellValue('E' . $rowIndex, $item->Qty_dis ?? '');
+            $sheet->setCellValue('F' . $rowIndex, $item->Rdate ?? '');
+            $sheet->setCellValue('G' . $rowIndex, $item->ETADate ?? '');
+            $sheet->setCellValue('H' . $rowIndex, $item->ActDate ?? '');
+            $sheet->setCellValue('I' . $rowIndex, $item->lt ?? '');
+            $sheet->setCellValue('J' . $rowIndex, $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '');
+            $sheet->setCellValue('K' . $rowIndex, $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '');
+            $sheet->setCellValue('L' . $rowIndex, $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '');
             $rowIndex++;
         }
 
@@ -198,6 +198,7 @@ class MasterPlanController extends Controller
         $request->validate([
             'CU' => 'required',
             'Line' => 'required',
+            'LineColor' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{3}){1,2}$/'],
             'Rdate' => 'nullable|date',
             'ETADate' => 'nullable|date',
             'ActDate' => 'nullable|date',
@@ -229,6 +230,7 @@ class MasterPlanController extends Controller
         DB::table('mtp')->insert([
             'CU' => $request->CU,
             'Line' => $request->Line,
+            'LineColor' => $request->LineColor,
             'Rdate' => $this->nullableDate($request->Rdate),
             'ETADate' => $this->nullableDate($request->ETADate),
             'ActDate' => $this->nullableDate($request->ActDate),
@@ -263,6 +265,7 @@ class MasterPlanController extends Controller
         $request->validate([
             'CU' => 'required',
             'Line' => 'required',
+            'LineColor' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{3}){1,2}$/'],
             'Rdate' => 'nullable|date',
             'ETADate' => 'nullable|date',
             'ActDate' => 'nullable|date',
@@ -297,6 +300,7 @@ class MasterPlanController extends Controller
         DB::table('mtp')->where('id', $id)->update([
             'CU' => $request->CU,
             'Line' => $request->Line,
+            'LineColor' => $request->LineColor,
             'Rdate' => $this->nullableDate($request->Rdate),
             'ETADate' => $this->nullableDate($request->ETADate),
             'ActDate' => $this->nullableDate($request->ActDate),

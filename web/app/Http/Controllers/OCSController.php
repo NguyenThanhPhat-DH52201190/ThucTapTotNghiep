@@ -40,7 +40,7 @@ class OCSController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('OCS');
 
-        $headers = ['CS', 'CsDate', 'SNo', 'SName', 'Customer', 'Color', 'ONum', 'CMT', 'Qty'];
+        $headers = ['CS', 'ONum', 'SNo', 'SName', 'Customer', 'CsDate', 'CMT', 'Color', 'Qty'];
 
         foreach ($headers as $index => $header) {
             $sheet->setCellValue(Coordinate::stringFromColumnIndex($index + 1) . '1', $header);
@@ -49,13 +49,13 @@ class OCSController extends Controller
         $rowIndex = 2;
         foreach ($orders as $item) {
             $sheet->setCellValue('A' . $rowIndex, $item->CS ?? '');
-            $sheet->setCellValue('B' . $rowIndex, $item->CsDate ?? '');
+            $sheet->setCellValue('B' . $rowIndex, $item->ONum ?? '');
             $sheet->setCellValue('C' . $rowIndex, $item->SNo ?? '');
             $sheet->setCellValue('D' . $rowIndex, $item->Sname ?? '');
             $sheet->setCellValue('E' . $rowIndex, $item->Customer ?? '');
-            $sheet->setCellValue('F' . $rowIndex, $item->Color ?? '');
-            $sheet->setCellValue('G' . $rowIndex, $item->ONum ?? '');
-            $sheet->setCellValue('H' . $rowIndex, $item->CMT ?? '');
+            $sheet->setCellValue('F' . $rowIndex, $item->CsDate ?? '');
+            $sheet->setCellValue('G' . $rowIndex, $item->CMT ?? '');
+            $sheet->setCellValue('H' . $rowIndex, $item->Color ?? '');
             $sheet->setCellValue('I' . $rowIndex, $item->Qty ?? '');
             $rowIndex++;
         }

@@ -74,16 +74,16 @@ $canManage = auth()->user()->role === 'admin';
         <tr>
             <th scope="col">CU</th>
             <th scope="col">Line</th>
+            <th scope="col">Style</th>
+            <th scope="col">PO</th>
+            <th scope="col">Qty_dis</th>
             <th scope="col">Rdate</th>
             <th scope="col">ETADay</th>
             <th scope="col">ActDate</th>
-            <th scope="col">PO</th>
             <th scope="col">LT</th>
             <th scope="col">FirstOPT</th>
             <th scope="col">Finish_SEW</th>
             <th scope="col">EX_Fact</th>
-            <th scope="col">Qty_dis</th>
-            <th scope="col">Style</th>
             @if($canManage)
             <th scope="col">Edit</th>
             <th scope="col">Delete</th>
@@ -132,28 +132,19 @@ $canManage = auth()->user()->role === 'admin';
         @foreach($items as $item)
         <tr>
             <td>{{ $item->CU }}</td>
-            <td>
-                <span class="badge 
-                @if($item->Line == 'Green') bg-success
-                @elseif($item->Line == 'Blue') bg-primary
-                @elseif($item->Line == 'Orange') bg-warning-subtle
-                @elseif($item->Line == 'Yellow') bg-warning
-                @else bg-secondary
-                @endif
-            ">
-                    {{ $item->Line }}
-                </span>
+            <td style="background-color: {{ $item->LineColor ?? '#808080' }}; border-radius: 4px; text-align: center; color: white; font-weight: 500;">
+                {{ $item->Line }}
             </td>
+            <td>{{ $item->Style }}</td>
+            <td>{{ $item->PO }}</td>
+            <td>{{ $item->Qty_dis }}</td>
             <td>{{ $item->Rdate }}</td>
             <td>{{ $item->ETADate }}</td>
             <td>{{ $item->ActDate }}</td>
-            <td>{{ $item->PO }}</td>
             <td>{{ $item->lt }}</td>
             <td>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
             <td>{{$item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : ''  }}</td>
-            <td>{{ $item->Qty_dis }}</td>
-            <td>{{ $item->Style }}</td>
             @if($canManage)
             <td>
                 <a href="{{ route('admin.masterplan.edit', $item->id) }}"

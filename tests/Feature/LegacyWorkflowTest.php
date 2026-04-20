@@ -343,6 +343,9 @@ class LegacyWorkflowTest extends TestCase
 
         $this->get(route('admin.masterplan.create'))
             ->assertOk()
+            ->assertSee('-- Select Line --')
+            ->assertSee('Blue')
+            ->assertSee('Sample')
             ->assertSeeInOrder(['CU1000', 'CU5899', 'CU5943']);
     }
 
@@ -547,5 +550,46 @@ class LegacyWorkflowTest extends TestCase
             ->assertSee('CU-POS')
             ->assertDontSee('CU-ZERO')
             ->assertDontSee('CU-NEG');
+    }
+
+    public function test_admin_can_create_and_update_color_master_record(): void
+    {
+        $admin = $this->createUserRecord([
+            'name' => 'color-admin',
+            'email' => 'color-admin@local.test',
+            'password' => 'Password123!',
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        $this->actingAs($admin);
+
+        $this->post(route('admin.colors.store'), [
+            'name' => 'Purple',
+            'hex_code' => '#800080',
+            'cate' => 'GSV',
+            'is_active' => '1',
+        ])->assertRedirect(route('admin.colors.index'));
+
+        $this->assertDatabaseHas('colors', [
+            'name' => 'Purple',
+            'hex_code' => '#800080',
+            'cate' => 'GSV',
+            'is_active' => 1,
+        ]);
+
+        $id = DB::table('colors')->where('name', 'Purple')->value('id');
+
+        $this->put(route('admin.colors.update', $id), [
+            'name' => 'Purple Updated',
+            'hex_code' => '#7B1FA2',
+            'cate' => 'Subcon',
+        ])->assertRedirect(route('admin.colors.index'));
+
+        $this->assertDatabaseHas('colors', [
+            'name' => 'Purple Updated',
+            'hex_code' => '#7B1FA2',
+            'cate' => 'Subcon',
+            'is_active' => 0,
+        ]);
     }
 }

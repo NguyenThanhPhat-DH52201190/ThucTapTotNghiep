@@ -252,6 +252,10 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             Add
         </a>
 
+        <a href="{{ route('admin.colors.index') }}" class="btn btn-outline-primary">
+            Line Colors
+        </a>
+
         <a href="{{ route('admin.holidays.index') }}" class="btn btn-success ">
             View Holiday
         </a>
@@ -303,12 +307,11 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         $grouped = collect($plan)->groupBy('Line');
         $subconHeaderShown = false;
         $colorTotalShown = false;
-        $colorLines = ['green', 'blue', 'orange', 'yellow'];
-        $totalColorQty = collect($plan)->filter(function ($item) use ($colorLines) {
-            return in_array(strtolower(trim((string) ($item->Line ?? ''))), $colorLines, true);
+        $totalColorQty = collect($plan)->filter(function ($item) {
+            return strtoupper((string) ($item->LineCate ?? 'SUBCON')) === 'GSV';
         })->sum('Qty_dis');
-        $totalSubconQty = collect($plan)->filter(function ($item) use ($colorLines) {
-            return !in_array(strtolower(trim((string) ($item->Line ?? ''))), $colorLines, true);
+        $totalSubconQty = collect($plan)->filter(function ($item) {
+            return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
         $tableColspan = 25 + $actionCols;
@@ -316,7 +319,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
 
         @foreach($grouped as $line => $items)
         @php
-        $isColorLine = in_array(strtolower(trim((string) $line)), $colorLines, true);
+        $isColorLine = strtoupper((string) ($items->first()->LineCate ?? 'SUBCON')) === 'GSV';
         @endphp
 
         @if(!$isColorLine && !$subconHeaderShown)

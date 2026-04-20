@@ -31,7 +31,17 @@
 
         <div class="mb-3">
             <label>Line</label>
-            <input type="text" name="Line" class="form-control" placeholder="e.g., Green, Blue, KingTex" required>
+            <select name="Line" id="lineSelect" class="form-control" required>
+                <option value="">-- Select Line --</option>
+                @foreach(($colors ?? collect()) as $lineColor)
+                <option
+                    value="{{ $lineColor->name }}"
+                    data-hex="{{ $lineColor->hex_code }}"
+                    {{ old('Line') === $lineColor->name ? 'selected' : '' }}>
+                    {{ $lineColor->name }}
+                </option>
+                @endforeach
+            </select>
             @error('Line')
             <div class="text-danger">{{ $message }}</div>
             @enderror
@@ -40,52 +50,48 @@
         <div class="mb-3">
             <label>Line Color</label>
             <div class="input-group">
-                <input type="color" name="LineColor" class="form-control form-control-color" value="#808080" style="width: 60px;" required>
-                <input type="text" class="form-control" id="lineColorText" placeholder="Hex color" readonly>
-                <button type="button" class="btn btn-outline-secondary" id="copyColorBtn" title="Copy hex color">
-                    <i class="bi bi-files"></i> Copy
-                </button>
+                <input type="hidden" name="LineColor" id="lineColorInput" value="{{ old('LineColor', '#808080') }}" required>
+                <span class="input-group-text" style="min-width: 58px; justify-content: center;">
+                    <span id="lineColorSwatch" style="display:inline-block; width:28px; height:28px; border-radius:4px; border:1px solid #cbd5e1; background:#808080;"></span>
+                </span>
+                <input type="text" class="form-control" id="lineColorText" placeholder="Hex color" value="{{ old('LineColor', '#808080') }}" readonly>
             </div>
             @error('LineColor')
             <div class="text-danger">{{ $message }}</div>
             @enderror
         </div>
         <script>
-            const colorInput = document.querySelector('input[name="LineColor"]');
+            const colorInput = document.getElementById('lineColorInput');
             const colorText = document.getElementById('lineColorText');
-            const copyBtn = document.getElementById('copyColorBtn');
-            
-            // Update hex text when color changes
-            colorInput.addEventListener('change', function() {
-                colorText.value = this.value;
-            });
-            colorInput.addEventListener('input', function() {
-                colorText.value = this.value;
-            });
-            colorText.value = colorInput.value;
-            
-            // Copy hex color to clipboard
-            copyBtn.addEventListener('click', function() {
-                navigator.clipboard.writeText(colorText.value).then(() => {
-                    const originalText = copyBtn.innerHTML;
-                    copyBtn.innerHTML = '<i class="bi bi-check"></i> Copied!';
-                    setTimeout(() => {
-                        copyBtn.innerHTML = originalText;
-                    }, 2000);
-                });
-            });
-            
-            // Allow pasting hex color
-            document.addEventListener('paste', function(e) {
-                if (document.activeElement === colorInput) return;
-                const text = e.clipboardData.getData('text');
-                if (text.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
-                    e.preventDefault();
-                    colorInput.value = text;
-                    colorText.value = text;
-                    colorInput.dispatchEvent(new Event('change'));
+            const colorSwatch = document.getElementById('lineColorSwatch');
+            const lineSelect = document.getElementById('lineSelect');
+
+            function applyColor(hex) {
+                if (!hex) return;
+
+                colorInput.value = hex;
+                colorText.value = hex;
+                colorSwatch.style.backgroundColor = hex;
+            }
+
+            function syncColorFromLine() {
+                if (!lineSelect) return;
+                const selected = lineSelect.options[lineSelect.selectedIndex];
+                const hex = selected ? selected.getAttribute('data-hex') : null;
+
+                if (!hex) {
+                    return;
                 }
-            });
+
+                applyColor(hex);
+            }
+
+            applyColor(colorInput.value);
+
+            if (lineSelect) {
+                lineSelect.addEventListener('change', syncColorFromLine);
+                syncColorFromLine();
+            }
         </script>
 
         <div class="mb-3">

@@ -90,6 +90,12 @@
                     <i class="bi bi-bar-chart"></i>
                     Revenue
                 </a>
+
+                <a href="{{ route('admin.colors.index') }}"
+                    class="d-flex align-items-center gap-2 mt-1">
+                    <i class="bi bi-palette"></i>
+                    Line Colors
+                </a>
             </div>
             @elseif($role === 'ppic')
             <a href="{{ route('ordercutsheet.view') }}" class="d-flex align-items-center gap-2 mb-1">

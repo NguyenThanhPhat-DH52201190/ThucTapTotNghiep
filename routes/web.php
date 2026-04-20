@@ -6,6 +6,7 @@ use App\Http\Controllers\MasterPlanController;
 use App\Http\Controllers\OCSController;
 use App\Http\Controllers\RevenueController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\ColorController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -127,6 +128,9 @@ Route::middleware('auth')->group(function () {
 
         // Holidays
         Route::resource('holidays', HolidayController::class);
+
+        // Colors (Line master)
+        Route::resource('colors', ColorController::class)->except(['show']);
     });
 
     Route::get('/ocs-by-cs/{cs}', function ($cs) {

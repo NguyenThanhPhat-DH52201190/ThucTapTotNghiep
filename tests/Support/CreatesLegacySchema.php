@@ -14,6 +14,7 @@ trait CreatesLegacySchema
         Schema::dropAllTables();
 
         $this->createUsersTable();
+        $this->createColorsTable();
         $this->createOcsTable();
         $this->createHolidaysTable();
         $this->createMtpTable();
@@ -75,6 +76,61 @@ trait CreatesLegacySchema
             $table->unsignedInteger('Qty')->default(0);
             $table->timestamps();
         });
+    }
+
+    protected function createColorsTable(): void
+    {
+        Schema::create('colors', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name')->unique();
+            $table->string('hex_code', 7);
+            $table->string('cate', 10)->default('GSV');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+        });
+
+        DB::table('colors')->insert([
+            [
+                'name' => 'Blue',
+                'hex_code' => '#0000FF',
+                'cate' => 'GSV',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Green',
+                'hex_code' => '#008000',
+                'cate' => 'GSV',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Orange',
+                'hex_code' => '#FFA500',
+                'cate' => 'GSV',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Yellow',
+                'hex_code' => '#FFFF00',
+                'cate' => 'GSV',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Sample',
+                'hex_code' => '#808080',
+                'cate' => 'GSV',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
     }
 
     protected function createHolidaysTable(): void

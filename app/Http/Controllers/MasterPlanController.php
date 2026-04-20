@@ -16,47 +16,6 @@ class MasterPlanController extends Controller
     {
         return $request->user()?->role === 'admin';
     }
-        private function isGsvLineName(?string $line): bool
-        {
-            $value = strtolower(trim((string) $line));
-
-            if ($value === '') {
-                return false;
-            }
-
-            if ($value === 'sample') {
-                return true;
-            }
-
-            if (preg_match('/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/', $value)) {
-                return true;
-            }
-
-            $cssNamedColors = [
-                'black', 'silver', 'gray', 'grey', 'white', 'maroon', 'red', 'purple', 'fuchsia', 'green', 'lime',
-                'olive', 'yellow', 'navy', 'blue', 'teal', 'aqua', 'orange', 'aliceblue', 'antiquewhite', 'aquamarine',
-                'azure', 'beige', 'bisque', 'blanchedalmond', 'blueviolet', 'brown', 'burlywood', 'cadetblue',
-                'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'darkblue',
-                'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgrey', 'darkgreen', 'darkkhaki', 'darkmagenta',
-                'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen', 'darkslateblue',
-                'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 'dimgray',
-                'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 'gainsboro', 'ghostwhite', 'gold',
-                'goldenrod', 'greenyellow', 'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender',
-                'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
-                'lightgoldenrodyellow', 'lightgray', 'lightgrey', 'lightgreen', 'lightpink', 'lightsalmon',
-                'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue', 'lightyellow',
-                'magenta', 'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue',
-                'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose',
-                'moccasin', 'navajowhite', 'oldlace', 'olivedrab', 'orangered', 'orchid', 'palegoldenrod',
-                'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 'plum',
-                'powderblue', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell',
-                'sienna', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow', 'springgreen', 'steelblue', 'tan',
-                'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'whitesmoke', 'yellowgreen',
-            ];
-
-            return in_array($value, $cssNamedColors, true);
-        }
-
 
     private function redirectRouteForRole(Request $request): string
     {
@@ -86,6 +45,17 @@ class MasterPlanController extends Controller
 
     private function getMasterPlan(Request $request): Collection
     {
+        $lineCateByName = DB::table('colors')
+            ->select('name', 'cate')
+            ->where('is_active', 1)
+            ->get()
+            ->mapWithKeys(function ($item) {
+                return [
+                    strtolower(trim((string) $item->name)) => strtoupper((string) ($item->cate ?? 'GSV')),
+                ];
+            })
+            ->all();
+
         $plan = DB::table('mtp')
             ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
             ->when($request->filled('to_date'), function ($query) use ($request) {
@@ -109,7 +79,7 @@ class MasterPlanController extends Controller
             ->pluck('holiday')
             ->toArray();
 
-        $gsvLinePriority = [
+        $colorLinePriority = [
             'blue' => 1,
             'yellow' => 2,
             'green' => 3,
@@ -117,12 +87,14 @@ class MasterPlanController extends Controller
         ];
 
         $plan = collect($plan)
-            ->sort(function ($a, $b) use ($gsvLinePriority) {
+            ->sort(function ($a, $b) use ($colorLinePriority, $lineCateByName) {
                 $lineA = strtolower((string) ($a->Line ?? ''));
                 $lineB = strtolower((string) ($b->Line ?? ''));
 
-                $isColorA = $this->isGsvLineName($a->Line ?? null);
-                $isColorB = $this->isGsvLineName($b->Line ?? null);
+                $cateA = $lineCateByName[$lineA] ?? 'SUBCON';
+                $cateB = $lineCateByName[$lineB] ?? 'SUBCON';
+                $isColorA = $cateA === 'GSV';
+                $isColorB = $cateB === 'GSV';
 
                 if ($isColorA !== $isColorB) {
                     return $isColorA ? -1 : 1;
@@ -133,8 +105,8 @@ class MasterPlanController extends Controller
                     return $dateCompare;
                 }
 
-                $rankA = $gsvLinePriority[$lineA] ?? ($isColorA ? 50 : 999);
-                $rankB = $gsvLinePriority[$lineB] ?? ($isColorB ? 50 : 999);
+                $rankA = $colorLinePriority[$lineA] ?? 999;
+                $rankB = $colorLinePriority[$lineB] ?? 999;
 
                 if ($isColorA && $rankA !== $rankB) {
                     return $rankA <=> $rankB;
@@ -147,6 +119,11 @@ class MasterPlanController extends Controller
                 return ((int) ($a->id ?? 0)) <=> ((int) ($b->id ?? 0));
             })
             ->values();
+
+        foreach ($plan as $item) {
+            $lineKey = strtolower(trim((string) ($item->Line ?? '')));
+            $item->LineCate = $lineCateByName[$lineKey] ?? 'SUBCON';
+        }
 
         $grouped = $plan->groupBy('Line');
 
@@ -309,7 +286,13 @@ class MasterPlanController extends Controller
             ->orderBy('CS', 'asc')
             ->get();
 
-        return view('admin.masterplan.addmaster', compact('ocs'));
+        $colors = DB::table('colors')
+            ->select('name', 'hex_code')
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.masterplan.addmaster', compact('ocs', 'colors'));
     }
 
     public function store(Request $request)
@@ -433,10 +416,16 @@ class MasterPlanController extends Controller
             ->where('mtp.id', $id)
             ->first();
 
+        $colors = DB::table('colors')
+            ->select('name', 'hex_code')
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+
         $fabricOnly = false;
         $updateRoute = route('admin.masterplan.update', $id);
 
-        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute'));
+        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute', 'colors'));
     }
 
     public function editFabric(string $id)
@@ -457,10 +446,16 @@ class MasterPlanController extends Controller
                 ->with('error', 'Record not found.');
         }
 
+        $colors = DB::table('colors')
+            ->select('name', 'hex_code')
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+
         $fabricOnly = request()->user()?->role === 'ppic';
         $updateRoute = route('masterplan.fabric.update', $id);
 
-        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute'));
+        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute', 'colors'));
     }
 
     public function update(Request $request, string $id)

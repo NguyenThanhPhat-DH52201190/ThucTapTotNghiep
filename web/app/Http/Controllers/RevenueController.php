@@ -33,9 +33,193 @@ class RevenueController extends Controller
                 'CU',
                 'Line',
                 DB::raw('MAX(COALESCE(LineColor, "#808080")) as LineColor'),
-                DB::raw('MIN(FirstOPT) as FirstOPT')
+                DB::raw('MIN(FirstOPT) as FirstOPT'),
+                DB::raw('MIN(lt) as lt')
             )
             ->groupBy('CU', 'Line');
+    }
+
+    private function normalizeHolidaySet(array $holidays): array
+    {
+        $holidaySet = [];
+
+        foreach ($holidays as $holiday) {
+            if ($holiday === null) {
+                continue;
+            }
+
+            $date = substr((string) $holiday, 0, 10);
+            if ($date !== '') {
+                $holidaySet[$date] = true;
+            }
+        }
+
+        return $holidaySet;
+    }
+
+    private function countNonWorkingDays(Carbon $start, Carbon $end, array $holidaySet, bool $includeStart): int
+    {
+        $cursor = $includeStart ? $start->copy() : $start->copy()->addDay();
+        $count = 0;
+
+        while ($cursor->lessThanOrEqualTo($end)) {
+            if ($cursor->isSunday() || isset($holidaySet[$cursor->toDateString()])) {
+                $count++;
+            }
+
+            $cursor->addDay();
+        }
+
+        return $count;
+    }
+
+    private function skipSunday(Carbon $date): Carbon
+    {
+        $result = $date->copy();
+
+        if ($result->isSunday()) {
+            $result->addDay();
+        }
+
+        return $result;
+    }
+
+    private function calcFinishSew($startDate, $days, array $holidays = [])
+    {
+        $start = Carbon::parse($startDate);
+        $baseDays = max(0, (int) $days);
+
+        if ($baseDays === 0) {
+            return $start;
+        }
+
+        $holidaySet = $this->normalizeHolidaySet($holidays);
+        $totalDays = $baseDays - 1;
+
+        while (true) {
+            $end = $start->copy()->addDays($totalDays);
+            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, true);
+            $newTotalDays = $baseDays - 1 + $extra;
+
+            if ($newTotalDays === $totalDays) {
+                return $this->skipSunday($end);
+            }
+
+            $totalDays = $newTotalDays;
+        }
+    }
+
+    private function calcExFact($startDate, $days, array $holidays = [])
+    {
+        $start = Carbon::parse($startDate);
+        $baseDays = max(0, (int) $days);
+        $holidaySet = $this->normalizeHolidaySet($holidays);
+        $totalDays = $baseDays;
+
+        while (true) {
+            $end = $start->copy()->addDays($totalDays);
+            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, false);
+            $newTotalDays = $baseDays + $extra;
+
+            if ($newTotalDays === $totalDays) {
+                return $end;
+            }
+
+            $totalDays = $newTotalDays;
+        }
+    }
+
+    private function getMasterPlanWindowsByLine(string $line, array $holidays): Collection
+    {
+        $masterPlans = DB::table('mtp')
+            ->where('Line', $line)
+            ->select('id', 'CU', 'FirstOPT', 'lt')
+            ->orderByRaw('FirstOPT IS NULL ASC')
+            ->orderBy('FirstOPT')
+            ->orderBy('id')
+            ->get();
+
+        $windows = collect();
+        $previousFinish = null;
+
+        foreach ($masterPlans as $masterPlan) {
+            if (!$previousFinish) {
+                $currentFirstOPT = $masterPlan->FirstOPT ? Carbon::parse($masterPlan->FirstOPT) : null;
+            } else {
+                $currentFirstOPT = $this->calcExFact($previousFinish, 1, $holidays);
+            }
+
+            if (!$currentFirstOPT || !$masterPlan->lt) {
+                continue;
+            }
+
+            $currentFinish = $this->calcFinishSew($currentFirstOPT, (int) $masterPlan->lt, $holidays);
+
+            $windows->push((object) [
+                'CU' => (string) $masterPlan->CU,
+                'firstOPT' => $currentFirstOPT,
+                'finishSEW' => $currentFinish,
+            ]);
+            $previousFinish = $currentFinish;
+        }
+
+        return $windows;
+    }
+
+    private function attachMasterPlanWindows(Collection $revenues, array $holidays): Collection
+    {
+        $groups = $revenues->groupBy(function ($item) {
+            return (string) $item->SewingLine;
+        });
+
+        foreach ($groups as $group) {
+            $orderedRevenues = $group->sortBy('id')->values();
+            $line = (string) $orderedRevenues->first()->SewingLine;
+            $lineWindows = $this->getMasterPlanWindowsByLine($line, $holidays);
+            $windowsByCu = $lineWindows->groupBy(function ($window) {
+                return (string) $window->CU;
+            })->map(function ($items) {
+                return $items->values();
+            });
+
+            $cuIndexes = [];
+
+            foreach ($orderedRevenues as $item) {
+                $cu = (string) $item->CS;
+                $currentIndex = $cuIndexes[$cu] ?? 0;
+                $window = $windowsByCu->get($cu)?->get($currentIndex);
+
+                $item->calc_FirstOPT = $window->firstOPT ?? null;
+                $item->calc_Finish_SEW = $window->finishSEW ?? null;
+
+                $cuIndexes[$cu] = $currentIndex + 1;
+            }
+        }
+
+        return $revenues;
+    }
+
+    private function sortByFirstOPT(Collection $revenues, bool $preserveKeys = false): Collection
+    {
+        $sorted = $revenues->sort(function ($left, $right) {
+            $leftFirstOPT = $left->calc_FirstOPT ?? null;
+            $rightFirstOPT = $right->calc_FirstOPT ?? null;
+
+            $leftTimestamp = $leftFirstOPT ? $leftFirstOPT->timestamp : PHP_INT_MAX;
+            $rightTimestamp = $rightFirstOPT ? $rightFirstOPT->timestamp : PHP_INT_MAX;
+
+            if ($leftTimestamp !== $rightTimestamp) {
+                return $leftTimestamp <=> $rightTimestamp;
+            }
+
+            return ((int) ($left->id ?? 0)) <=> ((int) ($right->id ?? 0));
+        })->values();
+
+        if ($preserveKeys) {
+            return $sorted->keyBy('id');
+        }
+
+        return $sorted;
     }
 
     private function getMonthlyActualOutSubquery(string $month)
@@ -99,7 +283,8 @@ class RevenueController extends Controller
                 DB::raw('COALESCE(mtp_dist.Distribution, 0) as Distribution'),
                 DB::raw('COALESCE(mtp_meta.LineColor, "#808080") as LineColor'),
                 DB::raw('COALESCE(daily_monthly.monthly_actualout, 0) as actualout'),
-                DB::raw('mtp_meta.FirstOPT as FirstOPT')
+                DB::raw('mtp_meta.FirstOPT as FirstOPT'),
+                DB::raw('mtp_meta.lt as lt')
             )
             ->orderByRaw($this->lineOrderCase('revenue.SewingLine'))
             ->orderByRaw("CASE
@@ -375,13 +560,16 @@ class RevenueController extends Controller
                 'ocs.CMT as cmp',
                 DB::raw('COALESCE(mtp_dist.Distribution, 0) as Distribution'),
                 DB::raw('COALESCE(mtp_meta.LineColor, "#808080") as LineColor'),
-                DB::raw('COALESCE(daily_monthly.monthly_actualout, 0) as actualout'),
-                DB::raw('mtp_meta.FirstOPT as FirstOPT')
+                DB::raw('COALESCE(daily_monthly.monthly_actualout, 0) as actualout')
             )
-            ->orderByRaw('mtp_meta.FirstOPT IS NULL ASC')
-            ->orderBy('mtp_meta.FirstOPT')
             ->orderBy('revenue.CS')
+            ->orderBy('revenue.id')
             ->get();
+
+        $holidays = DB::table('holidays')->pluck('holiday')->toArray();
+        $holidaySet = $this->normalizeHolidaySet($holidays);
+        $revenues = $this->attachMasterPlanWindows($revenues, $holidays);
+        $revenues = $this->sortByFirstOPT($revenues);
 
         $monthLabel = Carbon::createFromFormat('Y-m', $month)->format('M');
         $days = $this->monthDays($month);
@@ -405,7 +593,7 @@ class RevenueController extends Controller
             return ((float) $item->actualout) * ((float) $item->cmp);
         });
 
-        return view('admin.revenue.daily_revenue', compact('line', 'month', 'monthLabel', 'revenues', 'days', 'dailyMatrix', 'totalQty', 'totalPlanRevenue', 'totalAmount'));
+        return view('admin.revenue.daily_revenue', compact('line', 'month', 'monthLabel', 'revenues', 'days', 'dailyMatrix', 'holidaySet', 'totalQty', 'totalPlanRevenue', 'totalAmount'));
     }
 
     public function monthlyReport(Request $request)
@@ -416,7 +604,7 @@ class RevenueController extends Controller
 
         $year = (int) $request->input('year', now()->year);
 
-        $monthlyByRevenue = DB::table('daily_revenues as dr')
+        $monthlyActualByRevenue = DB::table('daily_revenues as dr')
             ->whereYear('dr.work_date', $year)
             ->select(
                 'dr.revenue_id',
@@ -426,20 +614,24 @@ class RevenueController extends Controller
             ->groupBy('dr.revenue_id', DB::raw('MONTH(dr.work_date)'));
 
         $colorLineCase = "CASE WHEN LOWER(TRIM(r.SewingLine)) IN ('green', 'blue', 'orange', 'yellow') THEN 1 ELSE 0 END";
+        $monthBucket = 'COALESCE(dm.month_no, MONTH(r.created_at))';
 
         $rows = DB::query()
-            ->fromSub($monthlyByRevenue, 'dm')
-            ->join('revenue as r', 'r.id', '=', 'dm.revenue_id')
+            ->from('revenue as r')
             ->join('ocs', 'ocs.CS', '=', 'r.CS')
+            ->leftJoinSub($monthlyActualByRevenue, 'dm', function ($join) {
+                $join->on('dm.revenue_id', '=', 'r.id');
+            })
+            ->whereRaw('(YEAR(r.created_at) = ? OR dm.revenue_id IS NOT NULL)', [$year])
             ->select(
-                'dm.month_no',
+                DB::raw($monthBucket . ' as month_no'),
                 DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 1 THEN COALESCE(r.planout, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as gsv_plan'),
                 DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 1 THEN COALESCE(dm.monthly_qty, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as gsv_actual'),
                 DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 0 THEN COALESCE(r.planout, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as subcon_plan'),
                 DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 0 THEN COALESCE(dm.monthly_qty, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as subcon_actual')
             )
-            ->groupBy('dm.month_no')
-            ->orderBy('dm.month_no')
+            ->groupByRaw($monthBucket)
+            ->orderByRaw($monthBucket)
             ->get();
 
         $monthLabels = [];
@@ -604,8 +796,11 @@ class RevenueController extends Controller
         $month = (string) $request->month;
         $days = $this->monthDays($month);
         $matrix = (array) $request->input('matrix', []);
+        $windowStartInput = (array) $request->input('window_start', []);
+        $windowEndInput = (array) $request->input('window_end', []);
 
         $distributionByLine = $this->getDistributionByLineSubquery();
+        $lineMeta = $this->getLineMetaSubquery();
 
         $revenues = DB::table('revenue')
             ->leftJoinSub($distributionByLine, 'mtp_dist', function ($join) {
@@ -613,10 +808,21 @@ class RevenueController extends Controller
                     ->on('mtp_dist.Line', '=', 'revenue.SewingLine');
             })
             ->where('revenue.SewingLine', $line)
-            ->select('revenue.id', 'revenue.CS', DB::raw('COALESCE(mtp_dist.Distribution, 0) as Distribution'))
+            ->select(
+                'revenue.id',
+                'revenue.CS',
+                'revenue.SewingLine',
+                DB::raw('COALESCE(mtp_dist.Distribution, 0) as Distribution')
+            )
             ->orderBy('revenue.CS')
+            ->orderBy('revenue.id')
             ->get()
             ->keyBy('id');
+
+        $holidays = DB::table('holidays')->pluck('holiday')->toArray();
+        $holidaySet = $this->normalizeHolidaySet($holidays);
+        $revenues = $this->attachMasterPlanWindows($revenues, $holidays);
+        $revenues = $this->sortByFirstOPT($revenues, true);
 
         if ($revenues->isEmpty()) {
             return back()->with('error', 'No revenue rows found for this line.');
@@ -627,10 +833,45 @@ class RevenueController extends Controller
         foreach ($revenues as $revenueId => $revenue) {
             $rowInput = (array) ($matrix[$revenueId] ?? []);
             $rowPrepared = [];
+            $rowAllowed = [];
             $rowTotal = 0;
+            $firstOPT = $revenue->calc_FirstOPT;
+            $finishSEW = $revenue->calc_Finish_SEW;
+
+            $submittedWindowStart = $windowStartInput[$revenueId] ?? null;
+            $submittedWindowEnd = $windowEndInput[$revenueId] ?? null;
+
+            if (filled($submittedWindowStart) && filled($submittedWindowEnd)) {
+                try {
+                    $firstOPT = Carbon::createFromFormat('Y-m-d', (string) $submittedWindowStart);
+                    $finishSEW = Carbon::createFromFormat('Y-m-d', (string) $submittedWindowEnd);
+                } catch (\Throwable $e) {
+                    // Fallback to server-computed values when submitted dates are invalid.
+                }
+            }
 
             foreach ($days as $day) {
                 $raw = $rowInput[$day] ?? null;
+                $workDate = Carbon::createFromFormat('Y-m-d', $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT));
+                $allowedDate = true;
+
+                if ($firstOPT && $finishSEW) {
+                    $allowedDate = !$workDate->lessThan($firstOPT) && !$workDate->greaterThan($finishSEW);
+                }
+
+                $allowedDate = $allowedDate && !$workDate->isSunday() && !isset($holidaySet[$workDate->toDateString()]);
+
+                if (!$allowedDate) {
+                    if ($raw !== null && $raw !== '' && (int) $raw > 0) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'CS ' . $revenue->CS . ' cannot accept quantity on ' . $workDate->toDateString() . ' because it is outside the allowed masterplan date range or is a holiday.');
+                    }
+
+                    $rowAllowed[$day] = false;
+                    $rowPrepared[$day] = null;
+                    continue;
+                }
 
                 if ($raw === null || $raw === '') {
                     $qty = 0;
@@ -642,7 +883,16 @@ class RevenueController extends Controller
                     $qty = (int) $raw;
                 }
 
+                if ($qty > 0 && $firstOPT && $finishSEW) {
+                    if ($workDate->lessThan($firstOPT) || $workDate->greaterThan($finishSEW)) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'CS ' . $revenue->CS . ' only allows input from ' . $firstOPT->toDateString() . ' to ' . $finishSEW->toDateString() . '.');
+                    }
+                }
+
                 $rowPrepared[$day] = $qty;
+                $rowAllowed[$day] = true;
                 $rowTotal += $qty;
             }
 
@@ -655,7 +905,45 @@ class RevenueController extends Controller
             $prepared[$revenueId] = [
                 'total' => $rowTotal,
                 'days' => $rowPrepared,
+                'allowed' => $rowAllowed,
+                'firstOPT' => $firstOPT,
+                'finishSEW' => $finishSEW,
             ];
+        }
+
+        foreach ($revenues as $revenueId => $revenue) {
+            $firstOPT = $prepared[$revenueId]['firstOPT'] ?? null;
+            $finishSEW = $prepared[$revenueId]['finishSEW'] ?? null;
+
+            foreach ($days as $day) {
+                $qty = $prepared[$revenueId]['days'][$day];
+
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $workDate = Carbon::createFromFormat('Y-m-d', $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT));
+
+                if (isset($holidaySet[$workDate->toDateString()])) {
+                    return back()
+                        ->withInput()
+                        ->with('error', 'CS ' . $revenue->CS . ' cannot accept quantity on holiday ' . $workDate->toDateString() . '.');
+                }
+
+                if ($workDate->isSunday()) {
+                    return back()
+                        ->withInput()
+                        ->with('error', 'CS ' . $revenue->CS . ' cannot accept quantity on Sunday ' . $workDate->toDateString() . '.');
+                }
+
+                if ($firstOPT && $finishSEW) {
+                    if ($workDate->lessThan($firstOPT) || $workDate->greaterThan($finishSEW)) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'CS ' . $revenue->CS . ' only allows input from ' . $firstOPT->toDateString() . ' to ' . $finishSEW->toDateString() . '.');
+                    }
+                }
+            }
         }
 
         $existingRows = DB::table('daily_revenues')
@@ -672,6 +960,10 @@ class RevenueController extends Controller
         DB::transaction(function () use ($revenues, $prepared, $days, $month, $existingMap) {
             foreach ($revenues as $revenueId => $revenue) {
                 foreach ($days as $day) {
+                    if (!($prepared[$revenueId]['allowed'][$day] ?? false)) {
+                        continue;
+                    }
+
                     $qty = $prepared[$revenueId]['days'][$day];
                     $workDate = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
                     $existingId = $existingMap[(int) $revenueId][$day] ?? null;
@@ -707,7 +999,7 @@ class RevenueController extends Controller
                         ]);
                 }
             }
-        });
+        }, 3);
 
         return redirect()->route('revenue.daily.line', [
             'line' => $line,

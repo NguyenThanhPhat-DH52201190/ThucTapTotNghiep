@@ -17,10 +17,68 @@ $canManage = auth()->user()->role === 'admin';
     {{ session('success') }}
 </div>
 @endif
-<form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4">
+
+<style>
+    .masterplan-table {
+        table-layout: auto;
+    }
+
+    .masterplan-table th,
+    .masterplan-table td {
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .masterplan-table th {
+        font-weight: 700;
+    }
+
+    .masterplan-table .col-code {
+        min-width: 110px;
+    }
+
+    .masterplan-table .col-line {
+        min-width: 120px;
+    }
+
+    .masterplan-table .col-wide {
+        min-width: 130px;
+    }
+
+    .masterplan-table .col-date {
+        min-width: 115px;
+    }
+
+    .masterplan-table .col-po {
+        min-width: 85px;
+    }
+
+    .masterplan-table .col-qty {
+        min-width: 60px;
+        text-align: center;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .masterplan-table .col-number {
+        min-width: 90px;
+        text-align: right;
+    }
+
+    .masterplan-table .col-gap-right {
+        padding-right: 2rem;
+    }
+
+    .masterplan-table .col-gap-left {
+        padding-left: 2rem;
+    }
+</style>
+
+<form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4" id="filterForm">
 
     <div class="col-md-2">
-        <label>Request Day</label>
+        <label>ETA1</label>
         <input type="date" name="to_date" class="form-control"
             value="{{ request('to_date') }}">
     </div>
@@ -39,6 +97,9 @@ $canManage = auth()->user()->role === 'admin';
             value="{{ request('style') }}">
     </div>
 
+    <input type="hidden" name="ship_balance_only" id="shipBalanceFilter" 
+        value="{{ request('ship_balance_only', 0) }}">
+
     <div class="col-md-4 d-flex align-items-end gap-2">
 
         <!-- SEARCH -->
@@ -50,6 +111,12 @@ $canManage = auth()->user()->role === 'admin';
             class="btn btn-outline-secondary">
             Reset
         </a>
+
+        <button type="button" class="btn {{ request('ship_balance_only') ? 'btn-warning' : 'btn-outline-warning' }}" 
+            id="toggleShipBalanceBtn" title="Filter by ShipBalance">
+            <i class="bi bi-funnel"></i> 
+            {{ request('ship_balance_only') ? 'ALL CU' : 'With ShipBalance' }}
+        </button>
 
         <a href="{{ route('masterplan.export', request()->query()) }}"
             class="btn btn-success">
@@ -69,21 +136,35 @@ $canManage = auth()->user()->role === 'admin';
     </div>
 </form>
 
-<table class="table">
+<div class="table-responsive">
+<table class="table masterplan-table">
     <thead>
         <tr>
-            <th scope="col">CU</th>
-            <th scope="col">Line</th>
-            <th scope="col">Style</th>
-            <th scope="col">PO</th>
-            <th scope="col">Qty_dis</th>
-            <th scope="col">Rdate</th>
-            <th scope="col">ETADay</th>
-            <th scope="col">ActDate</th>
-            <th scope="col">LT</th>
-            <th scope="col">FirstOPT</th>
-            <th scope="col">Finish_SEW</th>
-            <th scope="col">EX_Fact</th>
+            <th scope="col" class="col-code">CU</th>
+            <th scope="col" class="col-line">Line</th>
+            <th scope="col" class="col-wide">Style</th>
+            <th scope="col" class="col-po">PO</th>
+            <th scope="col" class="col-qty col-gap-right">Qty_dis</th>
+            <th scope="col" class="col-wide col-gap-left">Fabric1</th>
+            <th scope="col" class="col-date">ETA1</th>
+            <th scope="col" class="col-date">Actual</th>
+            <th scope="col" class="col-wide">Fabric2</th>
+            <th scope="col" class="col-date">ETA2</th>
+            <th scope="col" class="col-wide">Linning</th>
+            <th scope="col" class="col-date">ETA3</th>
+            <th scope="col" class="col-wide">Pocket</th>
+            <th scope="col" class="col-date">ETA4</th>
+            <th scope="col" class="col-wide">Trim</th>
+            <th scope="col" class="col-date">inWHDate</th>
+            <th scope="col" class="col-wide">3rd_PartyInspection</th>
+            <th scope="col" class="col-date">ShipDate2</th>
+            <th scope="col" class="col-wide">SoTK</th>
+            <th scope="col" class="col-number">ExQty</th>
+            <th scope="col" class="col-number">ShipBalance</th>
+            <th scope="col" class="col-number">LT</th>
+            <th scope="col" class="col-date">FirstOPT</th>
+            <th scope="col" class="col-date">Finish_SEW</th>
+            <th scope="col" class="col-date">EX_Fact</th>
             @if($canManage)
             <th scope="col">Edit</th>
             <th scope="col">Delete</th>
@@ -103,7 +184,7 @@ $canManage = auth()->user()->role === 'admin';
         $totalSubconQty = collect($plan)->filter(function ($item) use ($colorLines) {
             return !in_array(strtolower(trim((string) ($item->Line ?? ''))), $colorLines, true);
         })->sum('Qty_dis');
-        $tableColspan = $canManage ? 14 : 12;
+        $tableColspan = $canManage ? 27 : 25;
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -113,13 +194,9 @@ $canManage = auth()->user()->role === 'admin';
 
         @if(!$isColorLine && !$subconHeaderShown)
         <tr class="table-info fw-bold">
-            <td colspan="10" class="text-end">GSV season total:</td>
+            <td colspan="4" class="text-end">GSV season total:</td>
             <td>{{ $totalColorQty }}</td>
-            @if($canManage)
-            <td colspan="3"></td>
-            @else
-            <td colspan="1"></td>
-            @endif
+            <td colspan="{{ $tableColspan - 5 }}"></td>
         </tr>
         @php $colorTotalShown = true; @endphp
 
@@ -136,12 +213,25 @@ $canManage = auth()->user()->role === 'admin';
                 {{ $item->Line }}
             </td>
             <td>{{ $item->Style }}</td>
-            <td>{{ $item->PO }}</td>
-            <td>{{ $item->Qty_dis }}</td>
-            <td>{{ $item->Rdate }}</td>
-            <td>{{ $item->ETADate }}</td>
-            <td>{{ $item->ActDate }}</td>
-            <td>{{ $item->lt }}</td>
+            <td class="col-po">{{ $item->PO }}</td>
+            <td class="col-qty col-gap-right">{{ $item->Qty_dis }}</td>
+            <td class="col-gap-left">{{ $item->Fabric1 }}</td>
+            <td>{{ $item->ETA1 }}</td>
+            <td>{{ $item->Actual }}</td>
+            <td>{{ $item->Fabric2 }}</td>
+            <td>{{ $item->ETA2 }}</td>
+            <td>{{ $item->Linning }}</td>
+            <td>{{ $item->ETA3 }}</td>
+            <td>{{ $item->Pocket }}</td>
+            <td>{{ $item->ETA4 }}</td>
+            <td>{{ $item->Trim }}</td>
+            <td>{{ $item->inWHDate }}</td>
+            <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
+            <td>{{ $item->ShipDate2 }}</td>
+            <td>{{ $item->SoTK }}</td>
+            <td class="col-number">{{ $item->ExQty }}</td>
+            <td class="col-number">{{ $item->ShipBalance }}</td>
+            <td class="col-number">{{ $item->lt }}</td>
             <td>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
             <td>{{$item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : ''  }}</td>
@@ -175,47 +265,36 @@ $canManage = auth()->user()->role === 'admin';
             @else table-secondary
             @endif
         ">
-            <td colspan="10" class="text-end">Total Line {{ $line }}:</td>
+            <td colspan="4" class="text-end">Total Line {{ $line }}:</td>
             <td>{{ $items->sum('Qty_dis') }}</td>
-            @if($canManage)
-            <td colspan="3"></td>
-            @else
-            <td colspan="1"></td>
-            @endif
+            <td colspan="{{ $tableColspan - 5 }}"></td>
         </tr>
 
         @endforeach
 
         @if(!$colorTotalShown)
         <tr class="table-info fw-bold">
-            <td colspan="10" class="text-end">GSV season total:</td>
+            <td colspan="4" class="text-end">GSV season total:</td>
             <td>{{ $totalColorQty }}</td>
-            @if($canManage)
-            <td colspan="3"></td>
-            @else
-            <td colspan="1"></td>
-            @endif
+            <td colspan="{{ $tableColspan - 5 }}"></td>
         </tr>
         @endif
 
         @if($subconHeaderShown)
         <tr class="table-warning-subtle fw-bold">
-            <td colspan="10" class="text-end">Subcon season total:</td>
+            <td colspan="4" class="text-end">Subcon season total:</td>
             <td>{{ $totalSubconQty }}</td>
-            @if($canManage)
-            <td colspan="3"></td>
-            @else
-            <td colspan="1"></td>
-            @endif
+            <td colspan="{{ $tableColspan - 5 }}"></td>
         </tr>
         @endif
         @else
         <tr>
-            <td colspan="{{ $canManage ? 14 : 12 }}" class="text-center">No data</td>
+            <td colspan="{{ $canManage ? 27 : 25 }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>
 </table>
+</div>
 
 <script>
     function calculate() {
@@ -245,5 +324,15 @@ $canManage = auth()->user()->role === 'admin';
         ltInput.addEventListener('input', calculate);
         window.onload = calculate;
     }
+
+    // Toggle ShipBalance filter button
+    document.getElementById('toggleShipBalanceBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        const filterInput = document.getElementById('shipBalanceFilter');
+        const filterForm = document.getElementById('filterForm');
+        
+        filterInput.value = filterInput.value == 1 ? 0 : 1;
+        filterForm.submit();
+    });
 </script>
 @endsection

@@ -22,12 +22,21 @@ class MasterPlanController extends Controller
         return filled($value) ? (int) $value : null;
     }
 
+    private function skipSunday(Carbon $date): Carbon
+    {
+        $result = $date->copy();
+        if ($result->isSunday()) {
+            $result->addDay();
+        }
+        return $result;
+    }
+
     private function getMasterPlan(Request $request): Collection
     {
         $plan = DB::table('mtp')
             ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
             ->when($request->filled('to_date'), function ($query) use ($request) {
-                $query->whereDate('mtp.Rdate', $request->to_date);
+                $query->whereDate('mtp.ETA1', $request->to_date);
             })
             ->when($request->filled('po'), function ($query) use ($request) {
                 $query->where('ocs.ONum', 'like', '%' . $request->po . '%');
@@ -108,6 +117,7 @@ class MasterPlanController extends Controller
                 }
 
                 $finishSew = $this->calcFinishSew($firstOPT, $item->lt, $holidays);
+                $finishSew = $this->skipSunday($finishSew);
                 $exFact = $this->calcExFact($finishSew, 3, $holidays);
 
                 $item->calc_FirstOPT = $firstOPT;
@@ -116,6 +126,23 @@ class MasterPlanController extends Controller
 
                 $previousFinish = $finishSew;
             }
+        }
+
+        // Calculate ShipBalance for each item
+        foreach ($plan as $item) {
+            if ($item->ExQty === null) {
+                $item->ShipBalance = null;
+            } else {
+                $qtyDis = $item->Qty_dis ?? 0;
+                $item->ShipBalance = $qtyDis - $item->ExQty;
+            }
+        }
+
+        // Filter to show only items with ShipBalance if requested
+        if ($request->filled('ship_balance_only') && $request->ship_balance_only == 1) {
+            $plan = $plan->filter(function ($item) {
+                return $item->ShipBalance !== null;
+            });
         }
 
         return $plan;
@@ -142,9 +169,22 @@ class MasterPlanController extends Controller
             'Style',
             'PO',
             'Qty_dis',
-            'Rdate',
-            'ETADate',
-            'ActDate',
+            'Fabric1',
+            'ETA1',
+            'Actual',
+            'Fabric2',
+            'ETA2',
+            'Linning',
+            'ETA3',
+            'Pocket',
+            'ETA4',
+            'Trim',
+            'inWHDate',
+            '3rd_PartyInspection',
+            'ShipDate2',
+            'SoTK',
+            'ExQty',
+            'ShipBalance',
             'LT',
             'FirstOPT',
             'Finish_SEW',
@@ -157,22 +197,44 @@ class MasterPlanController extends Controller
 
         $rowIndex = 2;
         foreach ($plan as $item) {
-            $sheet->setCellValue('A' . $rowIndex, $item->CU ?? '');
-            $sheet->setCellValue('B' . $rowIndex, $item->Line ?? '');
-            $sheet->setCellValue('C' . $rowIndex, $item->Style ?? '');
-            $sheet->setCellValue('D' . $rowIndex, $item->PO ?? '');
-            $sheet->setCellValue('E' . $rowIndex, $item->Qty_dis ?? '');
-            $sheet->setCellValue('F' . $rowIndex, $item->Rdate ?? '');
-            $sheet->setCellValue('G' . $rowIndex, $item->ETADate ?? '');
-            $sheet->setCellValue('H' . $rowIndex, $item->ActDate ?? '');
-            $sheet->setCellValue('I' . $rowIndex, $item->lt ?? '');
-            $sheet->setCellValue('J' . $rowIndex, $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '');
-            $sheet->setCellValue('K' . $rowIndex, $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '');
-            $sheet->setCellValue('L' . $rowIndex, $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '');
+            $rowValues = [
+                $item->CU ?? '',
+                $item->Line ?? '',
+                $item->Style ?? '',
+                $item->PO ?? '',
+                $item->Qty_dis ?? '',
+                $item->Fabric1 ?? '',
+                $item->ETA1 ?? '',
+                $item->Actual ?? '',
+                $item->Fabric2 ?? '',
+                $item->ETA2 ?? '',
+                $item->Linning ?? '',
+                $item->ETA3 ?? '',
+                $item->Pocket ?? '',
+                $item->ETA4 ?? '',
+                $item->Trim ?? '',
+                $item->inWHDate ?? '',
+                $item->{'3rd_PartyInspection'} ?? '',
+                $item->ShipDate2 ?? '',
+                $item->SoTK ?? '',
+                $item->ExQty ?? '',
+                $item->ShipBalance ?? '',
+                $item->lt ?? '',
+                $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '',
+                $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '',
+                $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '',
+            ];
+
+            foreach ($rowValues as $columnIndex => $value) {
+                $column = Coordinate::stringFromColumnIndex($columnIndex + 1);
+                $sheet->setCellValue($column . $rowIndex, $value);
+            }
+
             $rowIndex++;
         }
 
-        foreach (range('A', 'L') as $column) {
+        for ($columnIndex = 1; $columnIndex <= count($headers); $columnIndex++) {
+            $column = Coordinate::stringFromColumnIndex($columnIndex);
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
@@ -200,11 +262,44 @@ class MasterPlanController extends Controller
             'CU' => 'required',
             'Line' => 'required',
             'LineColor' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{3}){1,2}$/'],
-            'Rdate' => 'nullable|date',
-            'ETADate' => 'nullable|date',
-            'ActDate' => 'nullable|date',
+            'Fabric1' => 'nullable|string|max:50',
+            'ETA1' => 'nullable|date',
+            'Actual' => 'nullable|date',
+            'Fabric2' => 'nullable|string|max:50',
+            'ETA2' => 'nullable|date',
+            'Linning' => 'nullable|string|max:50',
+            'ETA3' => 'nullable|date',
+            'Pocket' => 'nullable|string|max:50',
+            'ETA4' => 'nullable|date',
+            'Trim' => 'nullable|string|max:50',
+            'inWHDate' => 'nullable|date',
+            '3rd_PartyInspection' => 'nullable|string|max:50',
+            'ShipDate2' => 'nullable|date',
+            'SoTK' => 'nullable|string|max:50',
+            'ExQty' => [
+                'nullable',
+                'integer',
+                'min:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!filled($value) || !filled($request->Qty_dis)) {
+                        return;
+                    }
+
+                    if ((int) $value > (int) $request->Qty_dis) {
+                        $fail('ExQty cannot be greater than Qty_dis.');
+                    }
+                },
+            ],
             'lt' => 'nullable|integer|min:0',
-            'FirstOPT' => 'nullable|date',
+            'FirstOPT' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) {
+                    if ($value && Carbon::parse($value)->isSunday()) {
+                        $fail('FirstOPT cannot be on a Sunday. Please choose another date.');
+                    }
+                }
+            ],
             'Qty_dis' => 'nullable|integer|min:0',
         ]);
 
@@ -233,9 +328,21 @@ class MasterPlanController extends Controller
                 'CU' => $request->CU,
                 'Line' => $request->Line,
                 'LineColor' => $request->LineColor,
-                'Rdate' => $this->nullableDate($request->Rdate),
-                'ETADate' => $this->nullableDate($request->ETADate),
-                'ActDate' => $this->nullableDate($request->ActDate),
+                'Fabric1' => filled($request->Fabric1) ? $request->Fabric1 : null,
+                'ETA1' => $this->nullableDate($request->ETA1),
+                'Actual' => $this->nullableDate($request->Actual),
+                'Fabric2' => filled($request->Fabric2) ? $request->Fabric2 : null,
+                'ETA2' => $this->nullableDate($request->ETA2),
+                'Linning' => filled($request->Linning) ? $request->Linning : null,
+                'ETA3' => $this->nullableDate($request->ETA3),
+                'Pocket' => filled($request->Pocket) ? $request->Pocket : null,
+                'ETA4' => $this->nullableDate($request->ETA4),
+                'Trim' => filled($request->Trim) ? $request->Trim : null,
+                'inWHDate' => $this->nullableDate($request->inWHDate),
+                '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
+                'ShipDate2' => $this->nullableDate($request->ShipDate2),
+                'SoTK' => filled($request->SoTK) ? $request->SoTK : null,
+                'ExQty' => $this->nullableInteger($request->ExQty),
                 'lt' => $this->nullableInteger($request->lt),
                 'FirstOPT' => $this->nullableDate($request->FirstOPT),
                 'Qty_dis' => $this->nullableInteger($request->Qty_dis),
@@ -264,7 +371,8 @@ class MasterPlanController extends Controller
             ->select(
                 'mtp.*',
                 'ocs.SNo as Style',
-                'ocs.ONum as PO'
+                'ocs.ONum as PO',
+                'ocs.Qty'
             )
             ->where('mtp.id', $id)
             ->first();
@@ -278,11 +386,44 @@ class MasterPlanController extends Controller
             'CU' => 'required',
             'Line' => 'required',
             'LineColor' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{3}){1,2}$/'],
-            'Rdate' => 'nullable|date',
-            'ETADate' => 'nullable|date',
-            'ActDate' => 'nullable|date',
+            'Fabric1' => 'nullable|string|max:50',
+            'ETA1' => 'nullable|date',
+            'Actual' => 'nullable|date',
+            'Fabric2' => 'nullable|string|max:50',
+            'ETA2' => 'nullable|date',
+            'Linning' => 'nullable|string|max:50',
+            'ETA3' => 'nullable|date',
+            'Pocket' => 'nullable|string|max:50',
+            'ETA4' => 'nullable|date',
+            'Trim' => 'nullable|string|max:50',
+            'inWHDate' => 'nullable|date',
+            '3rd_PartyInspection' => 'nullable|string|max:50',
+            'ShipDate2' => 'nullable|date',
+            'SoTK' => 'nullable|string|max:50',
+            'ExQty' => [
+                'nullable',
+                'integer',
+                'min:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!filled($value) || !filled($request->Qty_dis)) {
+                        return;
+                    }
+
+                    if ((int) $value > (int) $request->Qty_dis) {
+                        $fail('ExQty cannot be greater than Qty_dis.');
+                    }
+                },
+            ],
             'lt' => 'nullable|integer|min:0',
-            'FirstOPT' => 'nullable|date',
+            'FirstOPT' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) {
+                    if ($value && Carbon::parse($value)->isSunday()) {
+                        $fail('FirstOPT cannot be on a Sunday. Please choose another date.');
+                    }
+                }
+            ],
             'Qty_dis' => 'nullable|integer|min:0',
         ], [
             'CU.unique' => 'CU already exists!',
@@ -314,9 +455,21 @@ class MasterPlanController extends Controller
                 'CU' => $request->CU,
                 'Line' => $request->Line,
                 'LineColor' => $request->LineColor,
-                'Rdate' => $this->nullableDate($request->Rdate),
-                'ETADate' => $this->nullableDate($request->ETADate),
-                'ActDate' => $this->nullableDate($request->ActDate),
+                'Fabric1' => filled($request->Fabric1) ? $request->Fabric1 : null,
+                'ETA1' => $this->nullableDate($request->ETA1),
+                'Actual' => $this->nullableDate($request->Actual),
+                'Fabric2' => filled($request->Fabric2) ? $request->Fabric2 : null,
+                'ETA2' => $this->nullableDate($request->ETA2),
+                'Linning' => filled($request->Linning) ? $request->Linning : null,
+                'ETA3' => $this->nullableDate($request->ETA3),
+                'Pocket' => filled($request->Pocket) ? $request->Pocket : null,
+                'ETA4' => $this->nullableDate($request->ETA4),
+                'Trim' => filled($request->Trim) ? $request->Trim : null,
+                'inWHDate' => $this->nullableDate($request->inWHDate),
+                '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
+                'ShipDate2' => $this->nullableDate($request->ShipDate2),
+                'SoTK' => filled($request->SoTK) ? $request->SoTK : null,
+                'ExQty' => $this->nullableInteger($request->ExQty),
                 'lt' => $this->nullableInteger($request->lt),
                 'FirstOPT' => $this->nullableDate($request->FirstOPT),
                 'Qty_dis' => $this->nullableInteger($request->Qty_dis),
@@ -383,6 +536,7 @@ class MasterPlanController extends Controller
             ->toArray();
 
         $finish = $this->calcFinishSew($request->firstOPT, (int) $request->lt, $holidays);
+        $finish = $this->skipSunday($finish);
         $ex = $this->calcExFact($finish, 3, $holidays);
 
         return response()->json([
@@ -391,45 +545,85 @@ class MasterPlanController extends Controller
         ]);
     }
 
-    public function calcFinishSew($startDate, $days, $holidays = [])
+    private function normalizeHolidaySet(array $holidays): array
     {
-        $start = Carbon::parse($startDate);
+        $holidaySet = [];
 
-        $extra = 0;
-
-        for ($i = 0; $i <= $days; $i++) { // ✅ include start
-            $current = $start->copy()->addDays($i);
-
-            if ($current->isSunday()) {
-                $extra++;
+        foreach ($holidays as $holiday) {
+            if ($holiday === null) {
+                continue;
             }
 
-            if (in_array($current->toDateString(), $holidays)) {
-                $extra++;
+            $date = substr((string) $holiday, 0, 10);
+            if ($date !== '') {
+                $holidaySet[$date] = true;
             }
         }
 
-        return $start->copy()->addDays($days + $extra);
+        return $holidaySet;
+    }
+
+    private function countNonWorkingDays(Carbon $start, Carbon $end, array $holidaySet, bool $includeStart): int
+    {
+        $cursor = $includeStart
+            ? $start->copy()
+            : $start->copy()->addDay();
+
+        $count = 0;
+
+        while ($cursor->lessThanOrEqualTo($end)) {
+            if ($cursor->isSunday() || isset($holidaySet[$cursor->toDateString()])) {
+                $count++;
+            }
+
+            $cursor->addDay();
+        }
+
+        return $count;
+    }
+
+    public function calcFinishSew($startDate, $days, $holidays = [])
+    {
+        $start = Carbon::parse($startDate);
+        $baseDays = max(0, (int) $days);
+
+        if ($baseDays === 0) {
+            return $start;
+        }
+
+        $holidaySet = $this->normalizeHolidaySet($holidays);
+        $totalDays = $baseDays - 1;
+
+        while (true) {
+            $end = $start->copy()->addDays($totalDays);
+            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, true);
+            $newTotalDays = $baseDays - 1 + $extra;
+
+            if ($newTotalDays === $totalDays) {
+                return $end;
+            }
+
+            $totalDays = $newTotalDays;
+        }
     }
 
     public function calcExFact($startDate, $days, $holidays = [])
     {
         $start = Carbon::parse($startDate);
+        $baseDays = max(0, (int) $days);
+        $holidaySet = $this->normalizeHolidaySet($holidays);
+        $totalDays = $baseDays;
 
-        $extra = 0;
+        while (true) {
+            $end = $start->copy()->addDays($totalDays);
+            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, false);
+            $newTotalDays = $baseDays + $extra;
 
-        for ($i = 1; $i <= $days; $i++) { // Skip the start day
-            $current = $start->copy()->addDays($i);
-
-            if ($current->isSunday()) {
-                $extra++;
+            if ($newTotalDays === $totalDays) {
+                return $end;
             }
 
-            if (in_array($current->toDateString(), $holidays)) {
-                $extra++;
-            }
+            $totalDays = $newTotalDays;
         }
-
-        return $start->copy()->addDays($days + $extra);
     }
 }

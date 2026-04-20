@@ -12,6 +12,18 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class MasterPlanController extends Controller
 {
+    private function isAdmin(Request $request): bool
+    {
+        return $request->user()?->role === 'admin';
+    }
+
+    private function redirectRouteForRole(Request $request): string
+    {
+        return $this->isAdmin($request)
+            ? 'admin.masterplan.index'
+            : 'masterplan.view';
+    }
+
     private function nullableDate($value): ?string
     {
         return filled($value) ? $value : null;
@@ -380,7 +392,34 @@ class MasterPlanController extends Controller
             ->where('mtp.id', $id)
             ->first();
 
-        return view('admin.masterplan.editmaster', compact('plan'));
+        $fabricOnly = false;
+        $updateRoute = route('admin.masterplan.update', $id);
+
+        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute'));
+    }
+
+    public function editFabric(string $id)
+    {
+        $plan = DB::table('mtp')
+            ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
+            ->select(
+                'mtp.*',
+                'ocs.SNo as Style',
+                'ocs.ONum as PO',
+                'ocs.Qty'
+            )
+            ->where('mtp.id', $id)
+            ->first();
+
+        if (!$plan) {
+            return redirect()->route('masterplan.view')
+                ->with('error', 'Record not found.');
+        }
+
+        $fabricOnly = request()->user()?->role === 'ppic';
+        $updateRoute = route('masterplan.fabric.update', $id);
+
+        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute'));
     }
 
     public function update(Request $request, string $id)
@@ -517,6 +556,59 @@ class MasterPlanController extends Controller
 
             return redirect()->back()
                 ->with('error', 'Unable to delete the record. Please try again.');
+        }
+    }
+
+    public function updateFabric(Request $request, string $id)
+    {
+        $plan = DB::table('mtp')->where('id', $id)->first();
+
+        if (!$plan) {
+            return redirect()->route($this->redirectRouteForRole($request))
+                ->with('error', 'Record not found.');
+        }
+
+        $validated = $request->validate([
+            'Fabric1' => 'nullable|string|max:50',
+            'ETA1' => 'nullable|date',
+            'Actual' => 'nullable|date',
+            'Fabric2' => 'nullable|string|max:50',
+            'ETA2' => 'nullable|date',
+            'Linning' => 'nullable|string|max:50',
+            'ETA3' => 'nullable|date',
+            'Pocket' => 'nullable|string|max:50',
+            'ETA4' => 'nullable|date',
+            'Trim' => 'nullable|string|max:50',
+        ]);
+
+        try {
+            DB::table('mtp')->where('id', $id)->update([
+                'Fabric1' => filled($validated['Fabric1'] ?? null) ? $validated['Fabric1'] : null,
+                'ETA1' => $this->nullableDate($validated['ETA1'] ?? null),
+                'Actual' => $this->nullableDate($validated['Actual'] ?? null),
+                'Fabric2' => filled($validated['Fabric2'] ?? null) ? $validated['Fabric2'] : null,
+                'ETA2' => $this->nullableDate($validated['ETA2'] ?? null),
+                'Linning' => filled($validated['Linning'] ?? null) ? $validated['Linning'] : null,
+                'ETA3' => $this->nullableDate($validated['ETA3'] ?? null),
+                'Pocket' => filled($validated['Pocket'] ?? null) ? $validated['Pocket'] : null,
+                'ETA4' => $this->nullableDate($validated['ETA4'] ?? null),
+                'Trim' => filled($validated['Trim'] ?? null) ? $validated['Trim'] : null,
+                'updated_at' => now(),
+            ]);
+
+            return redirect()->route($this->redirectRouteForRole($request))
+                ->with('success', 'Updated successfully');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update Fabric-to-Trim fields', [
+                'message' => $e->getMessage(),
+                'id' => $id,
+                'role' => $request->user()?->role,
+                'input' => $request->except(['_token', '_method']),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the selected fields. Please try again.');
         }
     }
 

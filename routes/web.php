@@ -49,7 +49,7 @@ Route::middleware('auth')->group(function () {
         ->name('ordercutsheet.export');
 
     Route::get('/master-plan', [MasterPlanController::class, 'index'])
-        ->middleware('role:admin,ie,warehouse')
+        ->middleware('role:admin,ie,warehouse,ppic')
         ->name('masterplan.view');
 
     Route::get('/master-plan/export', [MasterPlanController::class, 'export'])
@@ -90,6 +90,15 @@ Route::middleware('auth')->group(function () {
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Fabric-to-Trim edit scope for admin + ppic
+    Route::middleware('role:admin,ppic')->group(function () {
+        Route::get('/master-plan/fabric/{id}/edit', [MasterPlanController::class, 'editFabric'])
+            ->name('masterplan.fabric.edit');
+
+        Route::put('/master-plan/fabric/{id}', [MasterPlanController::class, 'updateFabric'])
+            ->name('masterplan.fabric.update');
+    });
 
     /*
     |--------------------------------------------------------------------------

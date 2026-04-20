@@ -96,6 +96,10 @@
                 <i class="bi bi-speedometer2"></i>
                 Order Cut Sheet
             </a>
+            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-people"></i>
+                Master Plan
+            </a>
             @elseif($role === 'ie')
             <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-people"></i>

@@ -4,6 +4,7 @@
 
 @php
 $canManage = auth()->user()->role === 'admin';
+$canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
 @endphp
 
 @if(session('error'))
@@ -19,9 +20,123 @@ $canManage = auth()->user()->role === 'admin';
 @endif
 
 <style>
+    html,
+    body {
+        overflow-x: hidden;
+    }
+
+    .flex-grow-1 {
+        min-width: 0;
+    }
+
+    .masterplan-scroll {
+        position: relative;
+        overflow-x: auto !important;
+        overflow-y: visible;
+        width: 100%;
+        max-width: 100%;
+        isolation: isolate;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .masterplan-scroll::-webkit-scrollbar {
+        height: 0;
+    }
+
+    .masterplan-scrollbar-proxy {
+        position: fixed;
+        bottom: 6px;
+        height: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        background: transparent;
+        z-index: 1200;
+        display: none;
+        scrollbar-color: rgba(100, 116, 139, 0.7) transparent;
+    }
+
+    .masterplan-scrollbar-proxy-inner {
+        height: 1px;
+    }
+
+    .masterplan-scrollbar-proxy::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .masterplan-scrollbar-proxy::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .masterplan-scrollbar-proxy::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.65);
+        border-radius: 999px;
+    }
+
+    .masterplan-scrollbar-proxy::-webkit-scrollbar-thumb:hover {
+        background: rgba(71, 85, 105, 0.85);
+    }
+
     .masterplan-table {
         table-layout: auto;
+        border-collapse: separate;
+        border-spacing: 0;
+        width: max-content;
+        min-width: max-content;
+        --sticky-col-1: 110px;
+        --sticky-col-2: 120px;
+        --sticky-col-3: 130px;
+        --sticky-col-4: 85px;
+        --sticky-col-5: 76px;
     }
+
+    .masterplan-table th.sticky-col,
+    .masterplan-table td.sticky-col {
+        position: sticky !important;
+        background: #f8fafc;
+        left: 0;
+    }
+
+    .masterplan-table td.sticky-col {
+        background: #ffffff;
+        z-index: 2;
+    }
+
+    .masterplan-table th.sticky-col {
+        z-index: 3;
+    }
+
+    .masterplan-table td.sticky-1 {
+        left: 0;
+        z-index: 7;
+    }
+
+    .masterplan-table td.sticky-2 {
+        left: var(--sticky-col-1);
+        z-index: 6;
+    }
+
+    .masterplan-table td.sticky-3 {
+        left: calc(var(--sticky-col-1) + var(--sticky-col-2));
+        z-index: 5;
+    }
+
+    .masterplan-table td.sticky-4 {
+        left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3));
+        z-index: 4;
+    }
+
+    .masterplan-table td.sticky-5 {
+        left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4));
+        z-index: 3;
+        box-shadow: 2px 0 0 rgba(15, 23, 42, 0.08);
+    }
+
+    .masterplan-table th.sticky-1 { left: 0; z-index: 17; }
+    .masterplan-table th.sticky-2 { left: var(--sticky-col-1); z-index: 16; }
+    .masterplan-table th.sticky-3 { left: calc(var(--sticky-col-1) + var(--sticky-col-2)); z-index: 15; }
+    .masterplan-table th.sticky-4 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3)); z-index: 14; }
+    .masterplan-table th.sticky-5 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4)); z-index: 13; }
 
     .masterplan-table th,
     .masterplan-table td {
@@ -35,11 +150,18 @@ $canManage = auth()->user()->role === 'admin';
     }
 
     .masterplan-table .col-code {
+        width: var(--sticky-col-1);
         min-width: 110px;
     }
 
     .masterplan-table .col-line {
+        width: var(--sticky-col-2);
         min-width: 120px;
+    }
+
+    .masterplan-table .col-style {
+        width: var(--sticky-col-3);
+        min-width: 130px;
     }
 
     .masterplan-table .col-wide {
@@ -51,10 +173,12 @@ $canManage = auth()->user()->role === 'admin';
     }
 
     .masterplan-table .col-po {
+        width: var(--sticky-col-4);
         min-width: 85px;
     }
 
     .masterplan-table .col-qty {
+        width: var(--sticky-col-5);
         min-width: 60px;
         text-align: center;
         padding-left: 0.5rem;
@@ -136,15 +260,15 @@ $canManage = auth()->user()->role === 'admin';
     </div>
 </form>
 
-<div class="table-responsive">
+<div class="table-responsive masterplan-scroll">
 <table class="table masterplan-table">
     <thead>
         <tr>
-            <th scope="col" class="col-code">CU</th>
-            <th scope="col" class="col-line">Line</th>
-            <th scope="col" class="col-wide">Style</th>
-            <th scope="col" class="col-po">PO</th>
-            <th scope="col" class="col-qty col-gap-right">Qty_dis</th>
+            <th scope="col" class="col-code sticky-col sticky-1">CU</th>
+            <th scope="col" class="col-line sticky-col sticky-2">Line</th>
+            <th scope="col" class="col-style sticky-col sticky-3">Style</th>
+            <th scope="col" class="col-po sticky-col sticky-4">PO</th>
+            <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
             <th scope="col" class="col-wide col-gap-left">Fabric1</th>
             <th scope="col" class="col-date">ETA1</th>
             <th scope="col" class="col-date">Actual</th>
@@ -165,8 +289,10 @@ $canManage = auth()->user()->role === 'admin';
             <th scope="col" class="col-date">FirstOPT</th>
             <th scope="col" class="col-date">Finish_SEW</th>
             <th scope="col" class="col-date">EX_Fact</th>
-            @if($canManage)
+            @if($canEditFabric)
             <th scope="col">Edit</th>
+            @endif
+            @if($canManage)
             <th scope="col">Delete</th>
             @endif
         </tr>
@@ -184,7 +310,8 @@ $canManage = auth()->user()->role === 'admin';
         $totalSubconQty = collect($plan)->filter(function ($item) use ($colorLines) {
             return !in_array(strtolower(trim((string) ($item->Line ?? ''))), $colorLines, true);
         })->sum('Qty_dis');
-        $tableColspan = $canManage ? 27 : 25;
+        $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
+        $tableColspan = 25 + $actionCols;
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -208,13 +335,13 @@ $canManage = auth()->user()->role === 'admin';
 
         @foreach($items as $item)
         <tr>
-            <td>{{ $item->CU }}</td>
-            <td style="background-color: {{ $item->LineColor ?? '#808080' }}; border-radius: 4px; text-align: center; color: white; font-weight: 500;">
+            <td class="col-code sticky-col sticky-1">{{ $item->CU }}</td>
+            <td class="col-line sticky-col sticky-2" style="background-color: {{ $item->LineColor ?? '#808080' }}; border-radius: 4px; text-align: center; color: white; font-weight: 500;">
                 {{ $item->Line }}
             </td>
-            <td>{{ $item->Style }}</td>
-            <td class="col-po">{{ $item->PO }}</td>
-            <td class="col-qty col-gap-right">{{ $item->Qty_dis }}</td>
+            <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
+            <td class="col-po sticky-col sticky-4">{{ $item->PO }}</td>
+            <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
             <td class="col-gap-left">{{ $item->Fabric1 }}</td>
             <td>{{ $item->ETA1 }}</td>
             <td>{{ $item->Actual }}</td>
@@ -235,13 +362,15 @@ $canManage = auth()->user()->role === 'admin';
             <td>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
             <td>{{$item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : ''  }}</td>
-            @if($canManage)
+            @if($canEditFabric)
             <td>
-                <a href="{{ route('admin.masterplan.edit', $item->id) }}"
+                <a href="{{ $canManage ? route('admin.masterplan.edit', $item->id) : route('masterplan.fabric.edit', $item->id) }}"
                     class="btn btn-warning btn-sm">
                     <i class="bi bi-pencil-square"></i>
                 </a>
             </td>
+            @endif
+            @if($canManage)
             <td>
                 <form method="POST" action="{{ route('admin.masterplan.destroy', $item->id) }}"
                     onsubmit="return confirm('Are you sure?')">
@@ -289,11 +418,14 @@ $canManage = auth()->user()->role === 'admin';
         @endif
         @else
         <tr>
-            <td colspan="{{ $canManage ? 27 : 25 }}" class="text-center">No data</td>
+            <td colspan="{{ 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>
 </table>
+</div>
+<div id="masterplanScrollProxy" class="masterplan-scrollbar-proxy" aria-hidden="true">
+    <div id="masterplanScrollProxyInner" class="masterplan-scrollbar-proxy-inner"></div>
 </div>
 
 <script>
@@ -334,5 +466,61 @@ $canManage = auth()->user()->role === 'admin';
         filterInput.value = filterInput.value == 1 ? 0 : 1;
         filterForm.submit();
     });
+
+    // Always-visible horizontal scrollbar pinned to viewport bottom,
+    // synced with the table's own horizontal scroll.
+    const masterplanScroll = document.querySelector('.masterplan-scroll');
+    const scrollProxy = document.getElementById('masterplanScrollProxy');
+    const scrollProxyInner = document.getElementById('masterplanScrollProxyInner');
+
+    let syncingFromTable = false;
+    let syncingFromProxy = false;
+
+    function syncProxyGeometry() {
+        if (!masterplanScroll || !scrollProxy || !scrollProxyInner) return;
+
+        const hasOverflow = masterplanScroll.scrollWidth > masterplanScroll.clientWidth + 1;
+
+        if (!hasOverflow) {
+            scrollProxy.style.display = 'none';
+            return;
+        }
+
+        const rect = masterplanScroll.getBoundingClientRect();
+        const left = Math.max(rect.left, 0);
+        const width = Math.max(0, Math.min(rect.width, window.innerWidth - left));
+
+        scrollProxy.style.display = 'block';
+        scrollProxy.style.left = left + 'px';
+        scrollProxy.style.width = width + 'px';
+        scrollProxyInner.style.width = masterplanScroll.scrollWidth + 'px';
+
+        if (!syncingFromTable) {
+            scrollProxy.scrollLeft = masterplanScroll.scrollLeft;
+        }
+    }
+
+    if (masterplanScroll && scrollProxy) {
+        masterplanScroll.addEventListener('scroll', function() {
+            syncingFromTable = true;
+            if (!syncingFromProxy) {
+                scrollProxy.scrollLeft = masterplanScroll.scrollLeft;
+            }
+            syncingFromTable = false;
+        });
+
+        scrollProxy.addEventListener('scroll', function() {
+            syncingFromProxy = true;
+            if (!syncingFromTable) {
+                masterplanScroll.scrollLeft = scrollProxy.scrollLeft;
+            }
+            syncingFromProxy = false;
+        });
+
+        window.addEventListener('resize', syncProxyGeometry);
+        window.addEventListener('load', syncProxyGeometry);
+        syncProxyGeometry();
+    }
+
 </script>
 @endsection

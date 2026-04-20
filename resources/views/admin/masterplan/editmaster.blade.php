@@ -3,6 +3,11 @@
 
 @section('content')
 
+@php
+$fabricOnly = $fabricOnly ?? false;
+$updateRoute = $updateRoute ?? route('admin.masterplan.update', $plan->id);
+@endphp
+
 
 <h3>Edit Master Plan</h3>
 @if(session('error'))
@@ -13,7 +18,7 @@
 @error('Qty_dis')
 <div class="text-danger">{{ $message }}</div>
 @enderror
-<form method="POST" action="{{ route('admin.masterplan.update', $plan->id) }}">
+<form method="POST" action="{{ $updateRoute }}">
     @csrf
     @method('PUT')
 
@@ -26,7 +31,7 @@
     <div class="mb-3">
         <label>Line</label>
         <input type="text" name="Line" class="form-control"
-            value="{{ $plan->Line }}" required>
+            value="{{ $plan->Line }}" {{ $fabricOnly ? 'readonly' : 'required' }}>
         @error('Line')
         <div class="text-danger">{{ $message }}</div>
         @enderror
@@ -35,9 +40,9 @@
     <div class="mb-3">
         <label>Line Color</label>
         <div class="input-group">
-            <input type="color" name="LineColor" class="form-control form-control-color" value="{{ $plan->LineColor ?? '#808080' }}" style="width: 60px;" required>
+            <input type="color" name="LineColor" class="form-control form-control-color" value="{{ $plan->LineColor ?? '#808080' }}" style="width: 60px;" {{ $fabricOnly ? 'disabled' : 'required' }}>
             <input type="text" class="form-control" id="lineColorText" placeholder="Hex color" readonly>
-            <button type="button" class="btn btn-outline-secondary" id="copyColorBtn" title="Copy hex color">
+            <button type="button" class="btn btn-outline-secondary" id="copyColorBtn" title="Copy hex color" {{ $fabricOnly ? 'disabled' : '' }}>
                 <i class="bi bi-files"></i> Copy
             </button>
         </div>
@@ -97,7 +102,7 @@
         <label>Qty_dis</label>
         <div class="row g-2 align-items-end">
             <div class="col-auto">
-                <input type="number" name="Qty_dis" id="qtyDisInput" class="form-control" min="0" value="{{ old('Qty_dis', $plan->Qty_dis) }}" style="min-width: 120px;">
+                <input type="number" name="Qty_dis" id="qtyDisInput" class="form-control" min="0" value="{{ old('Qty_dis', $plan->Qty_dis) }}" style="min-width: 120px;" {{ $fabricOnly ? 'readonly' : '' }}>
             </div>
             <div class="col-auto">
                 <span style="white-space: nowrap; font-size: 0.95rem; color: #666;">
@@ -170,25 +175,25 @@
     <div class="mb-3">
         <label>inWHDate</label>
         <input type="date" name="inWHDate" class="form-control"
-            value="{{ old('inWHDate', $plan->inWHDate) }}">
+            value="{{ old('inWHDate', $plan->inWHDate) }}" {{ $fabricOnly ? 'readonly' : '' }}>
     </div>
 
     <div class="mb-3">
         <label>3rd Party Inspection</label>
         <input type="text" name="3rd_PartyInspection" class="form-control"
-            value="{{ old('3rd_PartyInspection', $plan->{'3rd_PartyInspection'} ?? '') }}">
+            value="{{ old('3rd_PartyInspection', $plan->{'3rd_PartyInspection'} ?? '') }}" {{ $fabricOnly ? 'readonly' : '' }}>
     </div>
 
     <div class="mb-3">
         <label>ShipDate2</label>
         <input type="date" name="ShipDate2" class="form-control"
-            value="{{ old('ShipDate2', $plan->ShipDate2) }}">
+            value="{{ old('ShipDate2', $plan->ShipDate2) }}" {{ $fabricOnly ? 'readonly' : '' }}>
     </div>
 
     <div class="mb-3">
         <label>SoTK</label>
         <input type="text" name="SoTK" class="form-control"
-            value="{{ old('SoTK', $plan->SoTK) }}">
+            value="{{ old('SoTK', $plan->SoTK) }}" {{ $fabricOnly ? 'readonly' : '' }}>
     </div>
 
     <div class="mb-3">
@@ -196,7 +201,7 @@
         <div class="row g-2 align-items-end">
             <div class="col-auto">
                 <input type="number" name="ExQty" class="form-control" min="0"
-                    value="{{ old('ExQty', $plan->ExQty) }}" style="min-width: 120px;">
+                    value="{{ old('ExQty', $plan->ExQty) }}" style="min-width: 120px;" {{ $fabricOnly ? 'readonly' : '' }}>
                 @error('ExQty')
                 <div class="text-danger" style="font-size: 0.875rem;">{{ $message }}</div>
                 @enderror
@@ -211,12 +216,12 @@
 
     <div class="mb-3">
         <label>LT</label>
-        <input type="number" name="lt" class="form-control" min="0" value="{{ old('lt', $plan->lt) }}">
+        <input type="number" name="lt" class="form-control" min="0" value="{{ old('lt', $plan->lt) }}" {{ $fabricOnly ? 'readonly' : '' }}>
     </div>
 
     <div class="mb-3">
         <label>FirstOPT</label>
-            <input type="date" name="FirstOPT" class="form-control @error('FirstOPT') is-invalid @enderror" value="{{ old('FirstOPT', $plan->FirstOPT ? \Carbon\Carbon::parse($plan->FirstOPT)->format('Y-m-d') : '') }}">
+            <input type="date" name="FirstOPT" class="form-control @error('FirstOPT') is-invalid @enderror" value="{{ old('FirstOPT', $plan->FirstOPT ? \Carbon\Carbon::parse($plan->FirstOPT)->format('Y-m-d') : '') }}" {{ $fabricOnly ? 'readonly' : '' }}>
             @error('FirstOPT')
                 <div class="invalid-feedback d-block">{{ $message }}</div>
             @enderror
@@ -232,9 +237,9 @@
         <input type="text" id="exFact" class="form-control" readonly>
     </div>
 
-    <button class="btn btn-primary">Update</button>
+    <button class="btn btn-primary">{{ $fabricOnly ? 'Update Fabric-Trim' : 'Update' }}</button>
 
-    <a href="{{ route('admin.masterplan.index') }}" class="btn btn-secondary">
+    <a href="{{ $fabricOnly ? route('masterplan.view') : route('admin.masterplan.index') }}" class="btn btn-secondary">
         Back
     </a>
 

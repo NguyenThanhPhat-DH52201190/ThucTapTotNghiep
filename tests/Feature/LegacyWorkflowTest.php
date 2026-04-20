@@ -345,4 +345,119 @@ class LegacyWorkflowTest extends TestCase
             ->assertOk()
             ->assertSeeInOrder(['CU1000', 'CU5899', 'CU5943']);
     }
+
+    public function test_ppic_can_open_masterplan_page_and_edit_fabric_to_trim_only(): void
+    {
+        DB::table('ocs')->insert([
+            'CS' => 'CU7777',
+            'CsDate' => '2026-04-20',
+            'SNo' => 'S-7777',
+            'Sname' => 'Style 7777',
+            'Customer' => 'Customer 7777',
+            'Color' => 'Blue',
+            'ONum' => 'PO-7777',
+            'CMT' => 10,
+            'Qty' => 500,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $id = DB::table('mtp')->insertGetId([
+            'CU' => 'CU7777',
+            'Line' => 'Green',
+            'LineColor' => '#008000',
+            'Fabric1' => 'OLD-FAB',
+            'ETA1' => '2026-04-20',
+            'Actual' => '2026-04-21',
+            'Fabric2' => 'OLD-FAB2',
+            'ETA2' => '2026-04-22',
+            'Linning' => 'OLD-LINING',
+            'ETA3' => '2026-04-23',
+            'Pocket' => 'OLD-POCKET',
+            'ETA4' => '2026-04-24',
+            'Trim' => 'OLD-TRIM',
+            'inWHDate' => '2026-04-25',
+            'SoTK' => 'OLD-SOTK',
+            'ExQty' => 12,
+            'lt' => 2,
+            'FirstOPT' => '2026-04-27',
+            'Qty_dis' => 100,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->createUserRecord([
+            'name' => 'ppic-masterplan',
+            'email' => 'ppic-masterplan@local.test',
+            'password' => 'Password123!',
+            'role' => User::ROLE_PPIC,
+        ]));
+
+        $this->get(route('masterplan.view'))->assertOk();
+
+        $this->put(route('masterplan.fabric.update', $id), [
+            'Fabric1' => 'NEW-FAB',
+            'ETA1' => '2026-05-01',
+            'Actual' => '2026-05-02',
+            'Fabric2' => 'NEW-FAB2',
+            'ETA2' => '2026-05-03',
+            'Linning' => 'NEW-LINING',
+            'ETA3' => '2026-05-04',
+            'Pocket' => 'NEW-POCKET',
+            'ETA4' => '2026-05-05',
+            'Trim' => 'NEW-TRIM',
+            // These must stay unchanged for ppic scope.
+            'Line' => 'Blue',
+            'Qty_dis' => 999,
+            'SoTK' => 'HACK',
+        ])->assertRedirect(route('masterplan.view'));
+
+        $updated = DB::table('mtp')->where('id', $id)->first();
+
+        $this->assertSame('NEW-FAB', $updated->Fabric1);
+        $this->assertSame('2026-05-01', $updated->ETA1);
+        $this->assertSame('NEW-FAB2', $updated->Fabric2);
+        $this->assertSame('NEW-LINING', $updated->Linning);
+        $this->assertSame('NEW-TRIM', $updated->Trim);
+
+        $this->assertSame('Green', $updated->Line);
+        $this->assertSame(100, (int) $updated->Qty_dis);
+        $this->assertSame('OLD-SOTK', $updated->SoTK);
+    }
+
+    public function test_ppic_cannot_delete_masterplan_records(): void
+    {
+        DB::table('ocs')->insert([
+            'CS' => 'CU8888',
+            'CsDate' => '2026-04-20',
+            'SNo' => 'S-8888',
+            'Sname' => 'Style 8888',
+            'Customer' => 'Customer 8888',
+            'Color' => 'Blue',
+            'ONum' => 'PO-8888',
+            'CMT' => 10,
+            'Qty' => 500,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $id = DB::table('mtp')->insertGetId([
+            'CU' => 'CU8888',
+            'Line' => 'Green',
+            'LineColor' => '#008000',
+            'Qty_dis' => 50,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->createUserRecord([
+            'name' => 'ppic-no-delete',
+            'email' => 'ppic-no-delete@local.test',
+            'password' => 'Password123!',
+            'role' => User::ROLE_PPIC,
+        ]));
+
+        $this->delete(route('admin.masterplan.destroy', $id))->assertForbidden();
+        $this->assertDatabaseHas('mtp', ['id' => $id]);
+    }
 }

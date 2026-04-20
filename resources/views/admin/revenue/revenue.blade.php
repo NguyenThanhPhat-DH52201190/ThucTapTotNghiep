@@ -66,12 +66,12 @@ $canManage = auth()->user()->role === 'admin';
         <tr>
             <th scope="col">SewingLine</th>
             <th scope="col">CS</th>
-            <th scope="col">sewingmp</th>
-            <th scope="col">workhrs</th>
+            <th scope="col">Sewingmp</th>
+            <th scope="col">Workhrs</th>
             <th scope="col">Distribution</th>
-            <th scope="col">planout</th>
-            <th scope="col">actualout</th>
-            <th scope="col">cmp</th>
+            <th scope="col">Planout</th>
+            <th scope="col">Actualout</th>
+            <th scope="col">Cmp</th>
             @if($canManage)
             <th scope="col">Edit</th>
             <th scope="col">Delete</th>
@@ -96,12 +96,12 @@ $canManage = auth()->user()->role === 'admin';
                 {{ $item->SewingLine }}
             </td>
             <td>{{ $item->CS }}</td>
-            <td>{{ $item->sewingmp }}</td>
-            <td>{{ $item->workhrs }}</td>
+            <td>{{ $item->Sewingmp }}</td>
+            <td>{{ $item->Workhrs }}</td>
             <td>{{ $item->Distribution }}</td>
-            <td>{{ $item->planout }}</td>
-            <td>{{ $item->actualout }}</td>
-            <td>{{ $item->cmp }}</td>
+            <td>{{ $item->Planout }}</td>
+            <td>{{ $item->Actualout }}</td>
+            <td>{{ $item->Cmp }}</td>
             @if($canManage)
             <td>
                 <a href="{{ route('admin.revenue.edit', $item->id) }}"

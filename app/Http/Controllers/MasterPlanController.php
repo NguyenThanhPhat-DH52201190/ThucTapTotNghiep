@@ -16,6 +16,47 @@ class MasterPlanController extends Controller
     {
         return $request->user()?->role === 'admin';
     }
+        private function isGsvLineName(?string $line): bool
+        {
+            $value = strtolower(trim((string) $line));
+
+            if ($value === '') {
+                return false;
+            }
+
+            if ($value === 'sample') {
+                return true;
+            }
+
+            if (preg_match('/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/', $value)) {
+                return true;
+            }
+
+            $cssNamedColors = [
+                'black', 'silver', 'gray', 'grey', 'white', 'maroon', 'red', 'purple', 'fuchsia', 'green', 'lime',
+                'olive', 'yellow', 'navy', 'blue', 'teal', 'aqua', 'orange', 'aliceblue', 'antiquewhite', 'aquamarine',
+                'azure', 'beige', 'bisque', 'blanchedalmond', 'blueviolet', 'brown', 'burlywood', 'cadetblue',
+                'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'darkblue',
+                'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgrey', 'darkgreen', 'darkkhaki', 'darkmagenta',
+                'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen', 'darkslateblue',
+                'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 'dimgray',
+                'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 'gainsboro', 'ghostwhite', 'gold',
+                'goldenrod', 'greenyellow', 'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender',
+                'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
+                'lightgoldenrodyellow', 'lightgray', 'lightgrey', 'lightgreen', 'lightpink', 'lightsalmon',
+                'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue', 'lightyellow',
+                'magenta', 'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue',
+                'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose',
+                'moccasin', 'navajowhite', 'oldlace', 'olivedrab', 'orangered', 'orchid', 'palegoldenrod',
+                'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 'plum',
+                'powderblue', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell',
+                'sienna', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow', 'springgreen', 'steelblue', 'tan',
+                'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'whitesmoke', 'yellowgreen',
+            ];
+
+            return in_array($value, $cssNamedColors, true);
+        }
+
 
     private function redirectRouteForRole(Request $request): string
     {
@@ -68,7 +109,7 @@ class MasterPlanController extends Controller
             ->pluck('holiday')
             ->toArray();
 
-        $colorLinePriority = [
+        $gsvLinePriority = [
             'blue' => 1,
             'yellow' => 2,
             'green' => 3,
@@ -76,12 +117,12 @@ class MasterPlanController extends Controller
         ];
 
         $plan = collect($plan)
-            ->sort(function ($a, $b) use ($colorLinePriority) {
+            ->sort(function ($a, $b) use ($gsvLinePriority) {
                 $lineA = strtolower((string) ($a->Line ?? ''));
                 $lineB = strtolower((string) ($b->Line ?? ''));
 
-                $isColorA = array_key_exists($lineA, $colorLinePriority);
-                $isColorB = array_key_exists($lineB, $colorLinePriority);
+                $isColorA = $this->isGsvLineName($a->Line ?? null);
+                $isColorB = $this->isGsvLineName($b->Line ?? null);
 
                 if ($isColorA !== $isColorB) {
                     return $isColorA ? -1 : 1;
@@ -92,8 +133,8 @@ class MasterPlanController extends Controller
                     return $dateCompare;
                 }
 
-                $rankA = $colorLinePriority[$lineA] ?? 999;
-                $rankB = $colorLinePriority[$lineB] ?? 999;
+                $rankA = $gsvLinePriority[$lineA] ?? ($isColorA ? 50 : 999);
+                $rankB = $gsvLinePriority[$lineB] ?? ($isColorB ? 50 : 999);
 
                 if ($isColorA && $rankA !== $rankB) {
                     return $rankA <=> $rankB;
@@ -153,7 +194,7 @@ class MasterPlanController extends Controller
         // Filter to show only items with ShipBalance if requested
         if ($request->filled('ship_balance_only') && $request->ship_balance_only == 1) {
             $plan = $plan->filter(function ($item) {
-                return $item->ShipBalance !== null;
+                return $item->ShipBalance !== null && $item->ShipBalance > 0;
             });
         }
 

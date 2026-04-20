@@ -460,4 +460,92 @@ class LegacyWorkflowTest extends TestCase
         $this->delete(route('admin.masterplan.destroy', $id))->assertForbidden();
         $this->assertDatabaseHas('mtp', ['id' => $id]);
     }
+
+    public function test_ship_balance_filter_shows_only_positive_values(): void
+    {
+        DB::table('ocs')->insert([
+            [
+                'CS' => 'CU-POS',
+                'CsDate' => '2026-04-20',
+                'SNo' => 'S-POS',
+                'Sname' => 'Style POS',
+                'Customer' => 'Customer POS',
+                'Color' => 'Blue',
+                'ONum' => 'PO-POS',
+                'CMT' => 10,
+                'Qty' => 500,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'CS' => 'CU-ZERO',
+                'CsDate' => '2026-04-20',
+                'SNo' => 'S-ZERO',
+                'Sname' => 'Style ZERO',
+                'Customer' => 'Customer ZERO',
+                'Color' => 'Blue',
+                'ONum' => 'PO-ZERO',
+                'CMT' => 10,
+                'Qty' => 500,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'CS' => 'CU-NEG',
+                'CsDate' => '2026-04-20',
+                'SNo' => 'S-NEG',
+                'Sname' => 'Style NEG',
+                'Customer' => 'Customer NEG',
+                'Color' => 'Blue',
+                'ONum' => 'PO-NEG',
+                'CMT' => 10,
+                'Qty' => 500,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        DB::table('mtp')->insert([
+            [
+                'CU' => 'CU-POS',
+                'Line' => 'Blue',
+                'LineColor' => '#0000FF',
+                'Qty_dis' => 100,
+                'ExQty' => 20,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'CU' => 'CU-ZERO',
+                'Line' => 'Blue',
+                'LineColor' => '#0000FF',
+                'Qty_dis' => 80,
+                'ExQty' => 80,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'CU' => 'CU-NEG',
+                'Line' => 'Blue',
+                'LineColor' => '#0000FF',
+                'Qty_dis' => 50,
+                'ExQty' => 70,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $this->actingAs($this->createUserRecord([
+            'name' => 'ship-balance-admin',
+            'email' => 'ship-balance-admin@local.test',
+            'password' => 'Password123!',
+            'role' => User::ROLE_ADMIN,
+        ]));
+
+        $this->get(route('masterplan.view', ['ship_balance_only' => 1]))
+            ->assertOk()
+            ->assertSee('CU-POS')
+            ->assertDontSee('CU-ZERO')
+            ->assertDontSee('CU-NEG');
+    }
 }

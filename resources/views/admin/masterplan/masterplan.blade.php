@@ -197,6 +197,15 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
     .masterplan-table .col-gap-left {
         padding-left: 2rem;
     }
+
+    .ship-balance-btn {
+        min-width: 150px;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+    }
 </style>
 
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4" id="filterForm">
@@ -236,7 +245,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             Reset
         </a>
 
-        <button type="button" class="btn {{ request('ship_balance_only') ? 'btn-warning' : 'btn-outline-warning' }}" 
+        <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only') ? 'btn-warning' : 'btn-outline-warning' }}" 
             id="toggleShipBalanceBtn" title="Filter by ShipBalance">
             <i class="bi bi-funnel"></i> 
             {{ request('ship_balance_only') ? 'ALL CU' : 'With ShipBalance' }}

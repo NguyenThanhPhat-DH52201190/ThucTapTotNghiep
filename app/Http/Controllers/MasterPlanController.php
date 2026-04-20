@@ -252,7 +252,10 @@ class MasterPlanController extends Controller
 
     public function create()
     {
-        $ocs = DB::table('ocs')->get();
+        $ocs = DB::table('ocs')
+            ->orderBy('CS', 'asc')
+            ->get();
+
         return view('admin.masterplan.addmaster', compact('ocs'));
     }
 

@@ -77,22 +77,22 @@ $canManage = auth()->user()->role === 'admin';
 
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4" id="filterForm">
 
-    <div class="col-md-2">
+    <div class="col-auto">
         <label>ETA1</label>
-        <input type="date" name="to_date" class="form-control"
+        <input type="date" name="to_date" class="form-control form-control-sm" style="width: 160px;"
             value="{{ request('to_date') }}">
     </div>
 
-    <div class="col-md-2">
+    <div class="col-auto">
         <label>PO</label>
-        <input type="text" name="po" class="form-control"
+        <input type="text" name="po" class="form-control form-control-sm" style="width: 160px;"
             placeholder="Fill PO"
             value="{{ request('po') }}">
     </div>
 
-    <div class="col-md-2">
+    <div class="col-auto">
         <label>Style</label>
-        <input type="text" name="style" class="form-control"
+        <input type="text" name="style" class="form-control form-control-sm" style="width: 160px;"
             placeholder="Fill Style"
             value="{{ request('style') }}">
     </div>

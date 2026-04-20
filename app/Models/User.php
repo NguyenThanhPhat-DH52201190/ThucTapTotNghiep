@@ -13,6 +13,7 @@ use Illuminate\Notifications\Notifiable;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
+    public const ROLE_USER = 'user';
     public const ROLE_ADMIN = 'admin';
     public const ROLE_WAREHOUSE = 'warehouse';
     public const ROLE_PPIC = 'ppic';

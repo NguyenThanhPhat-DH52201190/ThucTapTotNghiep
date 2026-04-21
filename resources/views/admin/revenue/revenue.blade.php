@@ -96,7 +96,7 @@ $canManage = auth()->user()->role === 'admin';
                 {{ $item->SewingLine }}
             </td>
             <td>{{ $item->CS }}</td>
-            <td>{{ $item->Sewingmp }}</td>
+            <td>{{ $item->sewingmp }}</td>
             <td>{{ $item->Workhrs }}</td>
             <td>{{ $item->Distribution }}</td>
             <td>{{ $item->Planout }}</td>

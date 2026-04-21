@@ -97,11 +97,11 @@ $canManage = auth()->user()->role === 'admin';
             </td>
             <td>{{ $item->CS }}</td>
             <td>{{ $item->sewingmp }}</td>
-            <td>{{ $item->Workhrs }}</td>
-            <td>{{ $item->Distribution }}</td>
-            <td>{{ $item->Planout }}</td>
-            <td>{{ $item->Actualout }}</td>
-            <td>{{ $item->Cmp }}</td>
+            <td>{{ $item->workhrs }}</td>
+            <td>{{ $item->distribution }}</td>
+            <td>{{ $item->planout }}</td>
+            <td>{{ $item->actualout }}</td>
+            <td>{{ $item->cmp }}</td>
             @if($canManage)
             <td>
                 <a href="{{ route('admin.revenue.edit', $item->id) }}"

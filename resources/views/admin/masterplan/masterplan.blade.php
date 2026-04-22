@@ -32,9 +32,10 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
     .masterplan-scroll {
         position: relative;
         overflow-x: auto !important;
-        overflow-y: visible;
+        overflow-y: auto !important;
         width: 100%;
         max-width: 100%;
+        max-height: calc(100vh - 300px);
         isolation: isolate;
         scrollbar-width: none;
         -ms-overflow-style: none;
@@ -47,7 +48,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
     .masterplan-scrollbar-proxy {
         position: fixed;
         bottom: 6px;
-        height: 10px;
+        height: 20px;
         overflow-x: auto;
         overflow-y: hidden;
         background: transparent;
@@ -57,11 +58,11 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
     }
 
     .masterplan-scrollbar-proxy-inner {
-        height: 1px;
+        height: 2px;
     }
 
     .masterplan-scrollbar-proxy::-webkit-scrollbar {
-        height: 8px;
+        height: 16px;
     }
 
     .masterplan-scrollbar-proxy::-webkit-scrollbar-track {
@@ -71,6 +72,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
     .masterplan-scrollbar-proxy::-webkit-scrollbar-thumb {
         background: rgba(100, 116, 139, 0.65);
         border-radius: 999px;
+        min-height: 30px;
     }
 
     .masterplan-scrollbar-proxy::-webkit-scrollbar-thumb:hover {
@@ -132,11 +134,17 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         box-shadow: 2px 0 0 rgba(15, 23, 42, 0.08);
     }
 
-    .masterplan-table th.sticky-1 { left: 0; z-index: 17; }
-    .masterplan-table th.sticky-2 { left: var(--sticky-col-1); z-index: 16; }
-    .masterplan-table th.sticky-3 { left: calc(var(--sticky-col-1) + var(--sticky-col-2)); z-index: 15; }
-    .masterplan-table th.sticky-4 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3)); z-index: 14; }
-    .masterplan-table th.sticky-5 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4)); z-index: 13; }
+    .masterplan-table thead th {
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+    }
+
+    .masterplan-table th.sticky-1 { left: 0; z-index: 27; }
+    .masterplan-table th.sticky-2 { left: var(--sticky-col-1); z-index: 26; }
+    .masterplan-table th.sticky-3 { left: calc(var(--sticky-col-1) + var(--sticky-col-2)); z-index: 25; }
+    .masterplan-table th.sticky-4 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3)); z-index: 24; }
+    .masterplan-table th.sticky-5 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4)); z-index: 23; }
 
     .masterplan-table th,
     .masterplan-table td {
@@ -218,16 +226,10 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4" id="filterForm">
 
     <div class="col-auto">
-        <label>ETA1</label>
-        <input type="date" name="to_date" class="form-control form-control-sm" style="width: 160px;"
-            value="{{ request('to_date') }}">
-    </div>
-
-    <div class="col-auto">
-        <label>PO</label>
-        <input type="text" name="po" class="form-control form-control-sm" style="width: 160px;"
-            placeholder="Fill PO"
-            value="{{ request('po') }}">
+        <label>CU</label>
+        <input type="text" name="cu" class="form-control form-control-sm" style="width: 160px;"
+            placeholder="Fill CU"
+            value="{{ request('cu') }}">
     </div>
 
     <div class="col-auto">
@@ -288,6 +290,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <th scope="col" class="col-line sticky-col sticky-2">Line</th>
             <th scope="col" class="col-style sticky-col sticky-3">Style</th>
             <th scope="col" class="col-po sticky-col sticky-4">PO</th>
+            <th scope="col" class="col-qty">Order_Qty</th>
             <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
             <th scope="col" class="col-wide col-gap-left">Fabric1</th>
             <th scope="col" class="col-date">ETA1</th>
@@ -299,6 +302,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <th scope="col" class="col-wide">Pocket</th>
             <th scope="col" class="col-date">ETA4</th>
             <th scope="col" class="col-wide">Trim</th>
+            <th scope="col" class="col-date">Norm_date</th>
             <th scope="col" class="col-date">inWHDate</th>
             <th scope="col" class="col-wide">3rd_PartyInspection</th>
             <th scope="col" class="col-date">ShipDate2</th>
@@ -330,7 +334,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = 25 + $actionCols;
+        $tableColspan = 27 + $actionCols;
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -365,6 +369,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             </td>
             <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
             <td class="col-po sticky-col sticky-4">{{ $item->PO }}</td>
+            <td class="col-qty">{{ $item->Order_Qty }}</td>
             <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
             <td class="col-gap-left">{{ $item->Fabric1 }}</td>
             <td>{{ $item->ETA1 }}</td>
@@ -376,6 +381,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <td>{{ $item->Pocket }}</td>
             <td>{{ $item->ETA4 }}</td>
             <td>{{ $item->Trim }}</td>
+            <td>{{ $item->Norm_date }}</td>
             <td>{{ $item->inWHDate }}</td>
             <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
             <td>{{ $item->ShipDate2 }}</td>
@@ -457,7 +463,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         @endif
         @else
         <tr>
-            <td colspan="{{ 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) }}" class="text-center">No data</td>
+            <td colspan="{{ 27 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>

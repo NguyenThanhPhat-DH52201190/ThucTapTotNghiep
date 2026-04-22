@@ -172,6 +172,11 @@
         </div>
 
         <div class="mb-3">
+            <label>Norm_date</label>
+            <input type="date" name="Norm_date" class="form-control" value="{{ old('Norm_date') }}">
+        </div>
+
+        <div class="mb-3">
             <label>inWHDate</label>
             <input type="date" name="inWHDate" class="form-control" value="{{ old('inWHDate') }}">
         </div>

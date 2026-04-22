@@ -58,11 +58,8 @@ class MasterPlanController extends Controller
 
         $plan = DB::table('mtp')
             ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
-            ->when($request->filled('to_date'), function ($query) use ($request) {
-                $query->whereDate('mtp.ETA1', $request->to_date);
-            })
-            ->when($request->filled('po'), function ($query) use ($request) {
-                $query->where('ocs.ONum', 'like', '%' . $request->po . '%');
+            ->when($request->filled('cu'), function ($query) use ($request) {
+                $query->where('mtp.CU', 'like', '%' . $request->cu . '%');
             })
             ->when($request->filled('style'), function ($query) use ($request) {
                 $query->where('ocs.SNo', 'like', '%' . $request->style . '%');
@@ -70,7 +67,8 @@ class MasterPlanController extends Controller
             ->select(
                 'mtp.*',
                 'ocs.SNo as Style',
-                'ocs.ONum as PO'
+                'ocs.ONum as PO',
+                'ocs.Qty as Order_Qty'
             )
             ->orderBy('mtp.Line', 'asc')
             ->get();
@@ -131,7 +129,14 @@ class MasterPlanController extends Controller
             $previousFinish = null;
 
             foreach ($items as $item) {
-                if (!$previousFinish) {
+                $isSubcon = strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
+
+                if ($isSubcon) {
+                    // Subcon keeps manual FirstOPT per row and does not follow line chain.
+                    $firstOPT = $item->FirstOPT
+                        ? Carbon::parse($item->FirstOPT)
+                        : null;
+                } elseif (!$previousFinish) {
                     $firstOPT = $item->FirstOPT
                         ? Carbon::parse($item->FirstOPT)
                         : null;
@@ -154,7 +159,9 @@ class MasterPlanController extends Controller
                 $item->calc_Finish_SEW = $finishSew;
                 $item->calc_EX_Fact = $exFact;
 
-                $previousFinish = $finishSew;
+                if (!$isSubcon) {
+                    $previousFinish = $finishSew;
+                }
             }
         }
 
@@ -311,6 +318,7 @@ class MasterPlanController extends Controller
             'Pocket' => 'nullable|string|max:50',
             'ETA4' => 'nullable|date',
             'Trim' => 'nullable|string|max:50',
+            'Norm_date' => 'nullable|date',
             'inWHDate' => 'nullable|date',
             '3rd_PartyInspection' => 'nullable|string|max:50',
             'ShipDate2' => 'nullable|date',
@@ -377,6 +385,7 @@ class MasterPlanController extends Controller
                 'Pocket' => filled($request->Pocket) ? $request->Pocket : null,
                 'ETA4' => $this->nullableDate($request->ETA4),
                 'Trim' => filled($request->Trim) ? $request->Trim : null,
+                'Norm_date' => $this->nullableDate($request->Norm_date),
                 'inWHDate' => $this->nullableDate($request->inWHDate),
                 '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
                 'ShipDate2' => $this->nullableDate($request->ShipDate2),
@@ -474,6 +483,7 @@ class MasterPlanController extends Controller
             'Pocket' => 'nullable|string|max:50',
             'ETA4' => 'nullable|date',
             'Trim' => 'nullable|string|max:50',
+            'Norm_date' => 'nullable|date',
             'inWHDate' => 'nullable|date',
             '3rd_PartyInspection' => 'nullable|string|max:50',
             'ShipDate2' => 'nullable|date',
@@ -543,6 +553,7 @@ class MasterPlanController extends Controller
                 'Pocket' => filled($request->Pocket) ? $request->Pocket : null,
                 'ETA4' => $this->nullableDate($request->ETA4),
                 'Trim' => filled($request->Trim) ? $request->Trim : null,
+                'Norm_date' => $this->nullableDate($request->Norm_date),
                 'inWHDate' => $this->nullableDate($request->inWHDate),
                 '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
                 'ShipDate2' => $this->nullableDate($request->ShipDate2),

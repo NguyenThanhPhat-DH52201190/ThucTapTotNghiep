@@ -170,6 +170,7 @@ trait CreatesLegacySchema
             $table->string('Pocket', 50)->nullable();
             $table->date('ETA4')->nullable();
             $table->string('Trim', 50)->nullable();
+            $table->date('Norm_date')->nullable();
             $table->date('inWHDate')->nullable();
             $table->string('3rd_PartyInspection', 50)->nullable();
             $table->date('ShipDate2')->nullable();

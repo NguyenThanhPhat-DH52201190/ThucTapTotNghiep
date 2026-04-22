@@ -796,11 +796,8 @@ class RevenueController extends Controller
         $month = (string) $request->month;
         $days = $this->monthDays($month);
         $matrix = (array) $request->input('matrix', []);
-        $windowStartInput = (array) $request->input('window_start', []);
-        $windowEndInput = (array) $request->input('window_end', []);
 
         $distributionByLine = $this->getDistributionByLineSubquery();
-        $lineMeta = $this->getLineMetaSubquery();
 
         $revenues = DB::table('revenue')
             ->leftJoinSub($distributionByLine, 'mtp_dist', function ($join) {
@@ -819,11 +816,6 @@ class RevenueController extends Controller
             ->get()
             ->keyBy('id');
 
-        $holidays = DB::table('holidays')->pluck('holiday')->toArray();
-        $holidaySet = $this->normalizeHolidaySet($holidays);
-        $revenues = $this->attachMasterPlanWindows($revenues, $holidays);
-        $revenues = $this->sortByFirstOPT($revenues, true);
-
         if ($revenues->isEmpty()) {
             return back()->with('error', 'No revenue rows found for this line.');
         }
@@ -833,45 +825,10 @@ class RevenueController extends Controller
         foreach ($revenues as $revenueId => $revenue) {
             $rowInput = (array) ($matrix[$revenueId] ?? []);
             $rowPrepared = [];
-            $rowAllowed = [];
             $rowTotal = 0;
-            $firstOPT = $revenue->calc_FirstOPT;
-            $finishSEW = $revenue->calc_Finish_SEW;
-
-            $submittedWindowStart = $windowStartInput[$revenueId] ?? null;
-            $submittedWindowEnd = $windowEndInput[$revenueId] ?? null;
-
-            if (filled($submittedWindowStart) && filled($submittedWindowEnd)) {
-                try {
-                    $firstOPT = Carbon::createFromFormat('Y-m-d', (string) $submittedWindowStart);
-                    $finishSEW = Carbon::createFromFormat('Y-m-d', (string) $submittedWindowEnd);
-                } catch (\Throwable $e) {
-                    // Fallback to server-computed values when submitted dates are invalid.
-                }
-            }
 
             foreach ($days as $day) {
                 $raw = $rowInput[$day] ?? null;
-                $workDate = Carbon::createFromFormat('Y-m-d', $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT));
-                $allowedDate = true;
-
-                if ($firstOPT && $finishSEW) {
-                    $allowedDate = !$workDate->lessThan($firstOPT) && !$workDate->greaterThan($finishSEW);
-                }
-
-                $allowedDate = $allowedDate && !$workDate->isSunday() && !isset($holidaySet[$workDate->toDateString()]);
-
-                if (!$allowedDate) {
-                    if ($raw !== null && $raw !== '' && (int) $raw > 0) {
-                        return back()
-                            ->withInput()
-                            ->with('error', 'CS ' . $revenue->CS . ' cannot accept quantity on ' . $workDate->toDateString() . ' because it is outside the allowed masterplan date range or is a holiday.');
-                    }
-
-                    $rowAllowed[$day] = false;
-                    $rowPrepared[$day] = null;
-                    continue;
-                }
 
                 if ($raw === null || $raw === '') {
                     $qty = 0;
@@ -883,16 +840,7 @@ class RevenueController extends Controller
                     $qty = (int) $raw;
                 }
 
-                if ($qty > 0 && $firstOPT && $finishSEW) {
-                    if ($workDate->lessThan($firstOPT) || $workDate->greaterThan($finishSEW)) {
-                        return back()
-                            ->withInput()
-                            ->with('error', 'CS ' . $revenue->CS . ' only allows input from ' . $firstOPT->toDateString() . ' to ' . $finishSEW->toDateString() . '.');
-                    }
-                }
-
                 $rowPrepared[$day] = $qty;
-                $rowAllowed[$day] = true;
                 $rowTotal += $qty;
             }
 
@@ -905,45 +853,7 @@ class RevenueController extends Controller
             $prepared[$revenueId] = [
                 'total' => $rowTotal,
                 'days' => $rowPrepared,
-                'allowed' => $rowAllowed,
-                'firstOPT' => $firstOPT,
-                'finishSEW' => $finishSEW,
             ];
-        }
-
-        foreach ($revenues as $revenueId => $revenue) {
-            $firstOPT = $prepared[$revenueId]['firstOPT'] ?? null;
-            $finishSEW = $prepared[$revenueId]['finishSEW'] ?? null;
-
-            foreach ($days as $day) {
-                $qty = $prepared[$revenueId]['days'][$day];
-
-                if ($qty <= 0) {
-                    continue;
-                }
-
-                $workDate = Carbon::createFromFormat('Y-m-d', $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT));
-
-                if (isset($holidaySet[$workDate->toDateString()])) {
-                    return back()
-                        ->withInput()
-                        ->with('error', 'CS ' . $revenue->CS . ' cannot accept quantity on holiday ' . $workDate->toDateString() . '.');
-                }
-
-                if ($workDate->isSunday()) {
-                    return back()
-                        ->withInput()
-                        ->with('error', 'CS ' . $revenue->CS . ' cannot accept quantity on Sunday ' . $workDate->toDateString() . '.');
-                }
-
-                if ($firstOPT && $finishSEW) {
-                    if ($workDate->lessThan($firstOPT) || $workDate->greaterThan($finishSEW)) {
-                        return back()
-                            ->withInput()
-                            ->with('error', 'CS ' . $revenue->CS . ' only allows input from ' . $firstOPT->toDateString() . ' to ' . $finishSEW->toDateString() . '.');
-                    }
-                }
-            }
         }
 
         $existingRows = DB::table('daily_revenues')
@@ -960,10 +870,6 @@ class RevenueController extends Controller
         DB::transaction(function () use ($revenues, $prepared, $days, $month, $existingMap) {
             foreach ($revenues as $revenueId => $revenue) {
                 foreach ($days as $day) {
-                    if (!($prepared[$revenueId]['allowed'][$day] ?? false)) {
-                        continue;
-                    }
-
                     $qty = $prepared[$revenueId]['days'][$day];
                     $workDate = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
                     $existingId = $existingMap[(int) $revenueId][$day] ?? null;

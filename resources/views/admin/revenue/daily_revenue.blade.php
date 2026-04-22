@@ -56,22 +56,6 @@ $canManage = auth()->user()->role === 'admin';
         $distributionTotal += (int) ($item->Distribution ?? 0);
 
         foreach ($days as $day) {
-            $workDate = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
-            $withinRange = true;
-            $isHoliday = isset($holidaySet[$workDate]);
-            $isSunday = \Carbon\Carbon::parse($workDate)->isSunday();
-
-            if ($item->calc_FirstOPT && $item->calc_Finish_SEW) {
-                $withinRange = $workDate >= $item->calc_FirstOPT->toDateString()
-                    && $workDate <= $item->calc_Finish_SEW->toDateString();
-            }
-
-            $allowedInput = $withinRange && !$isHoliday && !$isSunday;
-
-            if (!$allowedInput) {
-                continue;
-            }
-
             $rawQty = old('matrix.' . $item->id . '.' . $day, $dailyMatrix[$item->id][$day] ?? '');
             $qty = ($rawQty === '' || $rawQty === null) ? 0 : (int) $rawQty;
 
@@ -104,8 +88,6 @@ $canManage = auth()->user()->role === 'admin';
                 </thead>
                 <tbody>
                     @foreach($revenues as $item)
-                    <input type="hidden" name="window_start[{{ $item->id }}]" value="{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->toDateString() : '' }}">
-                    <input type="hidden" name="window_end[{{ $item->id }}]" value="{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->toDateString() : '' }}">
                     <tr>
                         <td class="matrix-sticky">{{ $item->CS }}</td>
                         <td>{{ $item->Distribution }}</td>
@@ -113,39 +95,14 @@ $canManage = auth()->user()->role === 'admin';
                         @foreach($days as $day)
                         @php
                         $qtyValue = old('matrix.' . $item->id . '.' . $day, $dailyMatrix[$item->id][$day] ?? '');
-                        $workDate = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
-                        $withinRange = true;
-                        $isHoliday = isset($holidaySet[$workDate]);
-                        $isSunday = \Carbon\Carbon::parse($workDate)->isSunday();
-
-                        if ($item->calc_FirstOPT && $item->calc_Finish_SEW) {
-                            $withinRange = $workDate >= $item->calc_FirstOPT->toDateString()
-                                && $workDate <= $item->calc_Finish_SEW->toDateString();
-                        }
-                        $allowedInput = $withinRange && !$isHoliday && !$isSunday;
-
-                        $lockReason = null;
-                        if (!$withinRange && $item->calc_FirstOPT && $item->calc_Finish_SEW) {
-                            $lockReason = 'Allowed only between ' . $item->calc_FirstOPT->toDateString() . ' and ' . $item->calc_Finish_SEW->toDateString();
-                        } elseif ($isHoliday) {
-                            $lockReason = 'Holiday';
-                        } elseif ($isSunday) {
-                            $lockReason = 'Sunday';
-                        }
                         @endphp
                         <td>
                             <input
                                 type="number"
                                 min="0"
-                                @if(!$allowedInput)
-                                disabled
-                                title="{{ $lockReason }}"
-                                class="form-control form-control-sm matrix-input matrix-input-locked"
-                                @else
                                 class="form-control form-control-sm matrix-input"
-                                @endif
                                 name="matrix[{{ $item->id }}][{{ $day }}]"
-                                value="{{ $allowedInput ? $qtyValue : '' }}"
+                                value="{{ $qtyValue }}"
                             >
                         </td>
                         @endforeach

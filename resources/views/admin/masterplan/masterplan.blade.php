@@ -206,6 +206,13 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         justify-content: center;
         gap: 0.35rem;
     }
+
+    .line-color-cell {
+        border-radius: 4px;
+        text-align: center;
+        color: #ffffff;
+        font-weight: 500;
+    }
 </style>
 
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4" id="filterForm">
@@ -329,6 +336,11 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         @foreach($grouped as $line => $items)
         @php
         $isColorLine = strtoupper((string) ($items->first()->LineCate ?? 'SUBCON')) === 'GSV';
+        $lineItems = $items->values();
+        $monthlyQtyByFinish = $lineItems
+            ->filter(fn($row) => !empty($row->calc_Finish_SEW))
+            ->groupBy(fn($row) => $row->calc_Finish_SEW->format('Y-m'))
+            ->map(fn($rows) => $rows->sum('Qty_dis'));
         @endphp
 
         @if(!$isColorLine && !$subconHeaderShown)
@@ -345,10 +357,10 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         @php $subconHeaderShown = true; @endphp
         @endif
 
-        @foreach($items as $item)
+        @foreach($lineItems as $index => $item)
         <tr>
             <td class="col-code sticky-col sticky-1">{{ $item->CU }}</td>
-            <td class="col-line sticky-col sticky-2" style="background-color: {{ $item->LineColor ?? '#808080' }}; border-radius: 4px; text-align: center; color: white; font-weight: 500;">
+            <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">
                 {{ $item->Line }}
             </td>
             <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
@@ -395,6 +407,21 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             </td>
             @endif
         </tr>
+
+        @php
+        $currentFinishMonth = $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m') : null;
+        $nextItem = $lineItems->get($index + 1);
+        $nextFinishMonth = ($nextItem && $nextItem->calc_Finish_SEW) ? $nextItem->calc_Finish_SEW->format('Y-m') : null;
+        $isMonthEnd = $currentFinishMonth && $currentFinishMonth !== $nextFinishMonth;
+        @endphp
+
+        @if($isMonthEnd)
+        <tr class="table-light fw-semibold">
+            <td colspan="4" class="text-end">Subtotal {{ $isColorLine ? 'Line' : 'Subcon' }} {{ $line }} (Finish_SEW {{ \Carbon\Carbon::createFromFormat('Y-m', $currentFinishMonth)->format('m/Y') }}):</td>
+            <td>{{ $monthlyQtyByFinish->get($currentFinishMonth, 0) }}</td>
+            <td colspan="{{ $tableColspan - 5 }}"></td>
+        </tr>
+        @endif
         @endforeach
 
         {{-- TOTAL ROW --}}
@@ -533,6 +560,11 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         window.addEventListener('load', syncProxyGeometry);
         syncProxyGeometry();
     }
+
+    // Apply dynamic line colors from data attributes to avoid template parsing issues in inline CSS.
+    document.querySelectorAll('.line-color-cell').forEach(function(cell) {
+        cell.style.backgroundColor = cell.dataset.lineColor || '#808080';
+    });
 
 </script>
 @endsection

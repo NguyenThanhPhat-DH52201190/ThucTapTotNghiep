@@ -11,7 +11,17 @@ trait CreatesLegacySchema
 {
     protected function createLegacySchema(): void
     {
-        Schema::dropAllTables();
+        $connection = config('database.default');
+        $database = config('database.connections.' . $connection . '.database');
+
+        if ($connection !== 'sqlite' || $database !== ':memory:') {
+            throw new \RuntimeException(sprintf(
+                'Refusing to reset schema on non-test database. Active connection: %s, database: %s',
+                (string) $connection,
+                (string) $database
+            ));
+        }
+
 
         $this->createUsersTable();
         $this->createColorsTable();

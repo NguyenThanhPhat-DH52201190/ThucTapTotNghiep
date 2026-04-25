@@ -12,9 +12,38 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class RevenueController extends Controller
 {
+    private function getLineCateMap(): array
+    {
+        return DB::table('colors')
+            ->selectRaw('LOWER(TRIM(name)) as line_name, UPPER(COALESCE(cate, "SUBCON")) as cate')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                return [
+                    (string) $item->line_name => (string) $item->cate,
+                ];
+            })
+            ->all();
+    }
+
     private function distributionColumn(): string
     {
         return 'Qty_dis';
+    }
+
+    private function linePriority(string $line): int
+    {
+        return match (strtolower(trim($line))) {
+            'green' => 1,
+            'blue' => 2,
+            'orange' => 3,
+            'yellow' => 4,
+            default => 5,
+        };
+    }
+
+    private function categoryPriority(?string $cate): int
+    {
+        return strtoupper((string) $cate) === 'GSV' ? 0 : 1;
     }
 
     private function getDistributionByLineSubquery()
@@ -222,6 +251,26 @@ class RevenueController extends Controller
         return $sorted;
     }
 
+    private function filterRevenuesByMonth(Collection $revenues, string $month): Collection
+    {
+        return $revenues
+            ->filter(function ($item) use ($month) {
+                $firstOPT = $item->calc_FirstOPT ?? null;
+                $finishSEW = $item->calc_Finish_SEW ?? null;
+
+                if ($firstOPT instanceof Carbon && $firstOPT->format('Y-m') === $month) {
+                    return true;
+                }
+
+                if ($finishSEW instanceof Carbon && $finishSEW->format('Y-m') === $month) {
+                    return true;
+                }
+
+                return (int) ($item->actualout ?? 0) > 0;
+            })
+            ->values();
+    }
+
     private function getMonthlyActualOutSubquery(string $month)
     {
         return DB::table('daily_revenues')
@@ -253,10 +302,11 @@ class RevenueController extends Controller
     {
         $distributionByLine = $this->getDistributionByLineSubquery();
         $lineMeta = $this->getLineMetaSubquery();
+        $lineCateMap = $this->getLineCateMap();
         $month = $request->input('month', now()->format('Y-m'));
         $monthlyActualOut = $this->getMonthlyActualOutSubquery($month);
 
-        return DB::table('revenue')
+        $revenues = DB::table('revenue')
             ->join('ocs', 'revenue.CS', '=', 'ocs.CS')
             ->leftJoinSub($distributionByLine, 'mtp_dist', function ($join) {
                 $join->on('mtp_dist.CU', '=', 'revenue.CS')
@@ -296,6 +346,45 @@ class RevenueController extends Controller
             ->orderBy('mtp_meta.FirstOPT')
             ->orderBy('revenue.CS')
             ->get();
+
+        $revenues = collect($revenues)
+            ->map(function ($item) use ($lineCateMap) {
+                $lineKey = strtolower(trim((string) ($item->SewingLine ?? '')));
+                $item->LineCate = $lineCateMap[$lineKey] ?? 'SUBCON';
+
+                return $item;
+            })
+            ->sort(function ($left, $right) {
+                $leftCategory = $this->categoryPriority($left->LineCate ?? null);
+                $rightCategory = $this->categoryPriority($right->LineCate ?? null);
+
+                if ($leftCategory !== $rightCategory) {
+                    return $leftCategory <=> $rightCategory;
+                }
+
+                $leftLine = (string) ($left->SewingLine ?? '');
+                $rightLine = (string) ($right->SewingLine ?? '');
+
+                $leftPriority = $this->linePriority($leftLine);
+                $rightPriority = $this->linePriority($rightLine);
+
+                if ($leftPriority !== $rightPriority) {
+                    return $leftPriority <=> $rightPriority;
+                }
+
+                if (strcasecmp($leftLine, $rightLine) !== 0) {
+                    return strcasecmp($leftLine, $rightLine);
+                }
+
+                if ((string) ($left->SewingLine ?? '') !== (string) ($right->SewingLine ?? '')) {
+                    return strcmp((string) ($left->SewingLine ?? ''), (string) ($right->SewingLine ?? ''));
+                }
+
+                return ((int) ($left->id ?? 0)) <=> ((int) ($right->id ?? 0));
+            })
+            ->values();
+
+        return $revenues;
     }
 
     // List view
@@ -570,6 +659,7 @@ class RevenueController extends Controller
         $holidaySet = $this->normalizeHolidaySet($holidays);
         $revenues = $this->attachMasterPlanWindows($revenues, $holidays);
         $revenues = $this->sortByFirstOPT($revenues);
+        $revenues = $this->filterRevenuesByMonth($revenues, $month);
 
         $monthLabel = Carbon::createFromFormat('Y-m', $month)->format('M');
         $days = $this->monthDays($month);
@@ -613,12 +703,15 @@ class RevenueController extends Controller
             )
             ->groupBy('dr.revenue_id', DB::raw('MONTH(dr.work_date)'));
 
-        $colorLineCase = "CASE WHEN LOWER(TRIM(r.SewingLine)) IN ('green', 'blue', 'orange', 'yellow') THEN 1 ELSE 0 END";
+        $colorLineCase = "CASE WHEN UPPER(COALESCE(c.cate, 'SUBCON')) = 'GSV' THEN 1 ELSE 0 END";
         $monthBucket = 'COALESCE(dm.month_no, MONTH(r.created_at))';
 
         $rows = DB::query()
             ->from('revenue as r')
             ->join('ocs', 'ocs.CS', '=', 'r.CS')
+            ->leftJoin('colors as c', function ($join) {
+                $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
             ->leftJoinSub($monthlyActualByRevenue, 'dm', function ($join) {
                 $join->on('dm.revenue_id', '=', 'r.id');
             })
@@ -727,6 +820,10 @@ class RevenueController extends Controller
             return back()->with('error', 'Invalid line for selected revenue row.');
         }
 
+        if (Carbon::parse($request->work_date)->isSunday()) {
+            return back()->withInput()->with('error', 'Sunday is locked. You cannot input quantity on Sundays.');
+        }
+
         $distribution = (int) DB::table('mtp')
             ->where('CU', $revenue->CS)
             ->where('Line', $revenue->SewingLine)
@@ -790,12 +887,19 @@ class RevenueController extends Controller
             'line' => 'required|string',
             'month' => 'required|date_format:Y-m',
             'matrix' => 'nullable|array',
+            'visible_revenue_ids' => 'nullable|array',
+            'visible_revenue_ids.*' => 'integer',
         ]);
 
         $line = (string) $request->line;
         $month = (string) $request->month;
         $days = $this->monthDays($month);
         $matrix = (array) $request->input('matrix', []);
+        $visibleRevenueIds = collect($request->input('visible_revenue_ids', []))
+            ->map(fn($id) => (int) $id)
+            ->filter(fn($id) => $id > 0)
+            ->unique()
+            ->values();
 
         $distributionByLine = $this->getDistributionByLineSubquery();
 
@@ -805,6 +909,9 @@ class RevenueController extends Controller
                     ->on('mtp_dist.Line', '=', 'revenue.SewingLine');
             })
             ->where('revenue.SewingLine', $line)
+            ->when($visibleRevenueIds->isNotEmpty(), function ($query) use ($visibleRevenueIds) {
+                $query->whereIn('revenue.id', $visibleRevenueIds->all());
+            })
             ->select(
                 'revenue.id',
                 'revenue.CS',
@@ -817,7 +924,7 @@ class RevenueController extends Controller
             ->keyBy('id');
 
         if ($revenues->isEmpty()) {
-            return back()->with('error', 'No revenue rows found for this line.');
+            return back()->with('error', 'No revenue rows found for this line and month.');
         }
 
         $prepared = [];
@@ -829,6 +936,14 @@ class RevenueController extends Controller
 
             foreach ($days as $day) {
                 $raw = $rowInput[$day] ?? null;
+                $workDate = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                $isSunday = Carbon::createFromFormat('Y-m-d', $workDate)->isSunday();
+
+                if ($isSunday) {
+                    $qty = 0;
+                    $rowPrepared[$day] = $qty;
+                    continue;
+                }
 
                 if ($raw === null || $raw === '') {
                     $qty = 0;

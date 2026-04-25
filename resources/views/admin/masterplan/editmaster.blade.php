@@ -123,6 +123,18 @@ $updateRoute = $updateRoute ?? route('admin.masterplan.update', $plan->id);
     </div>
 
     <div class="mb-3">
+        <label>Require_date</label>
+        <input type="date" name="Require_date" class="form-control"
+            value="{{ old('Require_date', $plan->Require_date) }}" {{ $fabricOnly ? 'readonly' : '' }}>
+    </div>
+
+    <div class="mb-3">
+        <label>Confirm_date</label>
+        <input type="date" name="Confirm_date" class="form-control"
+            value="{{ old('Confirm_date', $plan->Confirm_date) }}" {{ $fabricOnly ? 'readonly' : '' }}>
+    </div>
+
+    <div class="mb-3">
         <label>Fabric1</label>
         <input type="text" name="Fabric1" class="form-control"
             value="{{ old('Fabric1', $plan->Fabric1) }}">

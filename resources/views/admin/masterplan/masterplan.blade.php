@@ -90,6 +90,8 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         --sticky-col-3: 130px;
         --sticky-col-4: 85px;
         --sticky-col-5: 76px;
+        --sticky-col-6: 100px;
+        --sticky-col-7: 100px;
     }
 
     .masterplan-table th.sticky-col,
@@ -134,6 +136,17 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         box-shadow: 2px 0 0 rgba(15, 23, 42, 0.08);
     }
 
+    .masterplan-table td.sticky-6 {
+        left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4) + var(--sticky-col-5));
+        z-index: 2;
+    }
+
+    .masterplan-table td.sticky-7 {
+        left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4) + var(--sticky-col-5) + var(--sticky-col-6));
+        z-index: 2;
+        box-shadow: 2px 0 0 rgba(15, 23, 42, 0.08);
+    }
+
     .masterplan-table thead th {
         position: sticky;
         top: 0;
@@ -145,6 +158,8 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
     .masterplan-table th.sticky-3 { left: calc(var(--sticky-col-1) + var(--sticky-col-2)); z-index: 25; }
     .masterplan-table th.sticky-4 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3)); z-index: 24; }
     .masterplan-table th.sticky-5 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4)); z-index: 23; }
+    .masterplan-table th.sticky-6 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4) + var(--sticky-col-5)); z-index: 22; }
+    .masterplan-table th.sticky-7 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4) + var(--sticky-col-5) + var(--sticky-col-6)); z-index: 21; }
 
     .masterplan-table th,
     .masterplan-table td {
@@ -191,6 +206,11 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         text-align: center;
         padding-left: 0.5rem;
         padding-right: 0.5rem;
+    }
+
+    .masterplan-table .col-date-sticky {
+        width: var(--sticky-col-6);
+        min-width: 100px;
     }
 
     .masterplan-table .col-number {
@@ -240,7 +260,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
     </div>
 
     <input type="hidden" name="ship_balance_only" id="shipBalanceFilter" 
-        value="{{ request('ship_balance_only', 0) }}">
+        value="{{ request('ship_balance_only', 1) }}">
 
     <div class="col-md-4 d-flex align-items-end gap-2">
 
@@ -254,10 +274,10 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             Reset
         </a>
 
-        <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only') ? 'btn-warning' : 'btn-outline-warning' }}" 
+        <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only', 1) ? 'btn-warning' : 'btn-outline-warning' }}" 
             id="toggleShipBalanceBtn" title="Filter by ShipBalance">
             <i class="bi bi-funnel"></i> 
-            {{ request('ship_balance_only') ? 'ALL CU' : 'With ShipBalance' }}
+            {{ request('ship_balance_only', 1) ? 'ALL CU' : 'With ShipBalance' }}
         </button>
 
         <a href="{{ route('masterplan.export', request()->query()) }}"
@@ -292,6 +312,8 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <th scope="col" class="col-po sticky-col sticky-4">PO</th>
             <th scope="col" class="col-qty">Order_Qty</th>
             <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
+            <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Require_date</th>
+            <th scope="col" class="col-date col-date-sticky sticky-col sticky-7">Confirm_date</th>
             <th scope="col" class="col-wide col-gap-left">Fabric1</th>
             <th scope="col" class="col-date">ETA1</th>
             <th scope="col" class="col-date">Actual</th>
@@ -334,7 +356,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = 27 + $actionCols;
+        $tableColspan = 29 + $actionCols;
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -371,6 +393,8 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <td class="col-po sticky-col sticky-4">{{ $item->PO }}</td>
             <td class="col-qty">{{ $item->Order_Qty }}</td>
             <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
+            <td class="col-date col-date-sticky sticky-col sticky-6">{{ $item->Require_date ?? '' }}</td>
+            <td class="col-date col-date-sticky sticky-col sticky-7">{{ $item->Confirm_date ?? '' }}</td>
             <td class="col-gap-left">{{ $item->Fabric1 }}</td>
             <td>{{ $item->ETA1 }}</td>
             <td>{{ $item->Actual }}</td>
@@ -463,7 +487,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         @endif
         @else
         <tr>
-            <td colspan="{{ 27 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) }}" class="text-center">No data</td>
+            <td colspan="{{ 29 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>

@@ -175,10 +175,11 @@ class MasterPlanController extends Controller
             }
         }
 
-        // Filter to show only items with ShipBalance if requested
-        if ($request->filled('ship_balance_only') && $request->ship_balance_only == 1) {
+        // Default behavior: show only rows whose ShipBalance is non-zero.
+        $shipBalanceOnly = (int) $request->input('ship_balance_only', 1);
+        if ($shipBalanceOnly === 1) {
             $plan = $plan->filter(function ($item) {
-                return $item->ShipBalance !== null && $item->ShipBalance > 0;
+                return $item->ShipBalance !== null && (float) $item->ShipBalance > 0;
             });
         }
 
@@ -206,6 +207,8 @@ class MasterPlanController extends Controller
             'Style',
             'PO',
             'Qty_dis',
+            'Require_date',
+            'Confirm_date',
             'Fabric1',
             'ETA1',
             'Actual',
@@ -240,6 +243,8 @@ class MasterPlanController extends Controller
                 $item->Style ?? '',
                 $item->PO ?? '',
                 $item->Qty_dis ?? '',
+                $item->Require_date ?? '',
+                $item->Confirm_date ?? '',
                 $item->Fabric1 ?? '',
                 $item->ETA1 ?? '',
                 $item->Actual ?? '',
@@ -348,6 +353,8 @@ class MasterPlanController extends Controller
                 }
             ],
             'Qty_dis' => 'nullable|integer|min:0',
+            'Require_date' => 'nullable|date',
+            'Confirm_date' => 'nullable|date',
         ]);
 
         $ocs = DB::table('ocs')->where('CS', $request->CU)->first();
@@ -394,6 +401,8 @@ class MasterPlanController extends Controller
                 'lt' => $this->nullableInteger($request->lt),
                 'FirstOPT' => $this->nullableDate($request->FirstOPT),
                 'Qty_dis' => $this->nullableInteger($request->Qty_dis),
+                'Require_date' => $this->nullableDate($request->Require_date),
+                'Confirm_date' => $this->nullableDate($request->Confirm_date),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -513,6 +522,8 @@ class MasterPlanController extends Controller
                 }
             ],
             'Qty_dis' => 'nullable|integer|min:0',
+            'Require_date' => 'nullable|date',
+            'Confirm_date' => 'nullable|date',
         ], [
             'CU.unique' => 'CU already exists!',
         ]);
@@ -562,6 +573,8 @@ class MasterPlanController extends Controller
                 'lt' => $this->nullableInteger($request->lt),
                 'FirstOPT' => $this->nullableDate($request->FirstOPT),
                 'Qty_dis' => $this->nullableInteger($request->Qty_dis),
+                'Require_date' => $this->nullableDate($request->Require_date),
+                'Confirm_date' => $this->nullableDate($request->Confirm_date),
                 'updated_at' => now(),
             ]);
 

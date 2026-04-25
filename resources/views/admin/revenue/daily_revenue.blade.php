@@ -68,58 +68,99 @@ $canManage = auth()->user()->role === 'admin';
         @csrf
         <input type="hidden" name="line" value="{{ $line }}">
         <input type="hidden" name="month" value="{{ $month }}">
+        @foreach($revenues as $item)
+        <input type="hidden" name="visible_revenue_ids[]" value="{{ $item->id }}">
+        @endforeach
 
-        <div class="table-responsive">
-            <table class="table table-bordered table-sm align-middle text-center matrix-table">
-                <thead>
-                    <tr>
-                        <th rowspan="2" class="matrix-sticky">CS</th>
-                        <th rowspan="2">Distribution</th>
-                        <th rowspan="2">Total Month</th>
-                        @foreach($days as $day)
-                        <th>{{ $day }}</th>
+        <div class="matrix-split-wrap">
+            <div class="matrix-fixed-pane">
+                <table class="table table-bordered table-sm align-middle text-center matrix-fixed-table matrix-shared-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">CS</th>
+                            <th rowspan="2">Distribution</th>
+                            <th rowspan="2">Total Month</th>
+                        </tr>
+                        <tr></tr>
+                    </thead>
+                    <tbody>
+                        @foreach($revenues as $item)
+                        <tr class="matrix-data-row">
+                            <td>{{ $item->CS }}</td>
+                            <td>{{ $item->Distribution }}</td>
+                            <td>{{ $item->actualout }}</td>
+                        </tr>
                         @endforeach
-                    </tr>
-                    <tr>
-                        @foreach($days as $day)
-                        <th>{{ $day . '-' . $monthLabel }}</th>
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold table-light matrix-total-row">
+                            <td>Total</td>
+                            <td>{{ $distributionTotal }}</td>
+                            <td>{{ $monthTotal }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="matrix-scroll-pane">
+                <table class="table table-bordered table-sm align-middle text-center matrix-days-table matrix-shared-table">
+                    <thead>
+                        <tr>
+                            @foreach($days as $day)
+                            @php
+                            $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                            $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
+                            @endphp
+                            <th class="{{ $isSunday ? 'matrix-sunday-col' : '' }}">{{ $day }}</th>
+                            @endforeach
+                        </tr>
+                        <tr>
+                            @foreach($days as $day)
+                            @php
+                            $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                            $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
+                            @endphp
+                            <th class="{{ $isSunday ? 'matrix-sunday-col' : '' }}">{{ $day . '-' . $monthLabel }}</th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($revenues as $item)
+                        <tr class="matrix-data-row">
+                            @foreach($days as $day)
+                            @php
+                            $qtyValue = old('matrix.' . $item->id . '.' . $day, $dailyMatrix[$item->id][$day] ?? '');
+                            $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                            $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
+                            $inputClasses = 'form-control form-control-sm matrix-input' . ($isSunday ? ' matrix-input-locked' : '');
+                            @endphp
+                            <td class="{{ $isSunday ? 'matrix-sunday-col' : '' }}">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    class="{{ $inputClasses }}"
+                                    name="matrix[{{ $item->id }}][{{ $day }}]"
+                                    value="{{ $isSunday ? 0 : $qtyValue }}"
+                                    @if($isSunday) readonly tabindex="-1" @endif
+                                >
+                            </td>
+                            @endforeach
+                        </tr>
                         @endforeach
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($revenues as $item)
-                    <tr>
-                        <td class="matrix-sticky">{{ $item->CS }}</td>
-                        <td>{{ $item->Distribution }}</td>
-                        <td>{{ $item->actualout }}</td>
-                        @foreach($days as $day)
-                        @php
-                        $qtyValue = old('matrix.' . $item->id . '.' . $day, $dailyMatrix[$item->id][$day] ?? '');
-                        @endphp
-                        <td>
-                            <input
-                                type="number"
-                                min="0"
-                                class="form-control form-control-sm matrix-input"
-                                name="matrix[{{ $item->id }}][{{ $day }}]"
-                                value="{{ $qtyValue }}"
-                            >
-                        </td>
-                        @endforeach
-                    </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr class="fw-bold table-light">
-                        <td class="matrix-sticky">Total</td>
-                        <td>{{ $distributionTotal }}</td>
-                        <td>{{ $monthTotal }}</td>
-                        @foreach($days as $day)
-                        <td>{{ $dayTotals[$day] ?? 0 }}</td>
-                        @endforeach
-                    </tr>
-                </tfoot>
-            </table>
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold table-light matrix-total-row">
+                            @foreach($days as $day)
+                            @php
+                            $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                            $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
+                            @endphp
+                            <td class="{{ $isSunday ? 'matrix-sunday-col' : '' }}">{{ $dayTotals[$day] ?? 0 }}</td>
+                            @endforeach
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </div>
 
         <button type="submit" class="btn btn-primary revenue-action-btn">Save</button>
@@ -259,21 +300,102 @@ $canManage = auth()->user()->role === 'admin';
     width: 170px;
 }
 
-.matrix-table .matrix-input {
+.matrix-shared-table {
+    margin-bottom: 0;
+}
+
+.matrix-shared-table th,
+.matrix-shared-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.matrix-shared-table thead tr {
+    height: 48px;
+}
+
+.matrix-data-row {
+    height: 56px;
+}
+
+.matrix-total-row {
+    height: 52px;
+}
+
+.matrix-fixed-table {
+    width: 430px;
+    table-layout: fixed;
+}
+
+.matrix-fixed-table th,
+.matrix-fixed-table td {
+    background-color: #ffffff;
+}
+
+.matrix-fixed-table th:nth-child(1),
+.matrix-fixed-table td:nth-child(1) {
+    width: 150px;
+}
+
+.matrix-fixed-table th:nth-child(2),
+.matrix-fixed-table td:nth-child(2) {
+    width: 140px;
+}
+
+.matrix-fixed-table th:nth-child(3),
+.matrix-fixed-table td:nth-child(3) {
+    width: 140px;
+}
+
+.matrix-days-table {
+    width: max-content;
+    min-width: 100%;
+}
+
+.matrix-days-table th,
+.matrix-days-table td {
+    min-width: 110px;
+}
+
+.matrix-days-table .matrix-input {
     min-width: 72px;
 }
 
-.matrix-table .matrix-input-locked {
-    background-color: #f3f4f6;
-    cursor: not-allowed;
+.matrix-split-wrap {
+    display: grid;
+    grid-template-columns: 430px minmax(0, 1fr);
+    max-width: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.matrix-fixed-pane {
+    border-right: 1px solid #dee2e6;
+    background: #fff;
+}
+
+.matrix-scroll-pane {
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: #fff;
+}
+
+.matrix-days-table .matrix-sunday-col {
+    background-color: #f8fafc;
     color: #6b7280;
 }
 
-.matrix-table .matrix-sticky {
-    position: sticky;
-    left: 0;
-    background: #fff;
-    z-index: 2;
+.matrix-days-table thead .matrix-sunday-col {
+    background-color: #fdecec;
+    color: #b42318;
+    font-weight: 700;
+}
+
+.matrix-days-table .matrix-input-locked {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+    color: #6b7280;
 }
 </style>
 

@@ -80,17 +80,25 @@ $canManage = auth()->user()->role === 'admin';
     </thead>
     <tbody>
         @php
-        $grouped = collect($revenues)->groupBy('SewingLine');
+        $grouped = collect($revenues)->groupBy('LineCate');
+        $canManageColspan = $canManage ? 10 : 8;
         @endphp
 
-        @foreach($grouped as $line => $items)
+        @foreach($grouped as $cate => $items)
+        <tr>
+            <td colspan="{{ $canManageColspan }}" class="revenue-group-cell revenue-group-{{ strtolower($cate) }}">
+                {{ strtoupper($cate) }}
+            </td>
+        </tr>
+
+        @foreach($items->groupBy('SewingLine') as $line => $lineItems)
         <tr class="table-light fw-bold">
-            <td colspan="{{ $canManage ? 10 : 8 }}">
+            <td colspan="{{ $canManageColspan }}">
                 Line: {{ $line }}
             </td>
         </tr>
 
-        @foreach($items as $item)
+        @foreach($lineItems as $item)
         <tr>
             <td class="line-badge js-line-color" data-line-color="{{ $item->LineColor ?? '#808080' }}">
                 {{ $item->SewingLine }}
@@ -124,22 +132,63 @@ $canManage = auth()->user()->role === 'admin';
         @endforeach
 
         <tr>
-            <td colspan="{{ $canManage ? 10 : 8 }}" class="text-end">
+            <td colspan="{{ $canManageColspan }}" class="text-end">
                 <a href="{{ route('revenue.daily.line', ['line' => $line, 'month' => request('month', now()->format('Y-m'))]) }}" class="btn btn-outline-primary btn-sm">
                     Daily Revenue - {{ $line }}
                 </a>
             </td>
         </tr>
         @endforeach
+        @endforeach
     </tbody>
 </table>
 
 <style>
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+    --revenue-header-height: 46px;
+}
+
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    background: #f8fafc;
+}
+
 .line-badge {
     border-radius: 4px;
     text-align: center;
     color: #fff;
     font-weight: 500;
+}
+
+.table tbody td.revenue-group-cell {
+    position: sticky;
+    top: var(--revenue-header-height);
+    z-index: 8;
+    color: #ffffff !important;
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
+    border-left: 8px solid transparent;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.15), 0 3px 10px rgba(15, 23, 42, 0.2);
+}
+
+.table tbody td.revenue-group-gsv {
+    background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%);
+    border-left-color: #facc15;
+    color: #ffffff !important;
+}
+
+.table tbody td.revenue-group-subcon {
+    background: linear-gradient(90deg, #111827 0%, #374151 100%);
+    border-left-color: #22c55e;
+    color: #ffffff !important;
 }
 
 .revenue-action-btn {

@@ -122,6 +122,22 @@
         </div>
 
         <div class="mb-3">
+            <label>Require_date</label>
+            <input type="date" name="Require_date" class="form-control" value="{{ old('Require_date') }}">
+            @error('Require_date')
+            <div class="text-danger" style="font-size: 0.875rem;">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="mb-3">
+            <label>Confirm_date</label>
+            <input type="date" name="Confirm_date" class="form-control" value="{{ old('Confirm_date') }}">
+            @error('Confirm_date')
+            <div class="text-danger" style="font-size: 0.875rem;">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="mb-3">
             <label>Fabric1</label>
             <input type="text" name="Fabric1" class="form-control" value="{{ old('Fabric1') }}">
         </div>

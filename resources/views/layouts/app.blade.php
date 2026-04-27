@@ -56,7 +56,7 @@
 
         <!-- SIDEBAR -->
         <div class="sidebar p-3">
-            <h5 class="text-white mb-4 text-center"> GWVN</h5>
+            <h5 class="text-white mb-4 text-center"> GSV</h5>
 
             @if($role === 'admin')
             <a class="d-flex justify-content-between align-items-center text-white fw-semibold mb-2 px-3 py-2 rounded"
@@ -98,10 +98,6 @@
                 </a>
             </div>
             @elseif($role === 'ppic')
-            <a href="{{ route('ordercutsheet.view') }}" class="d-flex align-items-center gap-2 mb-1">
-                <i class="bi bi-speedometer2"></i>
-                Order Cut Sheet
-            </a>
             <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-people"></i>
                 Master Plan
@@ -119,10 +115,6 @@
             <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-people"></i>
                 Master Plan
-            </a>
-            <a href="{{ route('revenue.view') }}" class="d-flex align-items-center gap-2">
-                <i class="bi bi-bar-chart"></i>
-                Revenue
             </a>
             @endif
         </div>

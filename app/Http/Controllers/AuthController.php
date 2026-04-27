@@ -18,7 +18,7 @@ class AuthController extends Controller
     {
         return match ($role) {
             User::ROLE_ADMIN => 'admin.ocs.index',
-            User::ROLE_PPIC => 'ordercutsheet.view',
+            User::ROLE_PPIC => 'masterplan.view',
             User::ROLE_IE, User::ROLE_WAREHOUSE => 'masterplan.view',
             default => 'dashboard',
         };

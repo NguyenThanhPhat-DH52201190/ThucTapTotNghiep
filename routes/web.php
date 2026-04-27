@@ -42,11 +42,11 @@ Route::middleware('auth')->group(function () {
 
     // View-only pages by role
     Route::get('/order-cutsheet', [OCSController::class, 'index'])
-        ->middleware('role:admin,ppic')
+        ->middleware('role:admin')
         ->name('ordercutsheet.view');
 
     Route::get('/order-cutsheet/export', [OCSController::class, 'export'])
-        ->middleware('role:admin,ppic')
+        ->middleware('role:admin')
         ->name('ordercutsheet.export');
 
     Route::get('/master-plan', [MasterPlanController::class, 'index'])
@@ -58,27 +58,27 @@ Route::middleware('auth')->group(function () {
         ->name('masterplan.export');
 
     Route::get('/revenue-view', [RevenueController::class, 'index'])
-        ->middleware('role:admin,ie,warehouse')
+        ->middleware('role:admin,ie')
         ->name('revenue.view');
 
     Route::get('/revenue-view/export', [RevenueController::class, 'export'])
-        ->middleware('role:admin,ie,warehouse')
+        ->middleware('role:admin,ie')
         ->name('revenue.export');
 
     Route::get('/revenue/sewing-lines/{cs}', [RevenueController::class, 'getSewingLinesByCs'])
-        ->middleware('role:admin,ie,warehouse')
+        ->middleware('role:admin,ie')
         ->name('revenue.sewing-lines');
 
     Route::get('/revenue/distribution', [RevenueController::class, 'getDistributionByCsAndLine'])
-        ->middleware('role:admin,ie,warehouse')
+        ->middleware('role:admin,ie')
         ->name('revenue.distribution');
 
     Route::get('/revenue/daily', [RevenueController::class, 'dailyRevenue'])
-        ->middleware('role:admin,ie,warehouse')
+        ->middleware('role:admin,ie')
         ->name('revenue.daily.line');
 
     Route::get('/revenue/monthly-report', [RevenueController::class, 'monthlyReport'])
-        ->middleware('role:admin,ie,warehouse')
+        ->middleware('role:admin,ie')
         ->name('revenue.monthly-report');
 
     Route::post('/revenue/daily', [RevenueController::class, 'storeDailyRevenue'])

@@ -290,10 +290,6 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             Add
         </a>
 
-        <a href="{{ route('admin.colors.index') }}" class="btn btn-outline-primary">
-            Line Colors
-        </a>
-
         <a href="{{ route('admin.holidays.index') }}" class="btn btn-success ">
             View Holiday
         </a>

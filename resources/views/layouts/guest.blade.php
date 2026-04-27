@@ -23,7 +23,7 @@
             <div class="col-12 col-md-8 col-lg-5">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body p-4 p-md-5">
-                        <span class="badge text-bg-warning text-dark d-block w-100 text-center fs-6 mb-3">GLOBAL WEAR VIET NAM</span>
+                        <span class="badge text-bg-warning text-dark d-block w-100 text-center fs-6 mb-3">GLOBAL SAFEWEAR VIET NAM</span>
                         <h1 class="h3 mt-3 mb-1 fw-bold">@yield('heading')</h1>
                         @hasSection('subtitle')
                             <p class="text-secondary mb-3">@yield('subtitle')</p>

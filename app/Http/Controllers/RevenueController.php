@@ -694,38 +694,78 @@ class RevenueController extends Controller
 
         $year = (int) $request->input('year', now()->year);
 
-        $monthlyActualByRevenue = DB::table('daily_revenues as dr')
-            ->whereYear('dr.work_date', $year)
-            ->select(
-                'dr.revenue_id',
-                DB::raw('MONTH(dr.work_date) as month_no'),
-                DB::raw('SUM(COALESCE(dr.qty, 0)) as monthly_qty')
-            )
-            ->groupBy('dr.revenue_id', DB::raw('MONTH(dr.work_date)'));
-
         $colorLineCase = "CASE WHEN UPPER(COALESCE(c.cate, 'SUBCON')) = 'GSV' THEN 1 ELSE 0 END";
-        $monthBucket = 'COALESCE(dm.month_no, MONTH(r.created_at))';
 
-        $rows = DB::query()
+        $planRevenues = DB::query()
             ->from('revenue as r')
             ->join('ocs', 'ocs.CS', '=', 'r.CS')
             ->leftJoin('colors as c', function ($join) {
                 $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
-            ->leftJoinSub($monthlyActualByRevenue, 'dm', function ($join) {
-                $join->on('dm.revenue_id', '=', 'r.id');
-            })
-            ->whereRaw('(YEAR(r.created_at) = ? OR dm.revenue_id IS NOT NULL)', [$year])
             ->select(
-                DB::raw($monthBucket . ' as month_no'),
-                DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 1 THEN COALESCE(r.planout, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as gsv_plan'),
-                DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 1 THEN COALESCE(dm.monthly_qty, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as gsv_actual'),
-                DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 0 THEN COALESCE(r.planout, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as subcon_plan'),
-                DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 0 THEN COALESCE(dm.monthly_qty, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as subcon_actual')
+                'r.id',
+                'r.CS',
+                'r.SewingLine',
+                'r.planout',
+                'ocs.CMT as cmp',
+                DB::raw("UPPER(COALESCE(c.cate, 'SUBCON')) as line_cate")
             )
-            ->groupByRaw($monthBucket)
-            ->orderByRaw($monthBucket)
+            ->orderBy('r.SewingLine')
+            ->orderBy('r.CS')
+            ->orderBy('r.id')
             ->get();
+
+        $holidays = DB::table('holidays')->pluck('holiday')->toArray();
+        $planRevenues = $this->attachMasterPlanWindows($planRevenues, $holidays);
+
+        $planBuckets = [];
+        foreach ($planRevenues as $item) {
+            $monthNo = null;
+            $firstOPT = $item->calc_FirstOPT ?? null;
+            $finishSEW = $item->calc_Finish_SEW ?? null;
+
+            if ($firstOPT instanceof Carbon && (int) $firstOPT->format('Y') === $year) {
+                $monthNo = (int) $firstOPT->format('n');
+            } elseif ($finishSEW instanceof Carbon && (int) $finishSEW->format('Y') === $year) {
+                $monthNo = (int) $finishSEW->format('n');
+            }
+
+            if (!$monthNo || $monthNo < 1 || $monthNo > 12) {
+                continue;
+            }
+
+            if (!isset($planBuckets[$monthNo])) {
+                $planBuckets[$monthNo] = (object) [
+                    'gsv_plan' => 0.0,
+                    'subcon_plan' => 0.0,
+                ];
+            }
+
+            $planAmount = ((float) ($item->planout ?? 0)) * ((float) ($item->cmp ?? 0));
+            if (strtoupper((string) ($item->line_cate ?? 'SUBCON')) === 'GSV') {
+                $planBuckets[$monthNo]->gsv_plan += $planAmount;
+            } else {
+                $planBuckets[$monthNo]->subcon_plan += $planAmount;
+            }
+        }
+
+        $planRows = collect($planBuckets);
+
+        $actualRows = DB::table('daily_revenues as dr')
+            ->join('revenue as r', 'r.id', '=', 'dr.revenue_id')
+            ->join('ocs', 'ocs.CS', '=', 'r.CS')
+            ->leftJoin('colors as c', function ($join) {
+                $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
+            ->whereYear('dr.work_date', $year)
+            ->select(
+                DB::raw('MONTH(dr.work_date) as month_no'),
+                DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 1 THEN COALESCE(dr.qty, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as gsv_actual'),
+                DB::raw('SUM(CASE WHEN ' . $colorLineCase . ' = 0 THEN COALESCE(dr.qty, 0) * COALESCE(ocs.CMT, 0) ELSE 0 END) as subcon_actual')
+            )
+            ->groupByRaw('MONTH(dr.work_date)')
+            ->get()
+            ->keyBy('month_no');
 
         $monthLabels = [];
         for ($m = 1; $m <= 12; $m++) {
@@ -739,12 +779,13 @@ class RevenueController extends Controller
         $tableRows = [];
 
         for ($m = 1; $m <= 12; $m++) {
-            $monthRow = $rows->firstWhere('month_no', $m);
+            $planRow = $planRows->get($m);
+            $actualRow = $actualRows->get($m);
 
-            $gsvPlan = (float) ($monthRow->gsv_plan ?? 0);
-            $gsvActual = (float) ($monthRow->gsv_actual ?? 0);
-            $subconPlan = (float) ($monthRow->subcon_plan ?? 0);
-            $subconActual = (float) ($monthRow->subcon_actual ?? 0);
+            $gsvPlan = (float) ($planRow->gsv_plan ?? 0);
+            $gsvActual = (float) ($actualRow->gsv_actual ?? 0);
+            $subconPlan = (float) ($planRow->subcon_plan ?? 0);
+            $subconActual = (float) ($actualRow->subcon_actual ?? 0);
 
             $gsvPlanData[] = $gsvPlan;
             $gsvActualData[] = $gsvActual;

@@ -733,8 +733,17 @@ class RevenueController extends Controller
             return $priorityA <=> $priorityB ?: strcasecmp($a, $b);
         };
 
-        $daysInMonth = Carbon::createFromFormat('Y-m', $month)->daysInMonth;
-        $days = range(1, $daysInMonth);
+        $monthStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+        $holidayRows = DB::table('holidays')->pluck('holiday')->toArray();
+        $holidaySet = $this->normalizeHolidaySet($holidayRows);
+        $daysInMonth = $monthStart->daysInMonth;
+        $days = collect(range(1, $daysInMonth))
+            ->filter(function ($day) use ($monthStart, $holidaySet) {
+                $date = $monthStart->copy()->day((int) $day);
+                return !$date->isSunday() && !isset($holidaySet[$date->toDateString()]);
+            })
+            ->values()
+            ->all();
         $dailyPlanRevenue = [];
         $dailyActualRevenue = [];
 
@@ -754,6 +763,17 @@ class RevenueController extends Controller
                 DB::raw('TRIM(r.SewingLine) as sewing_line'),
                 DB::raw('DAY(dr.work_date) as day_no'),
                 DB::raw('SUM(COALESCE(dr.qty, 0) * COALESCE(ocs.CMT, 0)) as revenue_amount')
+            )
+            ->groupBy(DB::raw('TRIM(r.SewingLine)'), DB::raw('DAY(dr.work_date)'))
+            ->get();
+
+        $dailyOutputRows = DB::table('daily_revenues as dr')
+            ->join('revenue as r', 'dr.revenue_id', '=', 'r.id')
+            ->whereRaw("DATE_FORMAT(dr.work_date, '%Y-%m') = ?", [$month])
+            ->select(
+                DB::raw('TRIM(r.SewingLine) as sewing_line'),
+                DB::raw('DAY(dr.work_date) as day_no'),
+                DB::raw('SUM(COALESCE(dr.qty, 0)) as total_qty')
             )
             ->groupBy(DB::raw('TRIM(r.SewingLine)'), DB::raw('DAY(dr.work_date)'))
             ->get();
@@ -815,6 +835,40 @@ class RevenueController extends Controller
             $dailyActualRevenue[$day] = round($dailyTotals[$day], 2);
         }
 
+        $outputLines = collect($dailyOutputRows)
+            ->pluck('sewing_line')
+            ->filter()
+            ->unique()
+            ->sort($lineSorter)
+            ->values();
+
+        $dailyOutputMatrix = [];
+        $outputLineTotals = [];
+        $dailyOutputTotals = array_fill_keys($days, 0.0);
+
+        foreach ($outputLines as $line) {
+            foreach ($days as $day) {
+                $dailyOutputMatrix[$line][$day] = 0.0;
+            }
+            $outputLineTotals[$line] = 0.0;
+        }
+
+        foreach ($dailyOutputRows as $row) {
+            $line = (string) $row->sewing_line;
+            $day = (int) $row->day_no;
+            $qty = (float) $row->total_qty;
+
+            if (!isset($dailyOutputMatrix[$line][$day])) {
+                continue;
+            }
+
+            $dailyOutputMatrix[$line][$day] = $qty;
+            $outputLineTotals[$line] += $qty;
+            $dailyOutputTotals[$day] += $qty;
+        }
+
+        $outputGrandTotal = round(array_sum($outputLineTotals), 2);
+
         $totalRevenue = round(array_sum($lineTotals), 2);
         $totalQty = 0;
 
@@ -832,12 +886,27 @@ class RevenueController extends Controller
             ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
             ->sum(DB::raw('COALESCE(r.planout, 0) * COALESCE(ocs.CMT, 0)'));
 
-        $dailyTotalPlanout = [];
+        $workingDaysCount = 0;
         foreach ($days as $day) {
-            $dailyTotalPlanout[$day] = round($totalPlanoutAllLines, 2);
+            $date = $monthStart->copy()->day($day);
+            if ($date->isSunday() || isset($holidaySet[$date->toDateString()])) {
+                continue;
+            }
+            $workingDaysCount++;
         }
 
-        $targetTotal = round($totalPlanoutAllLines * $daysInMonth, 2);
+        $dailyTarget = $workingDaysCount > 0
+            ? round($totalPlanoutAllLines / $workingDaysCount, 2)
+            : 0.0;
+
+        $dailyTotalPlanout = [];
+        foreach ($days as $day) {
+            $date = $monthStart->copy()->day($day);
+            $isNonWorkingDay = $date->isSunday() || isset($holidaySet[$date->toDateString()]);
+            $dailyTotalPlanout[$day] = $isNonWorkingDay ? 0.0 : $dailyTarget;
+        }
+
+        $targetTotal = round(array_sum($dailyTotalPlanout), 2);
 
         return view('admin.revenue.daily_revenue_summary', compact(
             'month',
@@ -854,7 +923,12 @@ class RevenueController extends Controller
             'dailyPlanRevenue',
             'dailyActualRevenue',
             'dailyTotalPlanout',
-            'daysInMonth'
+            'daysInMonth',
+            'outputLines',
+            'dailyOutputMatrix',
+            'outputLineTotals',
+            'dailyOutputTotals',
+            'outputGrandTotal'
         ));
     }
 

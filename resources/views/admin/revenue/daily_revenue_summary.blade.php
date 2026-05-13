@@ -70,18 +70,6 @@
     </div>
 </div>
 
-<!-- Daily Revenue Chart -->
-<div class="mb-5">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h6 class="card-title">Daily Revenue - {{ $monthLabel }}</h6>
-            <div style="position: relative; height: 400px;">
-                <canvas id="dailyRevenueChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Daily Revenue + Planout Chart -->
 <div class="mb-5">
     <div class="card shadow-sm">
@@ -89,6 +77,63 @@
             <h6 class="card-title">Daily Revenue & Total Planout - {{ $monthLabel }}</h6>
             <div style="position: relative; height: 400px;">
                 <canvas id="dailyRevenuePlanoutChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Line Output Table -->
+<div class="mb-5">
+    <h5 class="text-uppercase fw-bold">Daily Line Output - {{ strtoupper($monthLabel) }}</h5>
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm matrix-table align-middle">
+            <thead>
+                <tr>
+                    <th class="sticky-col">Date</th>
+                    @foreach($days as $day)
+                        <th class="text-center">{{ str_pad($day, 2, '0', STR_PAD_LEFT) }}-{{ $monthLabel }}</th>
+                    @endforeach
+                    <th class="text-center total-col">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($outputLines as $line)
+                    <tr>
+                        <td class="sticky-col fw-bold">{{ strtoupper($line) }}</td>
+                        @foreach($days as $day)
+                            @php $qty = $dailyOutputMatrix[$line][$day] ?? 0; @endphp
+                            <td class="text-end amount-cell">
+                                @if($qty > 0)
+                                    {{ number_format($qty, 0) }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        @endforeach
+                        <td class="text-end fw-bold total-col">{{ number_format($outputLineTotals[$line] ?? 0, 0) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold total-row">
+                    <td class="sticky-col">Total</td>
+                    @foreach($days as $day)
+                        <td class="text-end">{{ number_format($dailyOutputTotals[$day] ?? 0, 0) }}</td>
+                    @endforeach
+                    <td class="text-end total-col">{{ number_format($outputGrandTotal, 0) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Daily Line Output Chart -->
+<div class="mb-5">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h6 class="card-title">Daily Line Output - {{ strtoupper($monthLabel) }}</h6>
+            <div style="position: relative; height: 400px;">
+                <canvas id="dailyLineOutputChart"></canvas>
             </div>
         </div>
     </div>
@@ -166,6 +211,7 @@
     $dailyPlanData = array_values($dailyPlanRevenue);
     $dailyActualData = array_values($dailyActualRevenue);
     $dailyTotalPlanoutData = array_values($dailyTotalPlanout ?? []);
+    $dailyOutputTotalData = array_values($dailyOutputTotals ?? []);
 @endphp
 
 <script>
@@ -173,7 +219,8 @@ window.chartDataConfig = {
     days: @json($days),
     dailyPlanRevenue: @json($dailyPlanData),
     dailyActualRevenue: @json($dailyActualData),
-    dailyTotalPlanout: @json($dailyTotalPlanoutData)
+    dailyTotalPlanout: @json($dailyTotalPlanoutData),
+    dailyOutputTotals: @json($dailyOutputTotalData)
 };
 </script>
 
@@ -181,73 +228,6 @@ window.chartDataConfig = {
 document.addEventListener('DOMContentLoaded', function() {
     // Get data from config
     const days = window.chartDataConfig.days;
-
-    // Daily Revenue Line Chart
-    const dailyCtx = document.getElementById('dailyRevenueChart');
-    if (dailyCtx) {
-        new Chart(dailyCtx, {
-            type: 'line',
-            data: {
-                labels: window.chartDataConfig.days,
-                datasets: [
-                    {
-                        label: 'Daily Revenue',
-                        data: window.chartDataConfig.dailyPlanRevenue,
-                        borderColor: '#FFC300',
-                        backgroundColor: 'rgba(255, 195, 0, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#FFC300',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointHoverRadius: 7
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Revenue ($)',
-                            font: {
-                                weight: 'bold'
-                            }
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Date',
-                            font: {
-                                weight: 'bold'
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
 
     const dailyPlanoutCtx = document.getElementById('dailyRevenuePlanoutChart');
     if (dailyPlanoutCtx) {
@@ -303,6 +283,70 @@ document.addEventListener('DOMContentLoaded', function() {
                         title: {
                             display: true,
                             text: 'Revenue ($)',
+                            font: {
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date',
+                            font: {
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const dailyOutputCtx = document.getElementById('dailyLineOutputChart');
+    if (dailyOutputCtx) {
+        new Chart(dailyOutputCtx, {
+            type: 'line',
+            data: {
+                labels: days,
+                datasets: [
+                    {
+                        label: 'Daily Line Output',
+                        data: window.chartDataConfig.dailyOutputTotals,
+                        borderColor: '#9333EA',
+                        backgroundColor: 'rgba(147, 51, 234, 0.10)',
+                        borderWidth: 3,
+                        tension: 0.25,
+                        fill: false,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#9333EA'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return Number(value).toLocaleString();
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Output Qty',
                             font: {
                                 weight: 'bold'
                             }

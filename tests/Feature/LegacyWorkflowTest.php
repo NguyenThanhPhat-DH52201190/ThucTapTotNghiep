@@ -464,7 +464,7 @@ class LegacyWorkflowTest extends TestCase
         $this->assertDatabaseHas('mtp', ['id' => $id]);
     }
 
-    public function test_ship_balance_filter_shows_only_positive_values(): void
+    public function test_ship_balance_filter_hides_only_computed_zero_values(): void
     {
         DB::table('ocs')->insert([
             [
@@ -506,6 +506,19 @@ class LegacyWorkflowTest extends TestCase
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'CS' => 'CU-NULL',
+                'CsDate' => '2026-04-20',
+                'SNo' => 'S-NULL',
+                'Sname' => 'Style NULL',
+                'Customer' => 'Customer NULL',
+                'Color' => 'Blue',
+                'ONum' => 'PO-NULL',
+                'CMT' => 10,
+                'Qty' => 500,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
         DB::table('mtp')->insert([
@@ -536,6 +549,15 @@ class LegacyWorkflowTest extends TestCase
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'CU' => 'CU-NULL',
+                'Line' => 'Blue',
+                'LineColor' => '#0000FF',
+                'Qty_dis' => 90,
+                'ExQty' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
         $this->actingAs($this->createUserRecord([
@@ -548,8 +570,10 @@ class LegacyWorkflowTest extends TestCase
         $this->get(route('masterplan.view', ['ship_balance_only' => 1]))
             ->assertOk()
             ->assertSee('CU-POS')
+            ->assertSee('CU-NEG')
+            ->assertSee('CU-NULL')
             ->assertDontSee('CU-ZERO')
-            ->assertDontSee('CU-NEG');
+            ->assertDontSee('S-ZERO');
     }
 
     public function test_admin_can_create_and_update_color_master_record(): void

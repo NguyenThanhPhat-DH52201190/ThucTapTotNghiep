@@ -175,11 +175,15 @@ class MasterPlanController extends Controller
             }
         }
 
-        // Default behavior: show only rows whose ShipBalance is non-zero.
+        // Default behavior: hide only rows that were processed and computed to zero.
         $shipBalanceOnly = (int) $request->input('ship_balance_only', 1);
         if ($shipBalanceOnly === 1) {
             $plan = $plan->filter(function ($item) {
-                return $item->ShipBalance !== null && (float) $item->ShipBalance > 0;
+                if ($item->ExQty === null) {
+                    return true;
+                }
+
+                return (float) ($item->ShipBalance ?? 0) !== 0.0;
             });
         }
 

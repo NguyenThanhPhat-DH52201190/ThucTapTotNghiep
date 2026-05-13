@@ -275,9 +275,9 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         </a>
 
         <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only', 1) ? 'btn-warning' : 'btn-outline-warning' }}" 
-            id="toggleShipBalanceBtn" title="Filter by ShipBalance">
+            id="toggleShipBalanceBtn" title="{{ request('ship_balance_only', 1) ? 'Hiding rows where ExQty is entered and ShipBalance = 0' : 'Showing all rows' }}">
             <i class="bi bi-funnel"></i> 
-            {{ request('ship_balance_only', 1) ? 'ALL CU' : 'With ShipBalance' }}
+            {{ request('ship_balance_only', 1) ? 'Hide ' : 'Show all rows' }}
         </button>
 
         <a href="{{ route('masterplan.export', request()->query()) }}"

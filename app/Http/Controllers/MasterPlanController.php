@@ -78,6 +78,7 @@ class MasterPlanController extends Controller
             ->toArray();
 
         $colorLinePriority = [
+            'pending cs' => 0,
             'blue' => 1,
             'yellow' => 2,
             'green' => 3,
@@ -98,16 +99,16 @@ class MasterPlanController extends Controller
                     return $isColorA ? -1 : 1;
                 }
 
-                $dateCompare = strcmp((string) ($a->FirstOPT ?? ''), (string) ($b->FirstOPT ?? ''));
-                if ($dateCompare !== 0) {
-                    return $dateCompare;
-                }
-
                 $rankA = $colorLinePriority[$lineA] ?? 999;
                 $rankB = $colorLinePriority[$lineB] ?? 999;
 
                 if ($isColorA && $rankA !== $rankB) {
                     return $rankA <=> $rankB;
+                }
+
+                $dateCompare = strcmp((string) ($a->FirstOPT ?? ''), (string) ($b->FirstOPT ?? ''));
+                if ($dateCompare !== 0) {
+                    return $dateCompare;
                 }
 
                 if ($lineA !== $lineB) {

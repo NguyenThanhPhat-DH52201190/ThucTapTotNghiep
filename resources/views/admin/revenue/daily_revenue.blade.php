@@ -219,6 +219,52 @@ $canManage = auth()->user()->role === 'admin';
     @endif
 </table>
 
+<!-- Daily Revenue Summary Table -->
+<div class="mt-5 mb-4">
+    <h5>Daily Revenue Summary - {{ $monthLabel }}</h5>
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm text-center daily-summary-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    @foreach($days as $day)
+                    @php
+                    $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                    $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
+                    @endphp
+                    <th class="{{ $isSunday ? 'table-danger text-white' : '' }}">{{ $day }}-{{ $monthLabel }}</th>
+                    @endforeach
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fw-bold">Plan Revenue</td>
+                    @foreach($days as $day)
+                    @php
+                    $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                    $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
+                    @endphp
+                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyPlanRevenue[$day] ?? 0, 0) }}</td>
+                    @endforeach
+                    <td class="fw-bold">${{ number_format($totalPlanRevenue, 0) }}</td>
+                </tr>
+                <tr>
+                    <td class="fw-bold">Actual Revenue</td>
+                    @foreach($days as $day)
+                    @php
+                    $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                    $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
+                    @endphp
+                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyActualRevenue[$day] ?? 0, 0) }}</td>
+                    @endforeach
+                    <td class="fw-bold">${{ number_format($totalAmount, 0) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <style>
 .line-badge {
     border-radius: 4px;
@@ -396,6 +442,16 @@ $canManage = auth()->user()->role === 'admin';
     background-color: #f3f4f6;
     cursor: not-allowed;
     color: #6b7280;
+}
+
+.daily-summary-table {
+    max-width: 100%;
+}
+
+.daily-summary-table th,
+.daily-summary-table td {
+    padding: 8px 6px;
+    font-size: 0.875rem;
 }
 </style>
 

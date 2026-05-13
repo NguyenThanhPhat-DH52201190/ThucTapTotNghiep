@@ -53,6 +53,11 @@ $canManage = auth()->user()->role === 'admin';
             Monthly Report
         </a>
 
+        <a href="{{ route('revenue.daily.summary', ['month' => request('month', now()->format('Y-m'))]) }}"
+            class="btn btn-info revenue-action-btn text-nowrap">
+            <i class="bi bi-graph-up"></i> Daily Summary
+        </a>
+
         @if($canManage)
         <a href="{{ route('admin.revenue.create') }}" class="btn btn-primary revenue-action-btn">
             Add

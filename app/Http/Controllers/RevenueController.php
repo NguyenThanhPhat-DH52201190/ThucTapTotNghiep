@@ -683,7 +683,179 @@ class RevenueController extends Controller
             return ((float) $item->actualout) * ((float) $item->cmp);
         });
 
-        return view('admin.revenue.daily_revenue', compact('line', 'month', 'monthLabel', 'revenues', 'days', 'dailyMatrix', 'holidaySet', 'totalQty', 'totalPlanRevenue', 'totalAmount'));
+        // Calculate daily totals and revenue
+        $dailyTotals = [];
+        $dailyPlanRevenue = [];
+        $dailyActualRevenue = [];
+
+        foreach ($days as $day) {
+            $dayTotal = 0;
+            $dayPlanRev = 0;
+            $dayActualRev = 0;
+
+            foreach ($revenues as $item) {
+                $qty = $dailyMatrix[(int)$item->id][$day] ?? 0;
+                $dayTotal += $qty;
+                $dayPlanRev += $qty * ((float)$item->cmp);
+                $dayActualRev += $qty * ((float)$item->cmp);
+            }
+
+            $dailyTotals[$day] = $dayTotal;
+            $dailyPlanRevenue[$day] = round($dayPlanRev, 2);
+            $dailyActualRevenue[$day] = round($dayActualRev, 2);
+        }
+
+        return view('admin.revenue.daily_revenue', compact('line', 'month', 'monthLabel', 'revenues', 'days', 'dailyMatrix', 'holidaySet', 'totalQty', 'totalPlanRevenue', 'totalAmount', 'dailyTotals', 'dailyPlanRevenue', 'dailyActualRevenue'));
+    }
+
+    public function dailyRevenueSummary(Request $request)
+    {
+        $request->validate([
+            'month' => 'nullable|date_format:Y-m',
+        ]);
+
+        $month = $request->input('month', now()->format('Y-m'));
+        $monthLabel = Carbon::createFromFormat('Y-m', $month)->format('M');
+
+        // Sort by line priority (green, blue, orange, yellow, others)
+        $lineSorter = function ($a, $b) {
+            $linePriority = fn($line) => match (strtolower(trim($line))) {
+                'green' => 1,
+                'blue' => 2,
+                'orange' => 3,
+                'yellow' => 4,
+                default => 5,
+            };
+
+            $priorityA = $linePriority($a);
+            $priorityB = $linePriority($b);
+
+            return $priorityA <=> $priorityB ?: strcasecmp($a, $b);
+        };
+
+        $daysInMonth = Carbon::createFromFormat('Y-m', $month)->daysInMonth;
+        $days = range(1, $daysInMonth);
+        $dailyPlanRevenue = [];
+        $dailyActualRevenue = [];
+
+        $dailyRevenueRows = DB::table('daily_revenues as dr')
+            ->join('revenue as r', 'dr.revenue_id', '=', 'r.id')
+            ->join('ocs', 'r.CS', '=', 'ocs.CS')
+            ->leftJoin('mtp', function ($join) {
+                $join->on('mtp.CU', '=', 'ocs.CS')
+                    ->on(DB::raw('LOWER(TRIM(mtp.Line))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
+            ->join('colors as c', function ($join) {
+                $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
+            ->whereRaw("DATE_FORMAT(dr.work_date, '%Y-%m') = ?", [$month])
+            ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
+            ->select(
+                DB::raw('TRIM(r.SewingLine) as sewing_line'),
+                DB::raw('DAY(dr.work_date) as day_no'),
+                DB::raw('SUM(COALESCE(dr.qty, 0) * COALESCE(ocs.CMT, 0)) as revenue_amount')
+            )
+            ->groupBy(DB::raw('TRIM(r.SewingLine)'), DB::raw('DAY(dr.work_date)'))
+            ->get();
+
+        $lineColors = DB::table('daily_revenues as dr')
+            ->join('revenue as r', 'dr.revenue_id', '=', 'r.id')
+            ->join('ocs', 'r.CS', '=', 'ocs.CS')
+            ->leftJoin('mtp', function ($join) {
+                $join->on('mtp.CU', '=', 'ocs.CS')
+                    ->on(DB::raw('LOWER(TRIM(mtp.Line))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
+            ->join('colors as c', function ($join) {
+                $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
+            ->whereRaw("DATE_FORMAT(dr.work_date, '%Y-%m') = ?", [$month])
+            ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
+            ->select(
+                DB::raw('TRIM(r.SewingLine) as sewing_line'),
+                DB::raw('MAX(COALESCE(mtp.LineColor, "#6b7280")) as line_color')
+            )
+            ->groupBy(DB::raw('TRIM(r.SewingLine)'))
+            ->pluck('line_color', 'sewing_line')
+            ->toArray();
+
+        $matrixLines = collect($dailyRevenueRows)
+            ->pluck('sewing_line')
+            ->filter()
+            ->unique()
+            ->sort($lineSorter)
+            ->values();
+
+        $dailyRevenueMatrix = [];
+        $lineTotals = [];
+        $dailyTotals = array_fill_keys($days, 0.0);
+
+        foreach ($matrixLines as $line) {
+            foreach ($days as $day) {
+                $dailyRevenueMatrix[$line][$day] = 0.0;
+            }
+            $lineTotals[$line] = 0.0;
+        }
+
+        foreach ($dailyRevenueRows as $row) {
+            $line = (string) $row->sewing_line;
+            $day = (int) $row->day_no;
+            $amount = round((float) $row->revenue_amount, 2);
+
+            if (!isset($dailyRevenueMatrix[$line][$day])) {
+                continue;
+            }
+
+            $dailyRevenueMatrix[$line][$day] = $amount;
+            $lineTotals[$line] += $amount;
+            $dailyTotals[$day] += $amount;
+        }
+
+        foreach ($days as $day) {
+            $dailyPlanRevenue[$day] = round($dailyTotals[$day], 2);
+            $dailyActualRevenue[$day] = round($dailyTotals[$day], 2);
+        }
+
+        $totalRevenue = round(array_sum($lineTotals), 2);
+        $totalQty = 0;
+
+        $monthRevenueIds = DB::table('daily_revenues as dr')
+            ->whereRaw("DATE_FORMAT(dr.work_date, '%Y-%m') = ?", [$month])
+            ->distinct()
+            ->pluck('dr.revenue_id');
+
+        $totalPlanoutAllLines = (float) DB::table('revenue as r')
+            ->join('ocs', 'r.CS', '=', 'ocs.CS')
+            ->join('colors as c', function ($join) {
+                $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
+            ->whereIn('r.id', $monthRevenueIds)
+            ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
+            ->sum(DB::raw('COALESCE(r.planout, 0) * COALESCE(ocs.CMT, 0)'));
+
+        $dailyTotalPlanout = [];
+        foreach ($days as $day) {
+            $dailyTotalPlanout[$day] = round($totalPlanoutAllLines, 2);
+        }
+
+        $targetTotal = round($totalPlanoutAllLines * $daysInMonth, 2);
+
+        return view('admin.revenue.daily_revenue_summary', compact(
+            'month',
+            'monthLabel',
+            'matrixLines',
+            'days',
+            'dailyRevenueMatrix',
+            'lineTotals',
+            'dailyTotals',
+            'targetTotal',
+            'lineColors',
+            'totalQty',
+            'totalRevenue',
+            'dailyPlanRevenue',
+            'dailyActualRevenue',
+            'dailyTotalPlanout',
+            'daysInMonth'
+        ));
     }
 
     public function monthlyReport(Request $request)

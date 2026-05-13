@@ -77,6 +77,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie')
         ->name('revenue.daily.line');
 
+    Route::get('/revenue/daily-summary', [RevenueController::class, 'dailyRevenueSummary'])
+        ->middleware('role:admin,ie')
+        ->name('revenue.daily.summary');
+
     Route::get('/revenue/monthly-report', [RevenueController::class, 'monthlyReport'])
         ->middleware('role:admin,ie')
         ->name('revenue.monthly-report');

@@ -762,7 +762,11 @@ class RevenueController extends Controller
         $dailyActualRevenue = [];
 
         $mtpDistinct = DB::table('mtp')
-            ->select(DB::raw('CU'), DB::raw('LOWER(TRIM(Line)) as mtp_line'))
+            ->select(
+                DB::raw('CU'),
+                DB::raw('LOWER(TRIM(Line)) as mtp_line'),
+                DB::raw('MAX(COALESCE(LineColor, "#6b7280")) as mtp_line_color')
+            )
             ->groupBy(DB::raw('CU'), DB::raw('LOWER(TRIM(Line))'));
 
         $dailyRevenueRows = DB::table('daily_revenues as dr')
@@ -810,7 +814,7 @@ class RevenueController extends Controller
             ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
             ->select(
                 DB::raw('TRIM(r.SewingLine) as sewing_line'),
-                DB::raw('MAX(COALESCE(mtp.LineColor, "#6b7280")) as line_color')
+                DB::raw('MAX(COALESCE(mtp.mtp_line_color, "#6b7280")) as line_color')
             )
             ->groupBy(DB::raw('TRIM(r.SewingLine)'))
             ->pluck('line_color', 'sewing_line')

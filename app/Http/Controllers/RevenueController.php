@@ -761,12 +761,16 @@ class RevenueController extends Controller
         $dailyPlanRevenue = [];
         $dailyActualRevenue = [];
 
+        $mtpDistinct = DB::table('mtp')
+            ->select(DB::raw('CU'), DB::raw('LOWER(TRIM(Line)) as mtp_line'))
+            ->groupBy(DB::raw('CU'), DB::raw('LOWER(TRIM(Line))'));
+
         $dailyRevenueRows = DB::table('daily_revenues as dr')
             ->join('revenue as r', 'dr.revenue_id', '=', 'r.id')
             ->join('ocs', 'r.CS', '=', 'ocs.CS')
-            ->leftJoin('mtp', function ($join) {
+            ->leftJoinSub($mtpDistinct, 'mtp', function ($join) {
                 $join->on('mtp.CU', '=', 'ocs.CS')
-                    ->on(DB::raw('LOWER(TRIM(mtp.Line))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+                    ->on(DB::raw('mtp.mtp_line'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
             ->join('colors as c', function ($join) {
                 $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
@@ -795,9 +799,9 @@ class RevenueController extends Controller
         $lineColors = DB::table('daily_revenues as dr')
             ->join('revenue as r', 'dr.revenue_id', '=', 'r.id')
             ->join('ocs', 'r.CS', '=', 'ocs.CS')
-            ->leftJoin('mtp', function ($join) {
+            ->leftJoinSub($mtpDistinct, 'mtp', function ($join) {
                 $join->on('mtp.CU', '=', 'ocs.CS')
-                    ->on(DB::raw('LOWER(TRIM(mtp.Line))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+                    ->on(DB::raw('mtp.mtp_line'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
             ->join('colors as c', function ($join) {
                 $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));

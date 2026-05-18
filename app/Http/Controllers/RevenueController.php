@@ -349,8 +349,13 @@ class RevenueController extends Controller
 
         $revenues = collect($revenues)
             ->map(function ($item) use ($lineCateMap) {
-                $lineKey = strtolower(trim((string) ($item->SewingLine ?? '')));
+                $rawLine = $item->SewingLine ?? '';
+                $normalizedLine = $rawLine === null ? '' : trim((string) $rawLine);
+                $normalizedLine = $normalizedLine === '' ? '' : mb_convert_case($normalizedLine, MB_CASE_TITLE, "UTF-8");
+
+                $lineKey = strtolower(trim((string) $normalizedLine));
                 $item->LineCate = $lineCateMap[$lineKey] ?? 'SUBCON';
+                $item->SewingLine = $normalizedLine;
 
                 return $item;
             })
@@ -587,8 +592,13 @@ class RevenueController extends Controller
             ->where('CU', $cs)
             ->whereNotNull('Line')
             ->where('Line', '!=', '')
-            ->orderBy('Line')
             ->pluck('Line')
+            ->map(function ($s) {
+                if ($s === null) return null;
+                $t = trim((string) $s);
+                return $t === '' ? null : mb_convert_case($t, MB_CASE_TITLE, "UTF-8");
+            })
+            ->filter()
             ->unique()
             ->values();
 
@@ -604,9 +614,12 @@ class RevenueController extends Controller
             'line' => 'required|string',
         ]);
 
+        $line = $request->line === null ? '' : trim((string) $request->line);
+        $line = $line === '' ? '' : mb_convert_case($line, MB_CASE_TITLE, "UTF-8");
+
         $distribution = DB::table('mtp')
             ->where('CU', $request->cs)
-            ->where('Line', $request->line)
+            ->where('Line', $line)
             ->sum(DB::raw('COALESCE(' . $distributionColumn . ', 0)'));
 
         return response()->json([
@@ -621,7 +634,8 @@ class RevenueController extends Controller
             'month' => 'nullable|date_format:Y-m',
         ]);
 
-        $line = $request->line;
+        $line = $request->line === null ? '' : trim((string) $request->line);
+        $line = $line === '' ? '' : mb_convert_case($line, MB_CASE_TITLE, "UTF-8");
         $month = $request->input('month', now()->format('Y-m'));
         $distributionByLine = $this->getDistributionByLineSubquery();
         $lineMeta = $this->getLineMetaSubquery();
@@ -801,6 +815,13 @@ class RevenueController extends Controller
         $matrixLines = collect($dailyRevenueRows)
             ->pluck('sewing_line')
             ->filter()
+            ->map(function ($s) {
+                return $s === null ? null : trim((string) $s);
+            })
+            ->filter()
+            ->map(function ($s) {
+                return mb_convert_case($s, MB_CASE_TITLE, "UTF-8");
+            })
             ->unique()
             ->sort($lineSorter)
             ->values();

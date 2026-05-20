@@ -18,12 +18,7 @@ $canManage = auth()->user()->role === 'admin';
 @endif
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4">
 
-    <div class="col-md-2">
-    <label>CS</label>
-    <input type="text" name="cs" class="form-control"
-        placeholder="Fill CS"
-        value="{{ request('cs') }}">
-</div>
+    
 
     <div class="col-md-2">
     <label>Month</label>

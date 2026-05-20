@@ -306,6 +306,39 @@ class RevenueController extends Controller
         $month = $request->input('month', now()->format('Y-m'));
         $monthlyActualOut = $this->getMonthlyActualOutSubquery($month);
 
+        // Build list of CS (CU) whose calculated Finish_SEW falls in the selected month.
+        $csForMonth = collect();
+        if ($request->filled('month')) {
+            $mtpRows = DB::table('mtp')
+                ->select('CU', 'FirstOPT', 'lt')
+                ->whereNotNull('CU')
+                ->get();
+
+            foreach ($mtpRows as $row) {
+                if (empty($row->FirstOPT) || empty($row->lt)) {
+                    continue;
+                }
+
+                try {
+                    $first = Carbon::parse($row->FirstOPT);
+                } catch (\Throwable $e) {
+                    continue;
+                }
+
+                $finish = $first->copy()->addDays((int) $row->lt);
+                // If finish falls on Sunday, move to next day (same logic as masterplan skipSunday)
+                if ($finish->isSunday()) {
+                    $finish->addDay();
+                }
+
+                if ($finish->format('Y-m') === $month) {
+                    $csForMonth->push(trim((string) $row->CU));
+                }
+            }
+
+            $csForMonth = $csForMonth->unique()->values();
+        }
+
         $revenues = DB::table('revenue')
             ->join('ocs', 'revenue.CS', '=', 'ocs.CS')
             ->leftJoinSub($distributionByLine, 'mtp_dist', function ($join) {
@@ -321,6 +354,14 @@ class RevenueController extends Controller
             })
             ->when($request->filled('cs'), function ($query) use ($request) {
                 $query->where('revenue.CS', 'like', '%' . $request->cs . '%');
+            })
+            ->when($request->filled('month'), function ($query) use ($csForMonth) {
+                if ($csForMonth->isEmpty()) {
+                    // No CS for this month -> return empty set
+                    $query->whereRaw('1 = 0');
+                } else {
+                    $query->whereIn('revenue.CS', $csForMonth->all());
+                }
             })
             ->select(
                 'revenue.id',

@@ -21,6 +21,7 @@
             <option value="ie" {{ old('role', 'ie') === 'ie' ? 'selected' : '' }}>IE</option>
             <option value="warehouse" {{ old('role') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
             <option value="ppic" {{ old('role') === 'ppic' ? 'selected' : '' }}>PPIC</option>
+            <option value="prod" {{ old('role') === 'prod' ? 'selected' : '' }}>Production</option>
         </select>
     </div>
     

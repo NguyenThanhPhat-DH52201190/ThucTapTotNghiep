@@ -2,7 +2,9 @@
 @section('title', 'Daily Revenue')
 @section('content')
 @php
-$canManage = auth()->user()->role === 'admin';
+    $role = auth()->user()->role;
+    $isAdmin = $role === 'admin';
+    $canManage = in_array($role, ['admin', 'prod'], true);
 @endphp
 
 @if(session('error'))
@@ -25,9 +27,9 @@ $canManage = auth()->user()->role === 'admin';
         <input type="month" name="month" class="form-control" value="{{ $month }}">
     </div>
 
-    <div class="col-md-5 d-flex align-items-end gap-2 flex-wrap revenue-actions">
+        <div class="col-md-5 d-flex align-items-end gap-2 flex-wrap revenue-actions">
         <button type="submit" class="btn btn-dark revenue-action-btn">Apply</button>
-        <a href="{{ $canManage ? route('admin.revenue.index', ['month' => $month]) : route('revenue.view', ['month' => $month]) }}" class="btn btn-secondary revenue-action-btn">Back Revenue</a>
+        <a href="{{ $isAdmin ? route('admin.revenue.index', ['month' => $month]) : route('revenue.view', ['month' => $month]) }}" class="btn btn-secondary revenue-action-btn">Back Revenue</a>
     </div>
 </form>
 

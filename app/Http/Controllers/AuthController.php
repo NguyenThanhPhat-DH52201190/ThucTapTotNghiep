@@ -19,7 +19,7 @@ class AuthController extends Controller
         return match ($role) {
             User::ROLE_ADMIN => 'admin.ocs.index',
             User::ROLE_PPIC => 'masterplan.view',
-            User::ROLE_IE, User::ROLE_WAREHOUSE => 'masterplan.view',
+            User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_PROD => 'masterplan.view',
             default => 'dashboard',
         };
     }
@@ -35,7 +35,7 @@ class AuthController extends Controller
             'username' => ['required', 'string', 'min:3', 'max:50', 'unique:users,name'],
             'role' => [
                 'required',
-                Rule::in([User::ROLE_ADMIN, User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_PPIC]),
+                Rule::in([User::ROLE_ADMIN, User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_PPIC, User::ROLE_PROD]),
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($value === User::ROLE_ADMIN && User::where('role', User::ROLE_ADMIN)->exists()) {
                         $fail('An admin account already exists. You cannot register another admin role.');

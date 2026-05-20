@@ -50,7 +50,7 @@ Route::middleware('auth')->group(function () {
         ->name('ordercutsheet.export');
 
     Route::get('/master-plan', [MasterPlanController::class, 'index'])
-        ->middleware('role:admin,ie,warehouse,ppic')
+        ->middleware('role:admin,ie,warehouse,ppic,prod')
         ->name('masterplan.view');
 
     Route::get('/master-plan/export', [MasterPlanController::class, 'export'])
@@ -58,39 +58,39 @@ Route::middleware('auth')->group(function () {
         ->name('masterplan.export');
 
     Route::get('/revenue-view', [RevenueController::class, 'index'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,ie,prod')
         ->name('revenue.view');
 
     Route::get('/revenue-view/export', [RevenueController::class, 'export'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,ie,prod')
         ->name('revenue.export');
 
     Route::get('/revenue/sewing-lines/{cs}', [RevenueController::class, 'getSewingLinesByCs'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,ie,prod')
         ->name('revenue.sewing-lines');
 
     Route::get('/revenue/distribution', [RevenueController::class, 'getDistributionByCsAndLine'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,ie,prod')
         ->name('revenue.distribution');
 
     Route::get('/revenue/daily', [RevenueController::class, 'dailyRevenue'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,ie,prod')
         ->name('revenue.daily.line');
 
     Route::get('/revenue/daily-summary', [RevenueController::class, 'dailyRevenueSummary'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,ie,prod')
         ->name('revenue.daily.summary');
 
     Route::get('/revenue/monthly-report', [RevenueController::class, 'monthlyReport'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,ie,prod')
         ->name('revenue.monthly-report');
 
     Route::post('/revenue/daily', [RevenueController::class, 'storeDailyRevenue'])
-        ->middleware('role:admin')
+        ->middleware('role:admin,prod')
         ->name('revenue.daily.store');
 
     Route::post('/revenue/daily/matrix', [RevenueController::class, 'storeDailyRevenueMatrix'])
-        ->middleware('role:admin')
+        ->middleware('role:admin,prod')
         ->name('revenue.daily.matrix.store');
 
     // Logout

@@ -35,7 +35,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         overflow-y: auto !important;
         width: 100%;
         max-width: 100%;
-        max-height: calc(100vh - 300px);
+        max-height: calc(100vh - 220px);
         isolation: isolate;
         scrollbar-width: none;
         -ms-overflow-style: none;
@@ -53,7 +53,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         overflow-y: hidden;
         background: transparent;
         z-index: 1200;
-        display: none;
+        display: block; /* keep visible to help horizontal scrolling/debug */
         scrollbar-color: rgba(100, 116, 139, 0.7) transparent;
     }
 
@@ -163,9 +163,10 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
 
     .masterplan-table th,
     .masterplan-table td {
-        padding: 0.75rem 1rem;
+        padding: 0.35rem 0.5rem;
         white-space: nowrap;
         vertical-align: middle;
+        font-size: 0.92rem;
     }
 
     .masterplan-table th {

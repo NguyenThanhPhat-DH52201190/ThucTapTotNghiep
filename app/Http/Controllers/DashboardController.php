@@ -15,7 +15,7 @@ class DashboardController extends Controller
         $route = match ($role) {
             User::ROLE_ADMIN => 'admin.ocs.index',
             User::ROLE_PPIC => 'masterplan.view',
-            User::ROLE_IE, User::ROLE_WAREHOUSE => 'masterplan.view',
+            User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_ACCOUNTANT => 'masterplan.view',
             default => 'login',
         };
 

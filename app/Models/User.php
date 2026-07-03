@@ -19,6 +19,7 @@ class User extends Authenticatable
     public const ROLE_PPIC = 'ppic';
     public const ROLE_IE = 'ie';
     public const ROLE_PROD = 'prod';
+    public const ROLE_ACCOUNTANT = 'accountant';
 
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;

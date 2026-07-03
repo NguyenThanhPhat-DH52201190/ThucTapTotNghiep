@@ -116,6 +116,11 @@
                 <i class="bi bi-people"></i>
                 Master Plan
             </a>
+            @elseif($role === 'accountant')
+            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-people"></i>
+                Master Plan
+            </a>
             @endif
         </div>
 

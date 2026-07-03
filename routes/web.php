@@ -50,7 +50,7 @@ Route::middleware('auth')->group(function () {
         ->name('ordercutsheet.export');
 
     Route::get('/master-plan', [MasterPlanController::class, 'index'])
-        ->middleware('role:admin,ie,warehouse,ppic,prod')
+        ->middleware('role:admin,ie,warehouse,ppic,prod,accountant')
         ->name('masterplan.view');
 
     Route::get('/master-plan/export', [MasterPlanController::class, 'export'])

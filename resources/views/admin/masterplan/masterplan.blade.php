@@ -5,6 +5,9 @@
 @php
 $canManage = auth()->user()->role === 'admin';
 $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
+$isAccountant = auth()->user()->role === 'accountant';
+$hidePpicCols = in_array(auth()->user()->role, ['ppic', 'accountant'], true);
+$hideMidCols = $isAccountant;
 @endphp
 
 @if(session('error'))
@@ -311,6 +314,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Require_date</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-7">Confirm_date</th>
+            @unless($hideMidCols)
             <th scope="col" class="col-wide col-gap-left">Fabric1</th>
             <th scope="col" class="col-date">ETA1</th>
             <th scope="col" class="col-date">Actual</th>
@@ -322,12 +326,15 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <th scope="col" class="col-date">ETA4</th>
             <th scope="col" class="col-wide">Trim</th>
             <th scope="col" class="col-date">Norm_date</th>
+            @endunless
+            @unless($hidePpicCols)
             <th scope="col" class="col-date">inWHDate</th>
             <th scope="col" class="col-wide">3rd_PartyInspection</th>
             <th scope="col" class="col-date">ShipDate2</th>
             <th scope="col" class="col-wide">SoTK</th>
             <th scope="col" class="col-number">ExQty</th>
             <th scope="col" class="col-number">ShipBalance</th>
+            @endunless
             <th scope="col" class="col-number">LT</th>
             <th scope="col" class="col-date">FirstOPT</th>
             <th scope="col" class="col-date">Finish_SEW</th>
@@ -353,7 +360,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = 29 + $actionCols;
+        $tableColspan = 29 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 11 : 0);
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -392,6 +399,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
             <td class="col-date col-date-sticky sticky-col sticky-6">{{ $item->Require_date ?? '' }}</td>
             <td class="col-date col-date-sticky sticky-col sticky-7">{{ $item->Confirm_date ?? '' }}</td>
+            @unless($hideMidCols)
             <td class="col-gap-left">{{ $item->Fabric1 }}</td>
             <td>{{ $item->ETA1 }}</td>
             <td>{{ $item->Actual }}</td>
@@ -403,12 +411,15 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
             <td>{{ $item->ETA4 }}</td>
             <td>{{ $item->Trim }}</td>
             <td>{{ $item->Norm_date }}</td>
+            @endunless
+            @unless($hidePpicCols)
             <td>{{ $item->inWHDate }}</td>
             <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
             <td>{{ $item->ShipDate2 }}</td>
             <td>{{ $item->SoTK }}</td>
             <td class="col-number">{{ $item->ExQty }}</td>
             <td class="col-number">{{ $item->ShipBalance }}</td>
+            @endunless
             <td class="col-number">{{ $item->lt }}</td>
             <td>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
@@ -484,7 +495,7 @@ $canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
         @endif
         @else
         <tr>
-            <td colspan="{{ 29 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) }}" class="text-center">No data</td>
+            <td colspan="{{ 29 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 11 : 0) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>

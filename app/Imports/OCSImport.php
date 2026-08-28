@@ -13,7 +13,13 @@ class OCSImport implements ToCollection, WithHeadingRow
 {
     public function collection(Collection $rows): void
     {
+        DB::transaction(function () use ($rows) {
         foreach ($rows as $row) {
+            $cs = trim((string) ($row['cs'] ?? ''));
+            $qty = (int) ($row['qty'] ?? 0);
+            if ($cs === '' || $qty < 1 || empty($row['onum']) || empty($row['sno']) || empty($row['sname']) || empty($row['customer'])) {
+                throw new \RuntimeException('Each import row requires CS, PO, style, customer, and Qty greater than zero.');
+            }
 
             // Parse the date in a consistent format
             $date = null;
@@ -32,8 +38,13 @@ class OCSImport implements ToCollection, WithHeadingRow
                 }
             }
 
+            $existing = DB::table('ocs')->where('CS', $cs)->lockForUpdate()->first();
+            if ($existing && in_array($existing->status, ['released', 'in_production', 'completed', 'closed'], true)) {
+                throw new \RuntimeException("CS {$cs} is released or locked and cannot be changed by import.");
+            }
+
             DB::table('ocs')->updateOrInsert(
-                ['CS' => $row['cs']],
+                ['CS' => $cs],
                 [
                     'ONum' => $row['onum'],
                     'SNo' => $row['sno'],
@@ -42,11 +53,20 @@ class OCSImport implements ToCollection, WithHeadingRow
                     'CsDate' => $date,
                     'CMT' => $row['cmt'] ?? 0,
                     'Color' => $row['color'] ?? '',
-                    'Qty' => (int)($row['qty'] ?? 0),
+                    'Qty' => $qty,
+                    'status' => $existing?->status ?? 'pending',
                     'updated_at' => now(),
                     'created_at' => now(),
                 ]
             );
+            if (!$existing) {
+                $cutsheetId = DB::table('ocs')->where('CS', $cs)->value('id');
+                DB::table('order_sizes')->insert([
+                    'cutsheet_id' => $cutsheetId, 'size_name' => 'ONE SIZE', 'quantity' => $qty,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
         }
+        });
     }
 }

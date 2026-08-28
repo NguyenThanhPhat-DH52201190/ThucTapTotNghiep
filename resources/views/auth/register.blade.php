@@ -1,8 +1,8 @@
 @extends('layouts.guest')
 
 @section('title', 'Register')
-@section('heading', 'Register')
-@section('subtitle', 'Create an account with username and password only.')
+@section('heading', 'Initial setup')
+@section('subtitle', 'Create the first administrator account.')
 
 @section('content')
 <form method="POST" action="{{ route('register.store') }}" class="d-grid gap-3">
@@ -13,18 +13,7 @@
         <input type="text" id="username" name="username" class="form-control" value="{{ old('username') }}" required autofocus>
     </div>
 
-    <div>
-        <label for="role" class="form-label fw-semibold">Role</label>
-        <select id="role" name="role" class="form-select" required>
-            <option value="" disabled {{ old('role') ? '' : 'selected' }}>Select role</option>
-            <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
-            <option value="ie" {{ old('role', 'ie') === 'ie' ? 'selected' : '' }}>IE</option>
-            <option value="warehouse" {{ old('role') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
-            <option value="ppic" {{ old('role') === 'ppic' ? 'selected' : '' }}>PPIC</option>
-            <option value="prod" {{ old('role') === 'prod' ? 'selected' : '' }}>Production</option>
-            <option value="accountant" {{ old('role') === 'accountant' ? 'selected' : '' }}>Accountant</option>
-        </select>
-    </div>
+    <div class="alert alert-info mb-0">This account will be created with the <strong>Administrator</strong> role.</div>
     
     <div>
         <label for="password" class="form-label fw-semibold">Password</label>
@@ -36,7 +25,7 @@
         <input type="password" id="password_confirmation" name="password_confirmation" class="form-control" required>
     </div>
 
-    <button class="btn btn-warning py-2" type="submit">Create Account</button>
+    <button class="btn btn-warning py-2" type="submit">Create Administrator</button>
 </form>
 
 <p class="text-center text-secondary mt-4 mb-0">

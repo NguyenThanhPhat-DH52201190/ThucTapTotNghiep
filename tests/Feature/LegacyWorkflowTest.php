@@ -27,19 +27,19 @@ class LegacyWorkflowTest extends TestCase
         $this->get('/register')->assertOk();
     }
 
-    public function test_register_logs_in_ppic_user_and_redirects_by_role(): void
+    public function test_first_public_registration_bootstraps_an_admin_only(): void
     {
         $this->post('/register', [
             'username' => 'ppic.user',
             'role' => User::ROLE_PPIC,
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-        ])->assertRedirect(route('ordercutsheet.view'));
+        ])->assertRedirect(route('admin.ocs.index'));
 
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', [
             'name' => 'ppic.user',
-            'role' => User::ROLE_PPIC,
+            'role' => User::ROLE_ADMIN,
         ]);
     }
 
@@ -56,7 +56,7 @@ class LegacyWorkflowTest extends TestCase
             'role' => User::ROLE_ADMIN,
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-        ])->assertSessionHasErrors('role');
+        ])->assertForbidden();
 
         $this->assertGuest();
     }
@@ -127,7 +127,26 @@ class LegacyWorkflowTest extends TestCase
             'role' => User::ROLE_PPIC,
         ]));
 
-        $this->get('/dashboard')->assertRedirect(route('ordercutsheet.view'));
+        $this->get('/dashboard')->assertRedirect(route('admin.masterplan.index'));
+    }
+
+    public function test_module_access_restricts_users_to_their_operational_area(): void
+    {
+        $warehouse = $this->createUserRecord([
+            'name' => 'warehouse-module', 'email' => 'warehouse-module@local.test',
+            'password' => 'Password123!', 'role' => User::ROLE_WAREHOUSE,
+        ]);
+        $this->actingAs($warehouse)->get('/admin/finance/dashboard')->assertForbidden();
+        Route::middleware(['auth', 'module.access'])->get('/admin/inventory/access-check/test', fn () => 'ok');
+        $this->actingAs($warehouse)->get('/admin/inventory/access-check/test')->assertOk()->assertSee('ok');
+
+        $accountant = $this->createUserRecord([
+            'name' => 'accountant-module', 'email' => 'accountant-module@local.test',
+            'password' => 'Password123!', 'role' => User::ROLE_ACCOUNTANT,
+        ]);
+        $this->actingAs($accountant)->get('/admin/inventory')->assertForbidden();
+        Route::middleware(['auth', 'module.access'])->get('/admin/finance/access-check/test', fn () => 'ok');
+        $this->actingAs($accountant)->get('/admin/finance/access-check/test')->assertOk()->assertSee('ok');
     }
 
     public function test_admin_dashboard_enforces_role_access(): void

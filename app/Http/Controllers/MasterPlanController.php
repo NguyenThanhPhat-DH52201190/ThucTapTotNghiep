@@ -58,17 +58,30 @@ class MasterPlanController extends Controller
 
         $plan = DB::table('mtp')
             ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
+            ->leftJoin('bom_headers', 'ocs.bom_header_id', '=', 'bom_headers.id')
             ->when($request->filled('cu'), function ($query) use ($request) {
                 $query->where('mtp.CU', 'like', '%' . $request->cu . '%');
             })
             ->when($request->filled('style'), function ($query) use ($request) {
                 $query->where('ocs.SNo', 'like', '%' . $request->style . '%');
             })
+            ->when($request->filled('mps_status'), function ($query) use ($request) {
+                $query->where('mtp.mps_status', $request->mps_status);
+            })
+            ->when($request->filled('line'), function ($query) use ($request) {
+                $query->where('mtp.Line', $request->line);
+            })
             ->select(
                 'mtp.*',
                 'ocs.SNo as Style',
                 'ocs.ONum as PO',
-                'ocs.Qty as Order_Qty'
+                'ocs.Qty as Order_Qty',
+                'ocs.status as order_status',
+                'ocs.bom_header_id',
+                'bom_headers.style_no as bom_style',
+                'bom_headers.version as bom_version',
+                'bom_headers.total_fabric_cost',
+                'bom_headers.total_trim_cost'
             )
             ->orderBy('mtp.Line', 'asc')
             ->get();
@@ -211,9 +224,17 @@ class MasterPlanController extends Controller
             'Line',
             'Style',
             'PO',
+            'Order Status',
+            'MPS Status',
+            'Priority',
             'Qty_dis',
             'Require_date',
             'Confirm_date',
+            'Planned Cut Start',
+            'Planned Cut End',
+            'Planned Sew Start',
+            'Planned Sew End',
+            'Daily Target',
             'Fabric1',
             'ETA1',
             'Actual',
@@ -234,6 +255,9 @@ class MasterPlanController extends Controller
             'FirstOPT',
             'Finish_SEW',
             'EX_Fact',
+            'BOM Style',
+            'Fabric Cost',
+            'Trim Cost',
         ];
 
         foreach ($headers as $columnIndex => $header) {
@@ -247,9 +271,17 @@ class MasterPlanController extends Controller
                 $item->Line ?? '',
                 $item->Style ?? '',
                 $item->PO ?? '',
+                $item->order_status ?? '',
+                $item->mps_status ?? 'planned',
+                $item->mps_priority ?? 'medium',
                 $item->Qty_dis ?? '',
                 $item->Require_date ?? '',
                 $item->Confirm_date ?? '',
+                $item->planned_cut_start ?? '',
+                $item->planned_cut_end ?? '',
+                $item->planned_sew_start ?? '',
+                $item->planned_sew_end ?? '',
+                $item->daily_target_qty ?? '',
                 $item->Fabric1 ?? '',
                 $item->ETA1 ?? '',
                 $item->Actual ?? '',
@@ -270,6 +302,9 @@ class MasterPlanController extends Controller
                 $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '',
                 $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '',
                 $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '',
+                $item->bom_style ?? '',
+                $item->total_fabric_cost ?? '',
+                $item->total_trim_cost ?? '',
             ];
 
             foreach ($rowValues as $columnIndex => $value) {
@@ -300,7 +335,9 @@ class MasterPlanController extends Controller
     public function create()
     {
         $ocs = DB::table('ocs')
-            ->orderBy('CS', 'asc')
+            ->leftJoin('bom_headers', 'ocs.bom_header_id', '=', 'bom_headers.id')
+            ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version')
+            ->orderBy('ocs.CS', 'asc')
             ->get();
 
         $colors = DB::table('colors')
@@ -360,6 +397,14 @@ class MasterPlanController extends Controller
             'Qty_dis' => 'nullable|integer|min:0',
             'Require_date' => 'nullable|date',
             'Confirm_date' => 'nullable|date',
+            // MPS new fields
+            'mps_status' => 'nullable|in:planned,in_production,completed,on_hold',
+            'planned_cut_start' => 'nullable|date',
+            'planned_cut_end' => 'nullable|date',
+            'planned_sew_start' => 'nullable|date',
+            'planned_sew_end' => 'nullable|date',
+            'mps_priority' => 'nullable|in:low,medium,high,urgent',
+            'daily_target_qty' => 'nullable|integer|min:0',
         ]);
 
         $ocs = DB::table('ocs')->where('CS', $request->CU)->first();
@@ -408,6 +453,15 @@ class MasterPlanController extends Controller
                 'Qty_dis' => $this->nullableInteger($request->Qty_dis),
                 'Require_date' => $this->nullableDate($request->Require_date),
                 'Confirm_date' => $this->nullableDate($request->Confirm_date),
+                // MPS new fields
+                'mps_status' => $request->mps_status ?? 'planned',
+                'planned_cut_start' => $this->nullableDate($request->planned_cut_start),
+                'planned_cut_end' => $this->nullableDate($request->planned_cut_end),
+                'planned_sew_start' => $this->nullableDate($request->planned_sew_start),
+                'planned_sew_end' => $this->nullableDate($request->planned_sew_end),
+                'mps_priority' => $request->mps_priority ?? 'medium',
+                'daily_target_qty' => $this->nullableInteger($request->daily_target_qty),
+                'mps_notes' => $request->mps_notes,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -430,11 +484,16 @@ class MasterPlanController extends Controller
     {
         $plan = DB::table('mtp')
             ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
+            ->leftJoin('bom_headers', 'ocs.bom_header_id', '=', 'bom_headers.id')
             ->select(
                 'mtp.*',
                 'ocs.SNo as Style',
                 'ocs.ONum as PO',
-                'ocs.Qty'
+                'ocs.Qty',
+                'ocs.status as order_status',
+                'ocs.bom_header_id',
+                'bom_headers.style_no as bom_style',
+                'bom_headers.version as bom_version'
             )
             ->where('mtp.id', $id)
             ->first();
@@ -445,10 +504,16 @@ class MasterPlanController extends Controller
             ->orderBy('name')
             ->get();
 
+        $ocs = DB::table('ocs')
+            ->leftJoin('bom_headers', 'ocs.bom_header_id', '=', 'bom_headers.id')
+            ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version')
+            ->orderBy('ocs.CS', 'asc')
+            ->get();
+
         $fabricOnly = false;
         $updateRoute = route('admin.masterplan.update', $id);
 
-        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute', 'colors'));
+        return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute', 'colors', 'ocs'));
     }
 
     public function editFabric(string $id)
@@ -529,6 +594,14 @@ class MasterPlanController extends Controller
             'Qty_dis' => 'nullable|integer|min:0',
             'Require_date' => 'nullable|date',
             'Confirm_date' => 'nullable|date',
+            // MPS new fields
+            'mps_status' => 'nullable|in:planned,in_production,completed,on_hold',
+            'planned_cut_start' => 'nullable|date',
+            'planned_cut_end' => 'nullable|date',
+            'planned_sew_start' => 'nullable|date',
+            'planned_sew_end' => 'nullable|date',
+            'mps_priority' => 'nullable|in:low,medium,high,urgent',
+            'daily_target_qty' => 'nullable|integer|min:0',
         ], [
             'CU.unique' => 'CU already exists!',
         ]);
@@ -580,6 +653,14 @@ class MasterPlanController extends Controller
                 'Qty_dis' => $this->nullableInteger($request->Qty_dis),
                 'Require_date' => $this->nullableDate($request->Require_date),
                 'Confirm_date' => $this->nullableDate($request->Confirm_date),
+                'mps_status' => $request->mps_status ?? 'planned',
+                'planned_cut_start' => $this->nullableDate($request->planned_cut_start),
+                'planned_cut_end' => $this->nullableDate($request->planned_cut_end),
+                'planned_sew_start' => $this->nullableDate($request->planned_sew_start),
+                'planned_sew_end' => $this->nullableDate($request->planned_sew_end),
+                'mps_priority' => $request->mps_priority ?? 'medium',
+                'daily_target_qty' => $this->nullableInteger($request->daily_target_qty),
+                'mps_notes' => $request->mps_notes,
                 'updated_at' => now(),
             ]);
 

@@ -25,7 +25,9 @@ trait CreatesLegacySchema
 
         $this->createUsersTable();
         $this->createColorsTable();
+        $this->createBomHeadersTable();
         $this->createOcsTable();
+        $this->createOrderSizesTable();
         $this->createHolidaysTable();
         $this->createMtpTable();
     }
@@ -84,7 +86,34 @@ trait CreatesLegacySchema
             $table->string('ONum')->nullable();
             $table->decimal('CMT', 10, 2)->nullable();
             $table->unsignedInteger('Qty')->default(0);
+            $table->string('status')->default('pending');
+            $table->unsignedBigInteger('bom_header_id')->nullable();
             $table->timestamps();
+        });
+    }
+
+    protected function createBomHeadersTable(): void
+    {
+        Schema::create('bom_headers', function (Blueprint $table): void {
+            $table->id();
+            $table->string('style_no')->nullable();
+            $table->string('version')->nullable();
+            $table->decimal('total_fabric_cost', 14, 2)->default(0);
+            $table->decimal('total_trim_cost', 14, 2)->default(0);
+            $table->string('status')->default('active');
+            $table->timestamps();
+        });
+    }
+
+    protected function createOrderSizesTable(): void
+    {
+        Schema::create('order_sizes', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('cutsheet_id');
+            $table->string('size_name');
+            $table->unsignedInteger('quantity');
+            $table->timestamps();
+            $table->unique(['cutsheet_id', 'size_name']);
         });
     }
 

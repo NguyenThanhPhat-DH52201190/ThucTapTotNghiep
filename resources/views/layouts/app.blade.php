@@ -79,10 +79,62 @@
                     Order Cut Sheet
                 </a>
 
+                <a href="{{ route('admin.master-data.customers') }}" class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-people"></i>
+                    Customer Master
+                </a>
+
+                <a href="{{ route('admin.master-data.materials') }}" class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-box-seam"></i>
+                    Material Master
+                </a>
+
+                <a href="{{ route('admin.bom.index') }}"
+                    class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-file-text"></i>
+                    BOM & Tech Pack
+                </a>
+
                 <a href="{{ route('admin.masterplan.index') }}"
                     class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-people"></i>
-                    Master Plan
+                    Master Plan (MPS)
+                </a>
+
+                <a href="{{ route('admin.production-planning.index') }}"
+                    class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-calendar-week"></i>
+                    Production Planning
+                </a>
+
+                <a href="{{ route('admin.mrp.index') }}"
+                    class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-calculator"></i>
+                    MRP
+                </a>
+
+                <a href="{{ route('admin.procurement.index') }}"
+                    class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-cart3"></i>
+                    Procurement
+                </a>
+
+                <a href="{{ route('admin.inventory.index') }}"
+                    class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-boxes"></i>
+                    Inventory
+                </a>
+
+                <a href="{{ route('admin.shopfloor.dashboard') }}"
+                    class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-gear"></i>
+                    Shop Floor
+                </a>
+
+                <a href="{{ route('admin.finance.dashboard') }}"
+                    class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    Finance & Costing
                 </a>
 
                 <a href="{{ route('admin.revenue.index') }}"
@@ -96,30 +148,47 @@
                     <i class="bi bi-palette"></i>
                     Line Colors
                 </a>
+                <a href="{{ route('admin.audit-trails.index') }}" class="d-flex align-items-center gap-2 mt-1">
+                    <i class="bi bi-clock-history"></i>
+                    Audit Trail
+                </a>
             </div>
             @elseif($role === 'ppic')
-            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
+            <a href="{{ route('admin.masterplan.index') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-people"></i>
                 Master Plan
+            </a>
+            <a href="{{ route('admin.mrp.index') }}" class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-calculator"></i>
+                MRP & Procurement
             </a>
             @elseif($role === 'ie' || $role === 'prod')
-            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
-                <i class="bi bi-people"></i>
-                Master Plan
+            @if($role === 'ie')
+            <a href="{{ route('admin.bom.index') }}" class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-file-text"></i>
+                BOM & Tech Pack
             </a>
+            @else
+            <a href="{{ route('admin.shopfloor.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-gear"></i>
+                Shop Floor
+            </a>
+            @endif
+            @if($role === 'prod')
             <a href="{{ route('revenue.view') }}" class="d-flex align-items-center gap-2">
                 <i class="bi bi-bar-chart"></i>
                 Revenue
             </a>
+            @endif
             @elseif($role === 'warehouse')
-            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
-                <i class="bi bi-people"></i>
-                Master Plan
+            <a href="{{ route('admin.inventory.index') }}" class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-boxes"></i>
+                Inventory & Issue
             </a>
             @elseif($role === 'accountant')
-            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1">
-                <i class="bi bi-people"></i>
-                Master Plan
+            <a href="{{ route('admin.finance.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-graph-up-arrow"></i>
+                Finance & Costing
             </a>
             @endif
         </div>

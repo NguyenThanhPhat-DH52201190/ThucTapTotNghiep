@@ -164,6 +164,32 @@ $hideMidCols = $isAccountant;
     .masterplan-table th.sticky-6 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4) + var(--sticky-col-5)); z-index: 22; }
     .masterplan-table th.sticky-7 { left: calc(var(--sticky-col-1) + var(--sticky-col-2) + var(--sticky-col-3) + var(--sticky-col-4) + var(--sticky-col-5) + var(--sticky-col-6)); z-index: 21; }
 
+    /* Keep only the final action columns visible while scrolling horizontally. */
+    .masterplan-table th.sticky-action,
+    .masterplan-table td.sticky-action {
+        position: sticky !important;
+        min-width: 56px;
+        width: 56px;
+        text-align: center;
+    }
+
+    .masterplan-table td.sticky-action {
+        background: #ffffff;
+        z-index: 8;
+    }
+
+    .masterplan-table th.sticky-action {
+        background: #f8fafc;
+        z-index: 28;
+    }
+
+    .masterplan-table .sticky-action-delete { right: 0; }
+    .masterplan-table .sticky-action-edit { right: 0; }
+    .masterplan-table .sticky-action-before-delete {
+        right: 56px;
+        box-shadow: -2px 0 0 rgba(15, 23, 42, 0.08);
+    }
+
     .masterplan-table th,
     .masterplan-table td {
         padding: 0.35rem 0.5rem;
@@ -231,12 +257,46 @@ $hideMidCols = $isAccountant;
     }
 
     .ship-balance-btn {
-        min-width: 150px;
+        min-width: 168px;
         white-space: nowrap;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.35rem;
+    }
+
+    .masterplan-filter label {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-weight: 500;
+    }
+
+    .masterplan-filter .form-control,
+    .masterplan-filter-actions .btn {
+        height: 42px;
+    }
+
+    .masterplan-filter .form-control {
+        min-width: 180px;
+    }
+
+    .masterplan-filter-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 0.5rem;
+    }
+
+    .masterplan-filter-actions .btn {
+        min-width: 88px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+    }
+
+    .masterplan-filter-actions .btn-success {
+        min-width: 110px;
     }
 
     .line-color-cell {
@@ -247,18 +307,18 @@ $hideMidCols = $isAccountant;
     }
 </style>
 
-<form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4" id="filterForm">
+<form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4 masterplan-filter" id="filterForm">
 
     <div class="col-auto">
         <label>CU</label>
-        <input type="text" name="cu" class="form-control form-control-sm" style="width: 160px;"
+        <input type="text" name="cu" class="form-control"
             placeholder="Fill CU"
             value="{{ request('cu') }}">
     </div>
 
     <div class="col-auto">
         <label>Style</label>
-        <input type="text" name="style" class="form-control form-control-sm" style="width: 160px;"
+        <input type="text" name="style" class="form-control"
             placeholder="Fill Style"
             value="{{ request('style') }}">
     </div>
@@ -266,7 +326,7 @@ $hideMidCols = $isAccountant;
     <input type="hidden" name="ship_balance_only" id="shipBalanceFilter" 
         value="{{ request('ship_balance_only', 1) }}">
 
-    <div class="col-md-4 d-flex align-items-end gap-2">
+    <div class="col-lg-auto masterplan-filter-actions">
 
         <!-- SEARCH -->
         <button type="submit" class="btn btn-dark">
@@ -314,6 +374,12 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Require_date</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-7">Confirm_date</th>
+            <th scope="col" class="col-status">MPS Status</th>
+            <th scope="col" class="col-priority">Pri.</th>
+            <th scope="col" class="col-date">Cut Start</th>
+            <th scope="col" class="col-date">Cut End</th>
+            <th scope="col" class="col-date">Sew Start</th>
+            <th scope="col" class="col-date">Sew End</th>
             @unless($hideMidCols)
             <th scope="col" class="col-wide col-gap-left">Fabric1</th>
             <th scope="col" class="col-date">ETA1</th>
@@ -340,10 +406,10 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-date">Finish_SEW</th>
             <th scope="col" class="col-date">EX_Fact</th>
             @if($canEditFabric)
-            <th scope="col">Edit</th>
+            <th scope="col" class="sticky-action sticky-action-edit {{ $canManage ? 'sticky-action-before-delete' : '' }}">Edit</th>
             @endif
             @if($canManage)
-            <th scope="col">Delete</th>
+            <th scope="col" class="sticky-action sticky-action-delete">Delete</th>
             @endif
         </tr>
     </thead>
@@ -360,7 +426,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = 29 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 11 : 0);
+        $tableColspan = 35 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 11 : 0);
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -399,6 +465,38 @@ $hideMidCols = $isAccountant;
             <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
             <td class="col-date col-date-sticky sticky-col sticky-6">{{ $item->Require_date ?? '' }}</td>
             <td class="col-date col-date-sticky sticky-col sticky-7">{{ $item->Confirm_date ?? '' }}</td>
+            <td class="col-status">
+                @php
+                    $statusColor = match($item->mps_status ?? 'planned') {
+                        'in_production' => 'success',
+                        'completed' => 'primary',
+                        'on_hold' => 'danger',
+                        default => 'secondary'
+                    };
+                    $statusLabel = match($item->mps_status ?? 'planned') {
+                        'in_production' => '🏭 Prod',
+                        'completed' => '✅ Done',
+                        'on_hold' => '⏸ Hold',
+                        default => '📋 Plan'
+                    };
+                @endphp
+                <span class="badge bg-{{ $statusColor }}" style="font-size:0.7rem;">{{ $statusLabel }}</span>
+            </td>
+            <td class="col-priority">
+                @php
+                    $priColor = match($item->mps_priority ?? 'medium') {
+                        'urgent' => 'danger',
+                        'high' => 'warning',
+                        'low' => 'secondary',
+                        default => 'info'
+                    };
+                @endphp
+                <span class="badge bg-{{ $priColor }}" style="font-size:0.65rem;">{{ substr($item->mps_priority ?? 'MED', 0, 4) }}</span>
+            </td>
+            <td>{{ $item->planned_cut_start ?? '' }}</td>
+            <td>{{ $item->planned_cut_end ?? '' }}</td>
+            <td>{{ $item->planned_sew_start ?? '' }}</td>
+            <td>{{ $item->planned_sew_end ?? '' }}</td>
             @unless($hideMidCols)
             <td class="col-gap-left">{{ $item->Fabric1 }}</td>
             <td>{{ $item->ETA1 }}</td>
@@ -425,7 +523,7 @@ $hideMidCols = $isAccountant;
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
             <td>{{$item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : ''  }}</td>
             @if($canEditFabric)
-            <td>
+            <td class="sticky-action sticky-action-edit {{ $canManage ? 'sticky-action-before-delete' : '' }}">
                 <a href="{{ $canManage ? route('admin.masterplan.edit', $item->id) : route('masterplan.fabric.edit', $item->id) }}"
                     class="btn btn-warning btn-sm">
                     <i class="bi bi-pencil-square"></i>
@@ -433,7 +531,7 @@ $hideMidCols = $isAccountant;
             </td>
             @endif
             @if($canManage)
-            <td>
+            <td class="sticky-action sticky-action-delete">
                 <form method="POST" action="{{ route('admin.masterplan.destroy', $item->id) }}"
                     onsubmit="return confirm('Are you sure?')">
                     @csrf

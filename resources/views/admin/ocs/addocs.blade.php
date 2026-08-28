@@ -38,12 +38,25 @@
                         <input type="text" name="ONum" class="form-control" value="{{ old('ONum') }}" required>
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label">BOM (Bill of Materials)</label>
+                        <select name="bom_header_id" id="bomHeader" class="form-select">
+                            <option value="">-- Select BOM --</option>
+                            @foreach($boms as $bom)
+                                <option value="{{ $bom->id }}" data-style-no="{{ $bom->style_no }}" data-style-name="{{ $bom->style_name }}" {{ old('bom_header_id') == $bom->id ? 'selected' : '' }}>
+                                    {{ $bom->style_no }} - {{ $bom->style_name }} (v{{ $bom->version }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label">SNo (Style) <span class="text-danger">*</span></label>
-                        <input type="text" name="SNo" class="form-control" value="{{ old('SNo') }}" required>
+                        <select name="SNo" id="styleNo" class="form-select" required>
+                            <option value="">-- Select BOM first --</option>
+                        </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">SName <span class="text-danger">*</span></label>
-                        <input type="text" name="Sname" class="form-control" value="{{ old('Sname') }}" required>
+                        <input type="text" id="styleName" name="Sname" class="form-control" value="{{ old('Sname') }}" required readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Customer master</label>
@@ -94,17 +107,6 @@
                         <label class="form-label">Expected Ship Date</label>
                         <input type="date" name="expected_ship_date" class="form-control" value="{{ old('expected_ship_date') }}">
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">BOM (Bill of Materials)</label>
-                        <select name="bom_header_id" class="form-select">
-                            <option value="">-- Select BOM --</option>
-                            @foreach($boms as $bom)
-                                <option value="{{ $bom->id }}" {{ old('bom_header_id') == $bom->id ? 'selected' : '' }}>
-                                    {{ $bom->style_no }} - {{ $bom->style_name }} (v{{ $bom->version }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
                     <div class="col-12">
                         <label class="form-label">Order Notes</label>
                         <textarea name="order_notes" class="form-control" rows="2">{{ old('order_notes') }}</textarea>
@@ -127,5 +129,21 @@
 
 @endsection
 @push('scripts')
-<script>let sizeIndex=1; function addSizeRow(){document.getElementById('sizeRows').insertAdjacentHTML('beforeend', `<div class="row g-2 size-row mt-2"><div class="col-md-5"><input name="sizes[${sizeIndex}][size_name]" class="form-control" placeholder="Size" required></div><div class="col-md-5"><input type="number" min="0" name="sizes[${sizeIndex}][quantity]" class="form-control" placeholder="Quantity" required></div><div class="col-md-2"><button type="button" class="btn btn-outline-danger" onclick="this.closest('.size-row').remove()">Remove</button></div></div>`);sizeIndex++;}document.getElementById('customerMaster')?.addEventListener('change',function(){const option=this.options[this.selectedIndex];if(option.dataset.name)document.getElementById('customerName').value=option.dataset.name;});</script>
+<script>
+let sizeIndex=1;
+function addSizeRow(){document.getElementById('sizeRows').insertAdjacentHTML('beforeend', `<div class="row g-2 size-row mt-2"><div class="col-md-5"><input name="sizes[${sizeIndex}][size_name]" class="form-control" placeholder="Size" required></div><div class="col-md-5"><input type="number" min="0" name="sizes[${sizeIndex}][quantity]" class="form-control" placeholder="Quantity" required></div><div class="col-md-2"><button type="button" class="btn btn-outline-danger" onclick="this.closest('.size-row').remove()">Remove</button></div></div>`);sizeIndex++;}
+document.getElementById('customerMaster')?.addEventListener('change',function(){const option=this.options[this.selectedIndex];if(option.dataset.name)document.getElementById('customerName').value=option.dataset.name;});
+
+const bomHeader = document.getElementById('bomHeader');
+const styleNo = document.getElementById('styleNo');
+const styleName = document.getElementById('styleName');
+function syncStyleFromBom() {
+    const bom = bomHeader.options[bomHeader.selectedIndex];
+    const selectedStyleNo = bom?.dataset.styleNo;
+    styleNo.replaceChildren(new Option(selectedStyleNo || '-- Select BOM first --', selectedStyleNo || ''));
+    styleName.value = bom?.dataset.styleName || '';
+}
+bomHeader.addEventListener('change', syncStyleFromBom);
+syncStyleFromBom();
+</script>
 @endpush

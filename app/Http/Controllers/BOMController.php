@@ -11,6 +11,21 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class BOMController extends Controller
 {
+    private function customers()
+    {
+        return DB::table('customer_info')->select('id', 'name', 'brand')->orderBy('name')->get();
+    }
+
+    private function resolveCustomer(?int $customerId, ?string $fallbackName = null): array
+    {
+        $customer = $customerId ? DB::table('customer_info')->find($customerId) : null;
+
+        return [
+            'customer_id' => $customer?->id,
+            'customer' => $customer?->name ?? trim((string) $fallbackName),
+        ];
+    }
+
     private function resolveStyleId(string $styleNo, ?string $styleName): int
     {
         $style = DB::table('styles')->where('style_no', trim($styleNo))->first();
@@ -57,7 +72,8 @@ class BOMController extends Controller
     public function create()
     {
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
-        return view('admin.bom.create', compact('styles'));
+        $customers = $this->customers();
+        return view('admin.bom.create', compact('styles', 'customers'));
     }
 
     public function store(Request $request)
@@ -65,6 +81,7 @@ class BOMController extends Controller
         $validated = $request->validate([
             'style_no' => 'required',
             'style_name' => 'nullable',
+            'customer_id' => 'nullable|exists:customer_info,id',
             'customer' => 'nullable',
             'version' => 'nullable',
             'effective_date' => 'nullable|date',
@@ -101,11 +118,13 @@ class BOMController extends Controller
             }
 
             $styleId = $this->resolveStyleId($request->style_no, $request->style_name);
+            $customer = $this->resolveCustomer($request->integer('customer_id') ?: null, $request->customer);
             $headerId = DB::table('bom_headers')->insertGetId([
                 'style_id' => $styleId,
+                'customer_id' => $customer['customer_id'],
                 'style_no' => $request->style_no,
                 'style_name' => $request->style_name ?? '',
-                'customer' => $request->customer ?? '',
+                'customer' => $customer['customer'],
                 'version' => $request->version ?? 'V1',
                 'status' => 'draft',
                 'total_fabric_cost' => $totalFabric,
@@ -160,26 +179,28 @@ class BOMController extends Controller
         if (!$bom) abort(404);
         $items = DB::table('bom_items')->where('bom_header_id', $id)->orderBy('sort_order')->get();
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
+        $customers = $this->customers();
         $techPack = DB::table('tech_packs')->where('bom_header_id', $id)->first();
         $colorways = DB::table('bom_colorways')->join('bom_items', 'bom_colorways.bom_item_id', '=', 'bom_items.id')
             ->where('bom_items.bom_header_id', $id)->select('bom_colorways.*', 'bom_items.material_code', 'bom_items.material_name')->get();
-        return view('admin.bom.show', compact('bom', 'items', 'styles', 'techPack', 'colorways'));
+        return view('admin.bom.show', compact('bom', 'items', 'styles', 'customers', 'techPack', 'colorways'));
     }
 
     public function clone(Request $request, $id)
     {
         $data = $request->validate([
             'style_no' => 'required|string|max:191', 'style_name' => 'nullable|string|max:191',
-            'customer' => 'nullable|string|max:191', 'version' => 'nullable|string|max:50',
+            'customer_id' => 'nullable|exists:customer_info,id', 'customer' => 'nullable|string|max:191', 'version' => 'nullable|string|max:50',
         ]);
         try {
             $cloneId = DB::transaction(function () use ($id, $data, $request) {
                 $source = DB::table('bom_headers')->where('id', $id)->lockForUpdate()->first();
                 if (!$source) abort(404);
                 $styleId = $this->resolveStyleId($data['style_no'], $data['style_name'] ?? $source->style_name);
+                $customer = $this->resolveCustomer($data['customer_id'] ?? $source->customer_id, $data['customer'] ?? $source->customer);
                 $cloneId = DB::table('bom_headers')->insertGetId([
                     'style_id' => $styleId, 'style_no' => $data['style_no'], 'style_name' => $data['style_name'] ?? $source->style_name,
-                    'customer' => $data['customer'] ?? $source->customer, 'version' => $data['version'] ?? 'V1',
+                    'customer_id' => $customer['customer_id'], 'customer' => $customer['customer'], 'version' => $data['version'] ?? 'V1',
                     'status' => 'draft', 'total_fabric_cost' => $source->total_fabric_cost,
                     'total_trim_cost' => $source->total_trim_cost, 'total_labor_cost' => $source->total_labor_cost,
                     'total_cmt' => $source->total_cmt, 'effective_date' => $source->effective_date,
@@ -266,7 +287,8 @@ class BOMController extends Controller
         if (!$bom) abort(404);
         $items = DB::table('bom_items')->where('bom_header_id', $id)->orderBy('sort_order')->get();
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
-        return view('admin.bom.edit', compact('bom', 'items', 'styles'));
+        $customers = $this->customers();
+        return view('admin.bom.edit', compact('bom', 'items', 'styles', 'customers'));
     }
 
     public function update(Request $request, $id)
@@ -278,6 +300,7 @@ class BOMController extends Controller
         $validated = $request->validate([
             'style_no' => 'required',
             'style_name' => 'nullable',
+            'customer_id' => 'nullable|exists:customer_info,id',
             'customer' => 'nullable',
             'version' => 'nullable',
             'status' => 'nullable',
@@ -314,11 +337,13 @@ class BOMController extends Controller
             }
 
             $styleId = $this->resolveStyleId($request->style_no, $request->style_name);
+            $customer = $this->resolveCustomer($request->integer('customer_id') ?: null, $request->customer);
             DB::table('bom_headers')->where('id', $id)->update([
                 'style_id' => $styleId,
+                'customer_id' => $customer['customer_id'],
                 'style_no' => $request->style_no,
                 'style_name' => $request->style_name ?? '',
-                'customer' => $request->customer ?? '',
+                'customer' => $customer['customer'],
                 'version' => $request->version ?? 'V1',
                 'status' => $request->status ?? 'draft',
                 'total_fabric_cost' => $totalFabric,
@@ -526,6 +551,7 @@ class BOMController extends Controller
         return view('admin.bom.import-preview', [
             'parsedItems' => $parsedItems,
             'styles' => DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get(),
+            'customers' => $this->customers(),
         ]);
     }
 

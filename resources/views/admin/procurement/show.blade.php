@@ -16,6 +16,7 @@
                     @if(in_array($po->status, ['confirmed', 'partial']))
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#receiveModal">Receive goods</button>
                     @endif
+                    @if(!in_array($po->status, ['confirmed', 'partial']))
                     <form method="POST" action="{{ route('admin.procurement.status', $po->id) }}" class="d-inline">
                         @csrf @method('PATCH')
                         <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto">
@@ -27,6 +28,7 @@
                             <option value="cancelled" {{ $po->status=='cancelled'?'selected':'' }}>❌ Cancelled</option>
                         </select>
                     </form>
+                    @endif
                 @endif
                 <a href="{{ route('admin.procurement.index') }}" class="btn btn-sm btn-secondary">Back</a>
             </div>
@@ -121,15 +123,28 @@
 <div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-lg"><form method="POST" action="{{ route('admin.procurement.receipts.store', $po->id) }}" class="modal-content">@csrf
     <div class="modal-header"><h5 class="modal-title">Receive goods</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-        <div class="row g-3 mb-3"><div class="col-md-3"><label class="form-label">Receipt date</label><input type="date" name="received_date" class="form-control" value="{{ now()->toDateString() }}" required></div><div class="col-md-4"><label class="form-label">Warehouse</label><select name="warehouse_id" class="form-select" required><option value="">Select warehouse</option>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->code }} — {{ $warehouse->name }}</option>@endforeach</select></div><div class="col-md-5"><label class="form-label">Delivery reference</label><input name="reference_number" class="form-control"></div><div class="col-md-6"><label class="form-label">Location (optional)</label><select name="location_id" class="form-select"><option value="">No specific bin</option>@foreach($locations as $location)<option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}">{{ $location->location_code }}{{ $location->location_name ? ' — '.$location->location_name : '' }}</option>@endforeach</select><small class="text-muted">Choose a location belonging to the warehouse.</small></div></div>
-        <table class="table table-sm"><thead><tr><th>Material</th><th>Remaining</th><th>Lot/Roll</th><th>Receive qty</th></tr></thead><tbody>
+        <div class="row g-3 mb-3"><div class="col-md-3"><label class="form-label">Receipt date</label><input type="date" name="received_date" class="form-control" value="{{ now()->toDateString() }}" required></div><div class="col-md-4"><label class="form-label">Warehouse</label><select name="warehouse_id" class="form-select" required><option value="">Select warehouse</option>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->code }} — {{ $warehouse->name }}</option>@endforeach</select></div><div class="col-md-5"><label class="form-label">Delivery reference</label><input name="reference_number" class="form-control"></div><div class="col-md-6"><label class="form-label">Location</label><select name="location_id" class="form-select" required><option value="">Select location</option>@foreach($locations as $location)<option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}">{{ $location->location_code }}{{ $location->location_name ? ' — '.$location->location_name : '' }}</option>@endforeach</select><small class="text-muted">Location must belong to the selected warehouse.</small></div></div>
+        <table class="table table-sm"><thead><tr><th>Material</th><th>Remaining</th><th>Color</th><th>Size</th><th>Lot/Roll</th><th>Receive qty</th></tr></thead><tbody>
         @foreach($items as $item)
             @if($item->quantity > $item->received_qty)
-            <tr><td>{{ $item->material_code }} - {{ $item->material_name }}<input type="hidden" name="items[{{ $item->id }}][po_item_id]" value="{{ $item->id }}"></td><td>{{ number_format($item->quantity - $item->received_qty, 2) }}</td><td><input name="items[{{ $item->id }}][lot_roll_no]" class="form-control" placeholder="Lot/Roll"></td><td><input type="number" step="0.0001" min="0.0001" max="{{ $item->quantity - $item->received_qty }}" name="items[{{ $item->id }}][quantity]" class="form-control" required></td></tr>
+            <tr><td>{{ $item->material_code }} - {{ $item->material_name }}<input type="hidden" name="items[{{ $item->id }}][po_item_id]" value="{{ $item->id }}"></td><td>{{ number_format($item->quantity - $item->received_qty, 2) }}</td><td><input name="items[{{ $item->id }}][material_color]" class="form-control" value="{{ $item->color }}" required></td><td><input name="items[{{ $item->id }}][material_size]" class="form-control" value="{{ $item->default_material_size }}" placeholder="e.g. M" required></td><td><input name="items[{{ $item->id }}][lot_roll_no]" class="form-control" placeholder="Lot/Roll" required></td><td><input type="number" step="0.0001" min="0.0001" max="{{ $item->quantity - $item->received_qty }}" name="items[{{ $item->id }}][quantity]" class="form-control" required></td></tr>
             @endif
         @endforeach
         </tbody></table><label class="form-label">Notes</label><textarea name="notes" class="form-control"></textarea>
     </div><div class="modal-footer"><button class="btn btn-primary">Post receipt</button></div>
 </form></div></div>
+@endif
+
+@if($canManage && in_array($po->status, ['draft', 'sent']))
+@php($allowedStatusTransitions = $po->status === 'draft' ? ['draft', 'sent', 'cancelled'] : ['sent', 'confirmed', 'cancelled'])
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const select = document.querySelector('select[name="status"]');
+    const allowed = @json($allowedStatusTransitions);
+    select?.querySelectorAll('option').forEach(option => {
+        if (!allowed.includes(option.value)) option.remove();
+    });
+});
+</script>
 @endif
 @endsection

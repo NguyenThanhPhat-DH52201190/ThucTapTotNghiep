@@ -40,8 +40,16 @@
                         <input type="text" name="style_name" id="style_name" class="form-control" value="{{ old('style_name') }}">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Customer</label>
-                        <input type="text" name="customer" id="customer" class="form-control" value="{{ old('customer') }}">
+                        <label class="form-label">Customer Master</label>
+                        <select name="customer_id" id="customer_id" class="form-select">
+                            <option value="">-- Select customer --</option>
+                            @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}" @selected((string) old('customer_id') === (string) $customer->id)>
+                                    {{ $customer->name }}{{ $customer->brand ? ' — ' . $customer->brand : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Customer is selected from Customer Master.</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Version</label>
@@ -217,7 +225,6 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let opt of options) {
             if (opt.value === this.value) {
                 document.getElementById('style_name').value = opt.dataset.name || '';
-                document.getElementById('customer').value = opt.dataset.customer || '';
                 break;
             }
         }

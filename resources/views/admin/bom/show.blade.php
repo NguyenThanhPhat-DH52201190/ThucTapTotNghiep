@@ -188,7 +188,7 @@
     <div class="modal-body row g-3">
         <div class="col-12"><label class="form-label">New Style No</label><input name="style_no" class="form-control" required></div>
         <div class="col-12"><label class="form-label">Style Name</label><input name="style_name" class="form-control" value="{{ $bom->style_name }}"></div>
-        <div class="col-md-7"><label class="form-label">Customer</label><input name="customer" class="form-control" value="{{ $bom->customer }}"></div>
+        <div class="col-md-7"><label class="form-label">Customer Master</label><select name="customer_id" class="form-select"><option value="">-- Select customer --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" @selected((string) $bom->customer_id === (string) $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' — ' . $customer->brand : '' }}</option>@endforeach</select></div>
         <div class="col-md-5"><label class="form-label">Version</label><input name="version" class="form-control" value="V1"></div>
     </div><div class="modal-footer"><button class="btn btn-primary">Create draft clone</button></div>
 </form></div></div>

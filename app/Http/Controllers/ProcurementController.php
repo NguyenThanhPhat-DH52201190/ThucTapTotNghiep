@@ -48,7 +48,10 @@ class ProcurementController extends Controller
             }
             DB::table('mps_schedules')->join('work_orders', 'mps_schedules.work_order_id', '=', 'work_orders.id')
                 ->where('work_orders.cutsheet_id', $cutsheetId)
-                ->update(['material_eta_status' => $status, 'updated_at' => now()]);
+                ->update([
+                    'mps_schedules.material_eta_status' => $status,
+                    'mps_schedules.updated_at' => now(),
+                ]);
         }
     }
 
@@ -175,8 +178,14 @@ class ProcurementController extends Controller
             ->where('mrp_header_id', $mrpId)->where('status', 'pending')->get()->keyBy('material_id');
 
         $suppliers = DB::table('suppliers')->where('status', 'active')->orderBy('name')->get();
+        $vendorPrices = DB::table('material_vendors')
+            ->whereIn('material_id', $items->pluck('material_id')->filter()->unique())
+            ->whereIn('vendor_id', $suppliers->pluck('id'))
+            ->select('material_id', 'vendor_id', 'unit_price', 'lead_time_days')
+            ->get()
+            ->values();
 
-        return view('admin.procurement.create-from-mrp', compact('mrp', 'items', 'suppliers', 'suggestions'));
+        return view('admin.procurement.create-from-mrp', compact('mrp', 'items', 'suppliers', 'suggestions', 'vendorPrices'));
     }
 
     public function store(Request $request)
@@ -268,7 +277,8 @@ class ProcurementController extends Controller
             ->first();
         if (!$po) abort(404);
 
-        $items = DB::table('po_items')->where('po_id', $id)->get();
+        $items = DB::table('po_items')->leftJoin('materials', 'po_items.material_id', '=', 'materials.id')
+            ->where('po_items.po_id', $id)->select('po_items.*', 'materials.size as default_material_size')->get();
         $receipts = DB::table('po_receipts')->where('po_id', $id)->orderBy('received_date', 'desc')->get();
         $warehouses = DB::table('warehouses')->where('is_active', 1)->orderBy('name')->get();
         $locations = DB::table('locations')->where('is_active', 1)->orderBy('location_code')->get();
@@ -285,8 +295,9 @@ class ProcurementController extends Controller
         $allowedTransitions = [
             'draft' => ['sent', 'cancelled'],
             'sent' => ['confirmed', 'cancelled'],
-            'confirmed' => ['received', 'cancelled'],
-            'partial' => ['received', 'cancelled'],
+            // Goods are received only by the receipt form, which records the physical lot and location.
+            'confirmed' => ['cancelled'],
+            'partial' => ['cancelled'],
             'received' => [],
             'cancelled' => [],
         ];
@@ -300,7 +311,6 @@ class ProcurementController extends Controller
                     throw new \RuntimeException("Cannot change status from '{$po->status}' to '{$newStatus}'.");
                 }
                 DB::table('purchase_orders')->where('id', $id)->update(['status' => $newStatus, 'updated_at' => now()]);
-                if ($newStatus === 'received') $this->receiveToInventory($id);
             });
         } catch (\Throwable $e) {
             Log::warning('PO status update rejected', ['po_id' => $id, 'message' => $e->getMessage()]);
@@ -317,9 +327,10 @@ class ProcurementController extends Controller
     {
         $data = $request->validate([
             'received_date' => 'required|date', 'reference_number' => 'nullable|string|max:191', 'notes' => 'nullable|string',
-            'warehouse_id' => 'required|exists:warehouses,id', 'location_id' => 'nullable|exists:locations,id',
+            'warehouse_id' => 'required|exists:warehouses,id', 'location_id' => 'required|exists:locations,id',
             'items' => 'required|array|min:1', 'items.*.po_item_id' => 'required|exists:po_items,id',
-            'items.*.quantity' => 'required|numeric|gt:0', 'items.*.lot_roll_no' => 'nullable|string|max:100',
+            'items.*.quantity' => 'required|numeric|gt:0', 'items.*.lot_roll_no' => 'required|string|max:100',
+            'items.*.material_color' => 'required|string|max:100', 'items.*.material_size' => 'required|string|max:100',
         ]);
         try {
             DB::transaction(function () use ($id, $data) {
@@ -380,11 +391,16 @@ class ProcurementController extends Controller
             $receiptEntry = $receiptEntries->get($item->id);
             if ($receiveQty <= 0) continue;
             if ($receiveQty > $remaining) throw new \RuntimeException("Received quantity exceeds remaining quantity for {$item->material_code}.");
+            if ($item->color && strcasecmp(trim($item->color), trim($receiptEntry['material_color'] ?? '')) !== 0) {
+                throw new \RuntimeException("Received color must match the PO color for {$item->material_code}.");
+            }
 
             DB::table('po_receipt_items')->insert([
                 'po_receipt_id' => $receiptId,
                 'po_item_id' => $item->id,
                 'material_code' => $item->material_code,
+                'material_color' => trim($receiptEntry['material_color']),
+                'material_size' => trim($receiptEntry['material_size']),
                 'quantity_received' => $receiveQty,
                 'batch_no' => $receiptEntry['lot_roll_no'] ?? null,
                 'warehouse_id' => $warehouse->id,
@@ -414,7 +430,8 @@ class ProcurementController extends Controller
 
             app(InventoryLedgerService::class)->receive([
                 'reference_type' => 'PO_RECEIPT', 'reference_id' => $receiptId, 'reference_doc' => $receiptNo,
-                'material_id' => $materialId, 'material_code' => $item->material_code, 'color' => $item->color,
+                'material_id' => $materialId, 'material_code' => $item->material_code, 'color' => trim($receiptEntry['material_color']),
+                'size' => trim($receiptEntry['material_size']),
                 'quantity' => $receiveQty, 'unit' => $item->unit, 'warehouse_id' => $warehouse->id,
                 'location_id' => $meta['location_id'] ?? null,
                 'lot_roll_no' => $receiptEntry['lot_roll_no'] ?? null,

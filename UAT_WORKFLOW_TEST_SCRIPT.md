@@ -1,204 +1,182 @@
-# Kịch bản UAT – ERP May mặc
+# Kịch bản UAT theo luồng nghiệp vụ — ERP May mặc
 
-Tài liệu này dùng để test thủ công theo từng luồng nghiệp vụ trên môi trường test/staging. Test theo đúng thứ tự bên dưới vì dữ liệu của luồng sau phụ thuộc luồng trước.
+Tài liệu này kiểm thử thủ công toàn bộ chuỗi nghiệp vụ. Thực hiện **theo đúng thứ tự** vì dữ liệu của bước trước là đầu vào của bước sau.
 
-## 1. Quy ước thực hiện
+## 1. Quy ước
 
-- Mỗi lần test dùng mã riêng, ví dụ: `UAT-CS-001`, style `UAT-1001`, PO `UAT-PO-001`, vật tư `UAT-FAB-RED`.
-- Ghi lại mã bản ghi vừa tạo để đối chiếu ở các bước sau. Không dùng đơn hàng thật để test huỷ, xuất kho hoặc đóng đơn.
-- Với các thao tác tạo qua queue (release đơn hàng), queue worker phải chạy. Nếu queue không chạy, trạng thái job sẽ không chuyển hoàn tất dù dữ liệu đầu vào đúng.
-- Mỗi dòng **Kỳ vọng** phải đạt trước khi chuyển sang bước kế tiếp. Đánh dấu `PASS` hoặc `FAIL` vào cột kết quả.
+- Chỉ dùng dữ liệu có tiền tố `UAT-`; không dùng đơn hàng/kho thật.
+- Đánh dấu PASS chỉ khi đạt toàn bộ kỳ vọng. Nếu FAIL, ghi Test ID, ảnh, URL và dữ liệu nhập.
+- Không chỉnh trực tiếp `inventory_balances`, `inventory_transactions`, `requisition_items` hay `order_costings` trong database; chỉ dùng database để đối chiếu.
 
-## 2. Dữ liệu chuẩn bị chung
+## 2. Dữ liệu chuẩn bị
 
-| Hạng mục | Dữ liệu UAT đề nghị |
+| Hạng mục | Dữ liệu đề nghị |
 |---|---|
-| Người dùng | Admin; PPIC; Warehouse; Production; Finance (nếu đã có các vai trò này) |
-| Nhà cung cấp | `UAT Supplier A`, lead time 7 ngày |
-| Kho/Vị trí | Kho `UAT-WH`, vị trí `A-01-01` |
-| Chuyền may | `UAT Line 01`, có workers, working hours và SMV hợp lệ |
-| Vật tư | `UAT-FAB-RED`, đơn vị M, có nhà cung cấp mặc định |
-| BOM | Style `UAT-1001`, màu garment `RED`, định mức 1.50 M/pcs, hao hụt 3% |
-| Đơn hàng | `UAT-CS-001`, Qty 100, Color `RED`, ship date trong tương lai |
+| Customer | `UAT Customer A` |
+| Material | `UAT-FAB-RED`, type Fabric, unit `M`, color `RED` |
+| Supplier | `UAT Supplier A`, active, lead time 7 ngày |
+| Warehouse/Location | `UAT-WH` / `A-01-01` |
+| Sewing line | `UAT-LINE-01` / `UAT Line 01`, 20 workers, 8 hours/day |
+| BOM | style `UAT-1001`, version `V1`, Active |
+| BOM item | `UAT-FAB-RED`, consumption `1.50 M/pcs`, wastage `3%` |
+| Colorway | garment `RED` → material `RED` |
+| OCS | `UAT-CS-001`, PO `UAT-PO-001`, qty `100`, color `RED` |
+| Receipt lot | `UAT-LOT-001` tại `UAT-WH / A-01-01` |
 
-## 3. Checklist chạy nhanh
+Gross material kỳ vọng: `100 × 1.50 × 1.03 = 154.50 M`.
 
-| # | Workflow | Kết quả |
+## 3. Khởi động Queue/Scheduler trước khi test
+
+Mở hai terminal tại thư mục project:
+
+```powershell
+php artisan queue:work database --tries=3
+```
+
+```powershell
+php artisan schedule:work
+```
+
+Queue tạo Requisition khi OCS được `released`; scheduler chạy MRP định kỳ và dispatch outbox event. Khi chỉ test một job, dùng `php artisan queue:work --once --tries=3`.
+
+## 4. Checklist tổng quan
+
+| ID | Luồng | Kết quả |
 |---:|---|---|
-| 01 | BOM & Tech Pack | ☐ PASS / ☐ FAIL |
-| 02 | Order Cut Sheet và workflow status | ☐ PASS / ☐ FAIL |
-| 03 | MPS, Work Order và capacity | ☐ PASS / ☐ FAIL |
-| 04 | MRP và reservation | ☐ PASS / ☐ FAIL |
-| 05 | Procurement, ETA và receipt | ☐ PASS / ☐ FAIL |
-| 06 | Warehouse: issue, lot/location, stock count | ☐ PASS / ☐ FAIL |
-| 07 | Shop Floor, WIP và actual labor | ☐ PASS / ☐ FAIL |
-| 08 | Finance, actual cost, variance và snapshot | ☐ PASS / ☐ FAIL |
-| 09 | Phân quyền và audit trail | ☐ PASS / ☐ FAIL |
-| 10 | Regression UI / Import / sticky columns | ☐ PASS / ☐ FAIL |
+| WF-00 | Master data nền | ☐ PASS / ☐ FAIL |
+| WF-01 | BOM, Tech Pack, Colorway, Clone | ☐ PASS / ☐ FAIL |
+| WF-02 | OCS, size breakdown, release | ☐ PASS / ☐ FAIL |
+| WF-03 | Requisition tự động và MRP | ☐ PASS / ☐ FAIL |
+| WF-04 | Procurement, ETA, PO receipt | ☐ PASS / ☐ FAIL |
+| WF-05 | Warehouse issue, ledger, stock count | ☐ PASS / ☐ FAIL |
+| WF-06 | MPS, Work Order, capacity | ☐ PASS / ☐ FAIL |
+| WF-07 | Shop Floor, WIP, downtime | ☐ PASS / ☐ FAIL |
+| WF-08 | Finance, expense, costing, snapshot | ☐ PASS / ☐ FAIL |
+| WF-09 | Audit, quyền và regression UI | ☐ PASS / ☐ FAIL |
 
 ---
 
-## Workflow 01 — BOM & Tech Pack
-
-**Mục tiêu:** BOM có thể dùng lại cho OCS/MRP, colorway map đúng theo màu đơn hàng và Tech Pack được kiểm soát.
+## WF-00 — Master data nền
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Đăng nhập Admin hoặc IE, mở `/bom`, chọn **Create BOM**. | Mở được form tạo BOM. | ☐ |
-| 2 | Tạo BOM style `UAT-1001`, version `V1`, trạng thái Active; thêm material `UAT-FAB-RED`, consumption `1.50`, wastage `3%`. | BOM lưu thành công; tổng chi phí và dòng vật tư hiển thị đúng. | ☐ |
-| 3 | Thêm colorway: garment color `RED` → material color phù hợp. | Colorway lưu, hiển thị trong BOM. | ☐ |
-| 4 | Nhập Tech Pack gồm size/colorway hợp lệ và đính kèm tệp/ảnh nếu form hỗ trợ. | Tech Pack lưu; version/status approval hiển thị đúng. | ☐ |
-| 5 | Dùng **Clone BOM** từ `UAT-1001` sang `UAT-1002`. | BOM mới có các item/colorway giống BOM nguồn; không làm thay đổi BOM nguồn. | ☐ |
-| 6 (âm) | Thử lưu consumption bằng 0/âm hoặc thiếu vật tư. | Hệ thống từ chối và không tạo BOM sai. | ☐ |
+| 1 | **Customer Master**: tạo `UAT Customer A`. | Chọn được khi tạo OCS/BOM. | ☐ |
+| 2 | **Material Master**: tạo `UAT-FAB-RED`, Fabric, unit M, color RED. | Material active, không trùng code. | ☐ |
+| 3 | Gắn `UAT Supplier A` làm default material vendor, lead time 7 ngày. | Mapping material–supplier đúng. | ☐ |
+| 4 | **Inventory → Warehouses**: tạo `UAT-WH`, location `A-01-01`. | Chọn được khi receipt/issue. | ☐ |
+| 5 | **Production Planning**: tạo `UAT-LINE-01`, `UAT Line 01`, 20 workers, 8h/day. | Line active, chọn được khi lập MPS. | ☐ |
+| 6 (âm) | Thử tạo code customer/material/line trùng. | Bị validation; không có record trùng. | ☐ |
 
-**Điểm đối chiếu:** BOM dùng được ở form OCS chỉ khi Active; mã style và BOM được gắn đúng.
-
-## Workflow 02 — Order Cut Sheet và chuyển trạng thái
-
-**Mục tiêu:** đơn hàng là đầu vào duy nhất; status đi theo chuỗi nghiệp vụ và release sinh requisition qua queue.
+## WF-01 — BOM, Tech Pack, Colorway, Clone
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Mở `/order-cutsheet` → **Add**. Tạo `UAT-CS-001`, style `UAT-1001`, màu `RED`, Qty 100, size breakdown tổng bằng 100, gắn BOM Active. | Lưu thành công; dòng OCS hiện BOM đã gắn. | ☐ |
-| 2 | Mở lại form Edit. | Status chỉ đọc tại form Edit; không đổi status trực tiếp ở đây. | ☐ |
-| 3 | Đổi status tại danh sách: `pending → confirmed → released`; nhập lý do khi được hỏi. | Mỗi lần chỉ cho phép chuyển tiếp hợp lệ; có thông báo thành công. | ☐ |
-| 4 | Chờ queue xử lý rồi mở Requisition/Inventory. | Requisition được tạo từ BOM, với màu vật tư theo colorway `RED`; job status completed. | ☐ |
-| 5 | Đổi tiếp `released → in_production → completed → closed`. | Chỉ nhận chuyển trạng thái theo thứ tự; Closed tạo snapshot costing. | ☐ |
-| 6 (âm) | Thử chuyển `pending → completed`, hoặc sửa/xoá khi In Production/Completed. | Bị chặn; dữ liệu OCS và size breakdown không đổi. | ☐ |
-| 7 (âm) | Tạo OCS với tổng size khác Qty hoặc BOM không Active/khác style. | Validation báo lỗi; không tạo dữ liệu dở dang. | ☐ |
+| 1 | **BOM & Tech Pack** → Create BOM: `UAT-1001`, V1. | BOM tạo ở Draft. | ☐ |
+| 2 | Thêm `UAT-FAB-RED`, consumption 1.50, wastage 3%. | Item, đơn vị, chi phí đúng. | ☐ |
+| 3 | Thêm colorway `RED` → `RED`; nhập Tech Pack/size nếu form hỗ trợ. | Colorway/Tech Pack lưu và hiển thị. | ☐ |
+| 4 | Chuyển BOM sang Active. | Chọn được cho OCS cùng style. | ☐ |
+| 5 | Clone `UAT-1001` sang `UAT-1002`. | BOM đích có item/colorway; BOM nguồn không đổi. | ☐ |
+| 6 (âm) | Lưu consumption 0/âm, thiếu material, hoặc gắn BOM Draft/khác style. | Bị chặn, không tạo dữ liệu sai. | ☐ |
 
-### Cách chạy và kiểm tra job tạo Requisition
-
-Môi trường hiện dùng `QUEUE_CONNECTION=database`. Sau khi thực hiện bước chuyển status sang `released`, mở một terminal tại thư mục project và chạy một lần:
-
-```powershell
-php artisan queue:work --once --tries=3
-```
-
-Lệnh này xử lý một job rồi tự dừng, phù hợp để UAT. Khi chạy liên tục trong môi trường phát triển, dùng `php artisan queue:work --tries=3` và giữ terminal đó mở.
-
-Sau khi worker chạy xong, xác nhận bằng công cụ quản trị MySQL (phpMyAdmin/HeidiSQL) với mã CS UAT:
-
-```sql
-SELECT o.CS, o.status, o.requisition_job_status, o.requisition_job_error,
-       r.requisition_code, r.status AS requisition_status
-FROM ocs o
-LEFT JOIN material_requisitions r ON r.cutsheet_id = o.id
-WHERE o.CS = 'UAT-CS-001';
-
-SELECT ri.material_color, ri.requested_qty, ri.issued_qty
-FROM requisition_items ri
-JOIN material_requisitions r ON r.id = ri.requisition_id
-JOIN ocs o ON o.id = r.cutsheet_id
-WHERE o.CS = 'UAT-CS-001';
-```
-
-- Thành công: `requisition_job_status = completed`, có một `requisition_code`, requisition status ban đầu là `pending`, và `material_color` là `RED` (hoặc màu đã map trong colorway).
-- Đang chờ: `requisition_job_status = queued` nghĩa là worker chưa chạy hoặc chưa lấy job.
-- Thất bại: `requisition_job_status = failed`; xem `requisition_job_error` và bảng `failed_jobs`. Nguyên nhân thường là BOM chưa Active, BOM sai style, BOM không có item, hoặc color/material master chưa hợp lệ.
-
-> Lưu ý: giao diện hiện chưa có màn hình danh sách requisition hoặc cột trạng thái queue trên OCS; bước xác nhận này cần thực hiện qua database cho đến khi UI đó được bổ sung.
-
-## Workflow 03 — Master Production Schedule, Work Order, Capacity
-
-**Mục tiêu:** xếp lịch hợp lệ theo ngày material-ready/capacity và quản lý Work Order.
+## WF-02 — Order Cut Sheet và phát lệnh
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Mở `/master-plan`, tạo Master Plan cho `UAT-CS-001`, chọn `UAT Line 01`, Qty phân bổ ≤ Qty OCS. | Plan hiển thị CU, Line, Qty_dis, ngày kế hoạch và status Planned. | ☐ |
-| 2 | Nhập SMV, workers, working hours và lịch cut/sew hợp lệ. | Capacity được tính; không báo quá tải. | ☐ |
-| 3 | Tạo Work Order từ OCS/MPS, sau đó thử Split Work Order cho một phần số lượng. | Tổng Qty các Work Order con không vượt Qty gốc; liên kết CS và schedule đúng. | ☐ |
-| 4 | Cập nhật status Work Order theo luồng được cho phép. | Status cập nhật thành công và không nhảy cóc trạng thái. | ☐ |
-| 5 (âm) | Xếp planned start trước ETA/material-ready cuối cùng. | Bị chặn hoặc hiện cảnh báo rõ ràng. | ☐ |
-| 6 (âm) | Phân bổ vượt năng lực chuyền hoặc tổng Qty lớn hơn OCS. | Bị từ chối; không tạo schedule vượt capacity. | ☐ |
+| 1 | **Order Cut Sheet** → Add: `UAT-CS-001`, PO `UAT-PO-001`, Customer UAT, style `UAT-1001`, color RED, qty 100, ship date tương lai, BOM Active. | OCS lưu; hiển thị BOM đã gắn. | ☐ |
+| 2 | Nhập size breakdown M = 100. | Tổng size = Qty 100. | ☐ |
+| 3 | Đổi status `pending → confirmed → released`. | Chỉ chuyển hợp lệ; có thông báo thành công. | ☐ |
+| 4 | Chờ queue, mở **Inventory → Requisitions & Issue**. | Có requisition của CS; material/color RED; requested ≈154.50; issued=0. | ☐ |
+| 5 (âm) | Tạo OCS có tổng size ≠ Qty hoặc `pending → completed`. | Bị chặn; không lưu dở dang/nhảy status. | ☐ |
+| 6 (âm) | Khi OCS `in_production`/`closed`, thử sửa/xóa Qty hoặc size. | Bị khóa, dữ liệu kế hoạch/kho không đổi. | ☐ |
 
-## Workflow 04 — MRP và reservation
+**Đối chiếu khi cần:** `ocs.requisition_job_status = completed`; requisition ban đầu `pending`.
 
-**Mục tiêu:** Gross − Available = Net; MRP không dùng nhầm on-hand thành available và không sinh đề xuất trùng.
-
-| Bước | Thao tác | Kỳ vọng | Kết quả |
-|---:|---|---|---|
-| 1 | Tạo/nhập tồn `UAT-FAB-RED`: on-hand 100 M tại `UAT-WH/A-01-01`, lot `UAT-LOT-01`. | Tồn hiện đúng theo kho, vị trí, màu và lot. | ☐ |
-| 2 | Chạy **Calculate MRP** cho OCS/plan UAT. | Gross ≈ `100 × 1.50 × 1.03 = 154.5 M`; Available tính sau reserved/allocated; Net suggestion hiển thị đúng. | ☐ |
-| 3 | Chạy lại cùng phạm vi, không thay đổi dữ liệu. | Không có suggestion trùng; kết quả được cập nhật/idempotent. | ☐ |
-| 4 | Release requisition hoặc thực hiện reserve theo flow. | Ledger có RESERVE, available giảm tương ứng; balance không âm. | ☐ |
-| 5 | Cancel requisition trước khi issue. | Ledger có UNRESERVE; available được trả lại. | ☐ |
-| 6 (âm) | Tạo nhu cầu lớn hơn available hoặc 2 thao tác reserve cùng một lot. | Không reserve quá số lượng khả dụng; không có balance âm. | ☐ |
-
-## Workflow 05 — Procurement, ETA và Receipt
-
-**Mục tiêu:** chuyển MRP proposal thành PO, theo dõi ETA, nhận hàng nhiều lần và đưa tồn vào kho đúng vị trí/lô.
+## WF-03 — MRP và reservation
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Vào Procurement, tạo Supplier `UAT Supplier A` (nếu chưa có) và gán lead time. | Supplier lưu thành công. | ☐ |
-| 2 | Chọn nhiều MRP suggestions cùng supplier → **Create PO**. | Một PO được tạo với nhiều PO items; tổng số lượng/giá đúng proposal. | ☐ |
-| 3 | Cập nhật ETA một PO item và lưu lý do nếu form yêu cầu. | ETA mới hiển thị; material readiness/MPS được cập nhật hoặc cảnh báo. Audit có bản ghi ETA. | ☐ |
-| 4 | Receive lần 1 số lượng 30 M vào `UAT-WH/A-01-01`, lot `UAT-LOT-02`, delivery note `UAT-DN-001`. | Goods receipt và receipt item được tạo; tồn tăng 30 M đúng kho/vị trí/lot; PO vẫn Partial/Open. | ☐ |
-| 5 | Receive phần còn lại của PO. | Có thể nhận nhiều lần; tổng received không vượt PO item; PO chuyển trạng thái phù hợp. | ☐ |
-| 6 (âm) | Nhận số lượng lớn hơn outstanding hoặc thiếu lot/location. | Bị chặn; tồn và receipt trước đó không đổi. | ☐ |
+| 1 | Vào **MRP**, bấm Calculate/Run MRP cho UAT. | Suggestion `UAT-FAB-RED`: Gross ≈154.50; Net = Gross − Available. | ☐ |
+| 2 | Chạy lại MRP không đổi dữ liệu. | Cập nhật/idempotent, không sinh suggestion trùng. | ☐ |
+| 3 | Kiểm tra On Hand, Allocated, On Order, Available. | `Available = On hand − Allocated + On order`. | ☐ |
+| 4 | Trên CS UAT phụ, cancel requisition trước khi issue. | Reservation được hoàn, không âm tồn. | ☐ |
+| 5 (âm) | Tạo nhu cầu vượt available hoặc reserve cùng lot song song. | Không reserve quá mức, không có balance âm. | ☐ |
 
-## Workflow 06 — Warehouse: Requisition, Issue, Ledger và Stock Count
-
-**Mục tiêu:** chỉ xuất đúng vật tư/lô/vị trí, mọi thay đổi tồn đi qua ledger và không có âm kho.
+## WF-04 — Procurement, ETA và PO receipt
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Mở requisition sinh từ `UAT-CS-001`. Kiểm tra requested qty, material/color/size. | Số lượng tính từ BOM × Qty, đúng colorway; trạng thái Pending/Partial. | ☐ |
-| 2 | Issue 30 M từ lot `UAT-LOT-02`, location `A-01-01`, map đúng requisition item. | Phiếu issue, issue item và inventory transaction được tạo trong một lần; balance giảm 30 M; issued_qty tăng 30 M. | ☐ |
-| 3 | Issue phần còn lại từ lot còn đủ. | Requisition chuyển Partial rồi Completed khi đủ; event SFC được xếp/gửi qua outbox. | ☐ |
-| 4 | Mở Inventory Transactions và Stock Report. | Thấy receipt/reserve/issue theo reference document; số dư theo từng lot/location đúng. | ☐ |
-| 5 | Tạo Stock Count khác balance, sau đó approve với lý do. | Không sửa trực tiếp balance; sinh transaction ADJUSTMENT, audit lưu lý do. | ☐ |
-| 6 (âm) | Issue > available, issue sai location/lot, hoặc issue item không thuộc requisition. | Bị chặn hoàn toàn; không có transaction/issued_qty/balance nào thay đổi. | ☐ |
+| 1 | Từ MRP chọn suggestion của `UAT Supplier A` → Create PO. | PO/PO item liên kết đúng suggestion. | ☐ |
+| 2 | Mở PO, đổi Draft → Confirmed, đặt ETA sau hôm nay 3 ngày. | Status/ETA lưu; MPS đọc được material readiness. | ☐ |
+| 3 (âm) | Thử lập MPS start trước ETA. | Bị chặn hoặc cảnh báo rõ ràng. | ☐ |
+| 4 | Receive goods: 100 M, lot `UAT-LOT-001`, `UAT-WH/A-01-01`, DN `UAT-DN-001`. | Receipt + IN transaction; tồn lot tăng 100; PO partial/open. | ☐ |
+| 5 | Receive phần còn lại. | Tổng receipt không vượt PO; PO chuyển status đúng. | ☐ |
+| 6 (âm) | Receive vượt outstanding, thiếu lot/location, hoặc sai material. | Bị chặn; receipt/tồn cũ không đổi. | ☐ |
 
-## Workflow 07 — Shop Floor Control, WIP và Actual Labor
-
-**Mục tiêu:** ghi nhận sản lượng theo công đoạn/màu/size, chặn over-production và tính actual labor theo worker-hours.
+## WF-05 — Issue, ledger và stock count
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Từ MPS/Work Order tạo production log cho ngày UAT. | Log liên kết đúng MPS schedule/Work Order. | ☐ |
-| 2 | Ghi Cut: target 100, actual 80; khai chi tiết color `RED`/size; nhập workers, working hours, defects. | Daily log và detail lưu; dashboard/WIP hiển thị 80 cut; efficiency và labor cost có dữ liệu. | ☐ |
-| 3 | Ghi Sew actual 60 và Finish actual 50. | WIP Sewing = Cut − Sew = 20 (theo báo cáo); luồng công đoạn hiển thị đúng. | ☐ |
-| 4 | Ghi tiếp Sew 20, Finish 80. | Không còn WIP Sew nếu Cut=Sew; production log tổng và detail khớp. | ☐ |
-| 5 (âm) | Nhập Sew > total Cut hoặc Finish > total Sew. | API/UI từ chối; không ghi log vượt sản lượng công đoạn trước. | ☐ |
+| 1 | **Inventory → Requisitions & Issue**, mở requisition `UAT-CS-001`. | Item RED, requested 154.50 và lot phù hợp được hiển thị. | ☐ |
+| 2 | Post Issue 100 M từ `UAT-LOT-001/A-01-01`. | Material Issue + Issue Item + OUT transaction; balance −100; requisition Partial. | ☐ |
+| 3 | Nhập thêm lot, issue phần còn lại đến đủ 154.50 M. | `issued_qty ≥ requested_qty`; requisition Completed; outbox event pending/delivered. | ☐ |
+| 4 | Mở **Transactions** và **Report**, lọc `UAT-FAB-RED`. | IN/RESERVE/OUT đúng reference, đúng lot/location. | ☐ |
+| 5 | **Stock Counts**: tạo count lệch, nhập lý do, Approve. | Tạo ADJUSTMENT/audit, không sửa trực tiếp balance. | ☐ |
+| 6 (âm) | Issue > Available; chọn sai lot/location/color/size; chọn item khác requisition. | Bị chặn hoàn toàn, không có OUT/Issue/đổi issued qty. | ☐ |
 
-## Workflow 08 — Finance, Actual Cost, Variance và Snapshot
-
-**Mục tiêu:** actual cost dựa trên dữ liệu thật, bao gồm FOB components; Close giữ snapshot cố định.
-
-| Bước | Thao tác | Kỳ vọng | Kết quả |
-|---:|---|---|---|
-| 1 | Vào Finance → FOB Costs, thêm freight, QC, packing, overhead cho `UAT-CS-001`. | Các khoản chi lưu theo Order, loại chi phí và số tiền đúng. | ☐ |
-| 2 | Sau khi có receipt/issue và SFC worker-hours, chạy Cost Analysis. | Actual material từ issue/receipt; actual labor từ SFC; FOB components được cộng đúng. | ☐ |
-| 3 | Mở Order Costings/Profitability. | Có estimated vs actual và variance theo material/labor/FOB; tổng variance khớp số liệu nguồn. | ☐ |
-| 4 | Closed `UAT-CS-001` theo Workflow 02. | Tạo snapshot `order_costings`/audit. | ☐ |
-| 5 | Thay đổi giá vật tư hoặc bổ sung chi phí cho dữ liệu sau ngày close. Mở lại báo cáo đơn đã Closed. | Giá trị snapshot của đơn Closed không đổi; báo cáo không bị viết lại theo giá mới. | ☐ |
-
-## Workflow 09 — Phân quyền và Audit Trail
-
-**Mục tiêu:** đúng người thực hiện đúng module và tất cả thao tác trọng yếu truy vết được.
+## WF-06 — MPS, Work Order và capacity
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Đăng nhập PPIC, Warehouse, Production, Finance lần lượt; thử mở module không thuộc vai trò. | Chỉ được thao tác module được cấp; route trái quyền trả forbidden/redirect, không lộ dữ liệu thao tác. | ☐ |
-| 2 | Với Warehouse, thử tạo receipt/issue; với PPIC, thử MPS/MRP; Finance xem costing. | Quyền hợp lệ hoạt động; quyền không hợp lệ bị chặn. | ☐ |
-| 3 | Mở `/admin/audit-trails`, lọc theo `UAT-CS-001`. | Có actor, thời điểm, action, đối tượng, before/after và reason cho status/ETA/receipt/issue/adjustment. | ☐ |
+| 1 | **Master Plan**: chọn UAT-CS-001, UAT Line 01, Qty 100, Cut/Sew date sau ETA/material ready. | MPS Planned liên kết đúng CS/line/date. | ☐ |
+| 2 | Tạo Work Order từ MPS/OCS, SMV 1.0. | WO liên kết đúng CS/schedule. | ☐ |
+| 3 | Split WO thành 60 và 40. | Tổng Qty WO con =100, không vượt WO gốc. | ☐ |
+| 4 | Đổi WO `planned → released → in_production`. | Không nhảy status; xuất hiện ở Shop Floor. | ☐ |
+| 5 (âm) | Lập schedule trước ETA hoặc tổng phân bổ >100. | Bị chặn/cảnh báo; không lưu schedule sai. | ☐ |
+| 6 (âm) | Nhập daily target vượt capacity của line. | Bị từ chối/cảnh báo over-capacity. | ☐ |
 
-## Workflow 10 — Regression UI, Import và bảng Master Plan
+## WF-07 — Shop Floor, WIP và downtime
 
 | Bước | Thao tác | Kỳ vọng | Kết quả |
 |---:|---|---|---|
-| 1 | Mở Order Cut Sheet. Bấm **Import Excel**. | Panel import mở riêng, không lẫn với filter; nút Import file đang disable. | ☐ |
-| 2 | Kéo thả/chọn file `.xlsx` hợp lệ. | Hiển thị tên file và nút Import file được bật. | ☐ |
-| 3 | Chọn file sai định dạng hoặc >2 MB. | Backend báo validation; không tạo OCS lỗi. | ☐ |
-| 4 | Mở Master Plan, cuộn ngang sang phải. | Các cột neo bên trái giữ nguyên; chỉ `Edit` và `Delete` luôn neo ở mép phải. | ☐ |
-| 5 | Thu/phóng trình duyệt và kiểm tra ở độ rộng 1366px/1920px. | Nút filter có chiều cao đồng đều; bảng vẫn cuộn được, không che dữ liệu/nút hành động. | ☐ |
+| 1 | **Shop Floor → MPS Logs**, chọn schedule/WO `in_production`. | Schedule được phép nhập log. | ☐ |
+| 2 | Cut: target 100, actual 80, defect 0; detail RED/M =80; nhập workers/hours/labor rate. | Log/detail/labor/efficiency được lưu. | ☐ |
+| 3 | Sewing actual 60; Finishing actual 50. | WIP Sewing = 80−60=20; Finish không vượt Sew. | ☐ |
+| 4 | Sewing thêm 20; Finishing thêm 30. | Tổng Cut=Sew=Finish=80; WIP Sewing=0. | ☐ |
+| 5 | **Downtime**: nhập 30 phút và lý do. | Downtime log lưu đúng line/ngày. | ☐ |
+| 6 (âm) | Sew > Cut, Finish > Sew, hoặc total detail ≠ actual−defect. | Bị chặn, không ghi over-production. | ☐ |
 
-## 4. Mẫu ghi nhận lỗi
+## WF-08 — Finance, Expense, Costing và Snapshot
 
-| Test ID | Bước lỗi | Dữ liệu dùng | Thực tế | Kỳ vọng | Ảnh/URL | Mức độ |
+| Bước | Thao tác | Kỳ vọng | Kết quả |
+|---:|---|---|---|
+| 1 | **Finance → Expenses**: Utility 1,000,000 VND, mô tả rõ. | Expense xuất hiện đúng tháng/category. | ☐ |
+| 2 | **Finance → FOB Costs**: thêm freight/QC/packing cho UAT-CS-001. | Component gắn đúng order/amount. | ☐ |
+| 3 | Bấm Calculate Cost Analysis. | Actual material từ issue/receipt; labor từ Shop Floor; variance hiển thị. | ☐ |
+| 4 | Mở Order Costings/Profitability. | Có estimated vs actual theo material/labor/FOB và lợi nhuận. | ☐ |
+| 5 | Hoàn thành sản xuất, đổi OCS `in_production → completed → closed`. | Snapshot `order_costings` và audit được tạo. | ☐ |
+| 6 | Đổi giá material/thêm expense sau close, xem lại UAT-CS-001. | Snapshot order đã closed không đổi. | ☐ |
+
+## WF-09 — Audit, phân quyền và regression UI
+
+| Bước | Thao tác | Kỳ vọng | Kết quả |
+|---:|---|---|---|
+| 1 | **Audit Trails**: lọc `UAT-CS-001`/`UAT-FAB-RED`. | Có actor, thời điểm, action, before/after hoặc reason. | ☐ |
+| 2 | Nếu có role PPIC/Warehouse/Production/Finance, thử mở module không thuộc quyền. | Route trái quyền bị chặn; quyền hợp lệ hoạt động. | ☐ |
+| 3 | Test Import Excel OCS: file đúng, file sai định dạng, file thiếu cột bắt buộc. | File đúng import; file sai validation, không tạo OCS dở dang. | ☐ |
+| 4 | Mở Master Plan ở 1366px/1920px, cuộn ngang. | Button đồng đều, Edit/Delete neo phải, không che dữ liệu. | ☐ |
+
+## 5. Điều kiện nghiệm thu
+
+Chỉ nghiệm thu khi WF-00 đến WF-08 PASS và đồng thời:
+
+- Không có tồn kho âm.
+- Receipt, reserve, issue, adjustment đều có ledger/transaction tương ứng.
+- Không có requisition/issue dở dang do lỗi transaction.
+- Sewing/Finishing không vượt công đoạn trước.
+- OCS closed giữ nguyên snapshot khi giá vật tư/expense thay đổi.
+
+## 6. Mẫu ghi nhận lỗi
+
+| Test ID | Bước | Dữ liệu | Thực tế | Kỳ vọng | Ảnh/URL | Mức độ |
 |---|---:|---|---|---|---|---|
-| WFxx-yy |  |  |  |  |  | Critical / High / Medium / Low |
-
-**Quy tắc kết luận:** chỉ nghiệm thu khi các workflow 01–08 đều PASS, không có balance âm, không có issue/receipt thiếu ledger, và đơn Closed vẫn giữ nguyên snapshot chi phí.
+| WF-xx |  |  |  |  |  | Critical / High / Medium / Low |

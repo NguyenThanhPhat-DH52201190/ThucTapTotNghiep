@@ -26,16 +26,36 @@ class AuthController extends Controller
 
     public function showRegister(): View
     {
-        abort_if(User::exists(), 404);
         return view('auth.register');
     }
 
     public function register(Request $request): RedirectResponse
     {
-        abort_if(User::exists(), 403, 'Public registration is disabled after the initial administrator is created.');
+        abort_if(
+            $request->input('role') === User::ROLE_ADMIN
+                && User::where('role', User::ROLE_ADMIN)->exists(),
+            403,
+            'An admin account already exists. You cannot register another admin role.'
+        );
 
         $validated = $request->validate([
             'username' => ['required', 'string', 'min:3', 'max:50', 'unique:users,name'],
+            'role' => [
+                'required',
+                Rule::in([
+                    User::ROLE_ADMIN,
+                    User::ROLE_IE,
+                    User::ROLE_WAREHOUSE,
+                    User::ROLE_PPIC,
+                    User::ROLE_PROD,
+                    User::ROLE_ACCOUNTANT,
+                ]),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === User::ROLE_ADMIN && User::where('role', User::ROLE_ADMIN)->exists()) {
+                        $fail('An admin account already exists. You cannot register another admin role.');
+                    }
+                },
+            ],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
@@ -44,8 +64,7 @@ class AuthController extends Controller
                 'name' => $validated['username'],
                 'email' => Str::uuid().'@local.user',
                 'password' => $validated['password'],
-                // The only public registration is the one-time administrator bootstrap.
-                'role' => User::ROLE_ADMIN,
+                'role' => $validated['role'],
             ]);
 
             Auth::login($user);

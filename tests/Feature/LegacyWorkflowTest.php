@@ -27,19 +27,40 @@ class LegacyWorkflowTest extends TestCase
         $this->get('/register')->assertOk();
     }
 
-    public function test_first_public_registration_bootstraps_an_admin_only(): void
+    public function test_public_registration_creates_the_selected_non_admin_role(): void
     {
         $this->post('/register', [
             'username' => 'ppic.user',
             'role' => User::ROLE_PPIC,
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-        ])->assertRedirect(route('admin.ocs.index'));
+        ])->assertRedirect(route('masterplan.view'));
 
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', [
             'name' => 'ppic.user',
+            'role' => User::ROLE_PPIC,
+        ]);
+    }
+
+    public function test_non_admin_registration_remains_available_after_admin_exists(): void
+    {
+        $this->createUserRecord([
+            'name' => 'existing-admin',
+            'email' => 'admin@local.test',
             'role' => User::ROLE_ADMIN,
+        ]);
+
+        $this->post('/register', [
+            'username' => 'warehouse.user',
+            'role' => User::ROLE_WAREHOUSE,
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+        ])->assertRedirect(route('masterplan.view'));
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'warehouse.user',
+            'role' => User::ROLE_WAREHOUSE,
         ]);
     }
 

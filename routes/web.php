@@ -136,6 +136,12 @@ Route::middleware('auth')->group(function () {
         Route::get('master-data/materials', [MasterDataController::class, 'materials'])->name('master-data.materials');
         Route::post('master-data/materials', [MasterDataController::class, 'storeMaterial'])->name('master-data.materials.store');
         Route::patch('master-data/materials/{id}', [MasterDataController::class, 'updateMaterial'])->name('master-data.materials.update');
+        Route::post('master-data/material-categories', [MasterDataController::class, 'storeMaterialCategory'])->name('master-data.material-categories.store');
+        Route::patch('master-data/material-categories/{id}', [MasterDataController::class, 'updateMaterialCategory'])->name('master-data.material-categories.update');
+        Route::delete('master-data/material-categories/{id}', [MasterDataController::class, 'destroyMaterialCategory'])->name('master-data.material-categories.destroy');
+        Route::post('master-data/material-subcategories', [MasterDataController::class, 'storeMaterialSubcategory'])->name('master-data.material-subcategories.store');
+        Route::patch('master-data/material-subcategories/{id}', [MasterDataController::class, 'updateMaterialSubcategory'])->name('master-data.material-subcategories.update');
+        Route::delete('master-data/material-subcategories/{id}', [MasterDataController::class, 'destroyMaterialSubcategory'])->name('master-data.material-subcategories.destroy');
         Route::post('master-data/material-vendors', [MasterDataController::class, 'storeMaterialVendor'])->name('master-data.material-vendors.store');
         Route::delete('master-data/material-vendors/{id}', [MasterDataController::class, 'destroyMaterialVendor'])->name('master-data.material-vendors.destroy');
 

@@ -10,7 +10,7 @@ class MpsScheduleController extends Controller
 {
     public function index()
     {
-        $orders = DB::table('ocs')->whereNotIn('status', ['closed', 'cancelled'])
+        $orders = DB::table('ocs')->whereNotIn('status', ['completed', 'cancelled'])
             ->select('id', 'CS', 'SNo', 'Qty', 'status')->orderByDesc('id')->get();
         $lines = DB::table('sewing_lines')->orderBy('line_code')->get();
         $lineColors = DB::table('colors')->where('is_active', 1)->orderBy('name')->get();

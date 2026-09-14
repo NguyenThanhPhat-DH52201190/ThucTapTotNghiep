@@ -101,8 +101,8 @@
                         @foreach($items as $i => $item)
                         <tr id="itemRow{{ $i }}">
                             <td class="text-center">{{ $i + 1 }}</td>
-                            <td><input type="text" name="items[{{ $i }}][material_code]" class="form-control form-control-sm" required value="{{ $item->material_code }}"></td>
-                            <td><input type="text" name="items[{{ $i }}][material_name]" class="form-control form-control-sm" required value="{{ $item->material_name }}"></td>
+                            <td><input type="text" name="items[{{ $i }}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="{{ $item->material_code }}"></td>
+                            <td><input type="text" name="items[{{ $i }}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="{{ $item->material_name }}"></td>
                             <td>
                                 <select name="items[{{ $i }}][material_type]" class="form-select form-select-sm">
                                     @foreach(['fabric','lining','pocket','trim','thread','zipper','label','elastic','interlining','other'] as $type)
@@ -110,15 +110,11 @@
                                     @endforeach
                                 </select>
                             </td>
-                            <td><input type="text" name="items[{{ $i }}][colour]" class="form-control form-control-sm" value="{{ $item->colour }}"></td>
-                            <td><input type="text" name="items[{{ $i }}][size]" class="form-control form-control-sm" value="{{ $item->size }}"></td>
+                            <td><input type="text" name="items[{{ $i }}][colour]" class="form-control form-control-sm material-colour-input" value="{{ $item->colour }}"></td>
+                            <td><input type="text" name="items[{{ $i }}][size]" class="form-control form-control-sm material-size-input" value="{{ $item->size }}"></td>
                             <td><input type="number" step="0.01" name="items[{{ $i }}][width]" class="form-control form-control-sm" value="{{ $item->width }}"></td>
                             <td>
-                                <select name="items[{{ $i }}][unit]" class="form-select form-select-sm">
-                                    @foreach(['M','YD','KG','PCS','SET','PR','ROLL'] as $unit)
-                                        <option value="{{ $unit }}" {{ $item->unit === $unit ? 'selected' : '' }}>{{ $unit }}</option>
-                                    @endforeach
-                                </select>
+                                <input type="text" name="items[{{ $i }}][unit]" class="form-control form-control-sm material-unit-input" value="{{ $item->unit }}" readonly>
                             </td>
                             <td><input type="number" step="0.0001" min="0.0001" name="items[{{ $i }}][consumption_rate]" class="form-control form-control-sm" required value="{{ $item->consumption_rate }}"></td>
                             <td><input type="number" step="0.01" min="0" name="items[{{ $i }}][waste_percent]" class="form-control form-control-sm" value="{{ $item->waste_percent }}"></td>
@@ -161,26 +157,18 @@ function addItem(data = {}) {
     const html = `
         <tr id="itemRow${i}">
             <td class="text-center">${i}</td>
-            <td><input type="text" name="items[${i}][material_code]" class="form-control form-control-sm" required value="${data.code || ''}"></td>
-            <td><input type="text" name="items[${i}][material_name]" class="form-control form-control-sm" required value="${data.name || ''}"></td>
+            <td><input type="text" name="items[${i}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="${data.code || ''}" placeholder="Type to search Material Master"></td>
+            <td><input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="${data.name || ''}" placeholder="Selected material name"></td>
             <td>
                 <select name="items[${i}][material_type]" class="form-select form-select-sm">
                     ${materialTypes.map(t => `<option value="${t.value}" ${(data.type || 'fabric') === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}
                 </select>
             </td>
-            <td><input type="text" name="items[${i}][colour]" class="form-control form-control-sm" value="${data.colour || ''}"></td>
-            <td><input type="text" name="items[${i}][size]" class="form-control form-control-sm" value="${data.size || ''}"></td>
+            <td><input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input" value="${data.colour || ''}"></td>
+            <td><input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input" value="${data.size || ''}"></td>
             <td><input type="number" step="0.01" name="items[${i}][width]" class="form-control form-control-sm" value="${data.width || ''}"></td>
             <td>
-                <select name="items[${i}][unit]" class="form-select form-select-sm">
-                    <option value="M" ${data.unit === 'M' ? 'selected' : ''}>M</option>
-                    <option value="YD" ${data.unit === 'YD' ? 'selected' : ''}>YD</option>
-                    <option value="KG" ${data.unit === 'KG' ? 'selected' : ''}>KG</option>
-                    <option value="PCS" ${data.unit === 'PCS' ? 'selected' : ''}>PCS</option>
-                    <option value="SET" ${data.unit === 'SET' ? 'selected' : ''}>SET</option>
-                    <option value="PR" ${data.unit === 'PR' ? 'selected' : ''}>PR</option>
-                    <option value="ROLL" ${data.unit === 'ROLL' ? 'selected' : ''}>ROLL</option>
-                </select>
+                <input type="text" name="items[${i}][unit]" class="form-control form-control-sm material-unit-input" value="${data.unit || ''}" placeholder="Unit" readonly>
             </td>
             <td><input type="number" step="0.0001" min="0.0001" name="items[${i}][consumption_rate]" class="form-control form-control-sm" required value="${data.yield || ''}"></td>
             <td><input type="number" step="0.01" min="0" name="items[${i}][waste_percent]" class="form-control form-control-sm" value="${data.waste || ''}"></td>
@@ -208,5 +196,7 @@ function renumberItems() {
     });
 }
 </script>
+
+@include('admin.bom.partials.material-autocomplete')
 
 @endsection

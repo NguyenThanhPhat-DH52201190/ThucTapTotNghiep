@@ -24,7 +24,7 @@
                             <td class="text-end">{{ number_format($costing->revenue, 0) }}</td><td class="text-end fw-bold">{{ number_format($costing->final_profit, 0) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="11" class="text-center py-3 text-muted">No closed order costing snapshots.</td></tr>
+                        <tr><td colspan="11" class="text-center py-3 text-muted">No completed order costing snapshots.</td></tr>
                     @endforelse
                 </tbody>
             </table>

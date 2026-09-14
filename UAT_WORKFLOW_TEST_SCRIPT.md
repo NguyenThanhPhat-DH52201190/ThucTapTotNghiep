@@ -37,7 +37,7 @@ php artisan queue:work database --tries=3
 php artisan schedule:work
 ```
 
-Queue tạo Requisition khi OCS được `released`; scheduler chạy MRP định kỳ và dispatch outbox event. Khi chỉ test một job, dùng `php artisan queue:work --once --tries=3`.
+Queue tạo Requisition khi OCS được `confirmed`; scheduler chạy MRP định kỳ và dispatch outbox event. Khi chỉ test một job, dùng `php artisan queue:work --once --tries=3`.
 
 ## 4. Checklist tổng quan
 
@@ -84,10 +84,10 @@ Queue tạo Requisition khi OCS được `released`; scheduler chạy MRP địn
 |---:|---|---|---|
 | 1 | **Order Cut Sheet** → Add: `UAT-CS-001`, PO `UAT-PO-001`, Customer UAT, style `UAT-1001`, color RED, qty 100, ship date tương lai, BOM Active. | OCS lưu; hiển thị BOM đã gắn. | ☐ |
 | 2 | Nhập size breakdown M = 100. | Tổng size = Qty 100. | ☐ |
-| 3 | Đổi status `pending → confirmed → released`. | Chỉ chuyển hợp lệ; có thông báo thành công. | ☐ |
+| 3 | Đổi status `pending → confirmed`. | Chỉ chuyển hợp lệ; Requisition được đưa vào queue và có thông báo thành công. | ☐ |
 | 4 | Chờ queue, mở **Inventory → Requisitions & Issue**. | Có requisition của CS; material/color RED; requested ≈154.50; issued=0. | ☐ |
 | 5 (âm) | Tạo OCS có tổng size ≠ Qty hoặc `pending → completed`. | Bị chặn; không lưu dở dang/nhảy status. | ☐ |
-| 6 (âm) | Khi OCS `in_production`/`closed`, thử sửa/xóa Qty hoặc size. | Bị khóa, dữ liệu kế hoạch/kho không đổi. | ☐ |
+| 6 (âm) | Khi OCS `confirmed`/`in_production`/`completed`, thử sửa/xóa Qty hoặc size. | Bị khóa, dữ liệu kế hoạch/kho không đổi. | ☐ |
 
 **Đối chiếu khi cần:** `ocs.requisition_job_status = completed`; requisition ban đầu `pending`.
 
@@ -153,8 +153,8 @@ Queue tạo Requisition khi OCS được `released`; scheduler chạy MRP địn
 | 2 | **Finance → FOB Costs**: thêm freight/QC/packing cho UAT-CS-001. | Component gắn đúng order/amount. | ☐ |
 | 3 | Bấm Calculate Cost Analysis. | Actual material từ issue/receipt; labor từ Shop Floor; variance hiển thị. | ☐ |
 | 4 | Mở Order Costings/Profitability. | Có estimated vs actual theo material/labor/FOB và lợi nhuận. | ☐ |
-| 5 | Hoàn thành sản xuất, đổi OCS `in_production → completed → closed`. | Snapshot `order_costings` và audit được tạo. | ☐ |
-| 6 | Đổi giá material/thêm expense sau close, xem lại UAT-CS-001. | Snapshot order đã closed không đổi. | ☐ |
+| 5 | Hoàn thành sản xuất, đổi OCS `in_production → completed`. | Snapshot `order_costings` và audit được tạo ngay khi Completed. | ☐ |
+| 6 | Đổi giá material/thêm expense sau khi Completed, xem lại UAT-CS-001. | Snapshot của order Completed không đổi. | ☐ |
 
 ## WF-09 — Audit, phân quyền và regression UI
 
@@ -173,7 +173,7 @@ Chỉ nghiệm thu khi WF-00 đến WF-08 PASS và đồng thời:
 - Receipt, reserve, issue, adjustment đều có ledger/transaction tương ứng.
 - Không có requisition/issue dở dang do lỗi transaction.
 - Sewing/Finishing không vượt công đoạn trước.
-- OCS closed giữ nguyên snapshot khi giá vật tư/expense thay đổi.
+- OCS Completed giữ nguyên snapshot khi giá vật tư/expense thay đổi.
 
 ## 6. Mẫu ghi nhận lỗi
 

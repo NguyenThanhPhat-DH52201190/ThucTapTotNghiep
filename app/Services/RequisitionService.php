@@ -12,10 +12,10 @@ class RequisitionService
     {
         return DB::transaction(function () use ($cutsheetId) {
             $order = DB::table('ocs')->where('id', $cutsheetId)->lockForUpdate()->first();
-            if (!$order || !$order->bom_header_id) throw new RuntimeException('A released order must have an assigned BOM.');
+            if (!$order || !$order->bom_header_id) throw new RuntimeException('A confirmed order must have an assigned BOM.');
             $bom = DB::table('bom_headers')->where('id', $order->bom_header_id)->first();
-            if (!$bom || $bom->status !== 'active' || trim($bom->style_no) !== trim($order->SNo)) throw new RuntimeException('Release requires an active BOM that matches the order style.');
-            // Check only after obtaining the order lock; this makes release idempotent
+            if (!$bom || $bom->status !== 'active' || trim($bom->style_no) !== trim($order->SNo)) throw new RuntimeException('Confirmation requires an active BOM that matches the order style.');
+            // Check only after obtaining the order lock; this makes confirmation idempotent
             // under concurrent HTTP requests.
             $existing = DB::table('material_requisitions')->where('cutsheet_id', $cutsheetId)->first();
             if ($existing) return $existing->id;

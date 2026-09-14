@@ -43,6 +43,10 @@
             height: 60px;
             background: #f59e0b;
         }
+
+        .module-back-bar {
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 
@@ -213,6 +217,46 @@
 
             <!-- CONTENT -->
             <div class="p-4">
+                @php
+                    $moduleBack = null;
+
+                    if (request()->routeIs('admin.ocs.*') && !request()->routeIs('admin.ocs.index')) {
+                        $moduleBack = ['route' => 'admin.ocs.index', 'label' => 'Order Cut Sheet'];
+                    } elseif (request()->routeIs('admin.bom.*') && !request()->routeIs('admin.bom.index')) {
+                        $moduleBack = ['route' => 'admin.bom.index', 'label' => 'BOM & Tech Pack'];
+                    } elseif (request()->routeIs('admin.masterplan.*') && !request()->routeIs('admin.masterplan.index')) {
+                        $moduleBack = ['route' => 'admin.masterplan.index', 'label' => 'Master Plan'];
+                    } elseif (request()->routeIs('masterplan.fabric.*')) {
+                        $moduleBack = ['route' => 'masterplan.view', 'label' => 'Master Plan'];
+                    } elseif (request()->routeIs('admin.mrp.*') && !request()->routeIs('admin.mrp.index')) {
+                        $moduleBack = ['route' => 'admin.mrp.index', 'label' => 'MRP'];
+                    } elseif (request()->routeIs('admin.procurement.*') && !request()->routeIs('admin.procurement.index')) {
+                        $moduleBack = ['route' => 'admin.procurement.index', 'label' => 'Procurement'];
+                    } elseif (request()->routeIs('admin.inventory.*') && !request()->routeIs('admin.inventory.index')) {
+                        $moduleBack = ['route' => 'admin.inventory.index', 'label' => 'Inventory'];
+                    } elseif (request()->routeIs('admin.shopfloor.*') && !request()->routeIs('admin.shopfloor.dashboard')) {
+                        $moduleBack = ['route' => 'admin.shopfloor.dashboard', 'label' => 'Shop Floor'];
+                    } elseif (request()->routeIs('admin.finance.*') && !request()->routeIs('admin.finance.dashboard')) {
+                        $moduleBack = ['route' => 'admin.finance.dashboard', 'label' => 'Finance & Costing'];
+                    } elseif (request()->routeIs('admin.revenue.*') && !request()->routeIs('admin.revenue.index')) {
+                        $moduleBack = ['route' => 'admin.revenue.index', 'label' => 'Revenue'];
+                    } elseif (request()->routeIs('revenue.*') && !request()->routeIs('revenue.view')) {
+                        $moduleBack = ['route' => 'revenue.view', 'label' => 'Revenue'];
+                    } elseif (request()->routeIs('admin.colors.*') && !request()->routeIs('admin.colors.index')) {
+                        $moduleBack = ['route' => 'admin.colors.index', 'label' => 'Line Colors'];
+                    } elseif (request()->routeIs('admin.holidays.*')) {
+                        $moduleBack = ['route' => 'admin.masterplan.index', 'label' => 'Master Plan'];
+                    }
+                @endphp
+
+                @if($moduleBack)
+                    <div class="module-back-bar">
+                        <a href="{{ route($moduleBack['route']) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-left me-1"></i>
+                            Back to {{ $moduleBack['label'] }}
+                        </a>
+                    </div>
+                @endif
                 @yield('content')
             </div>
 

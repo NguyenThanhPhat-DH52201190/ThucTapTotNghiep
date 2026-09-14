@@ -18,7 +18,7 @@ class OCSController extends Controller
 {
     private function isLocked(object $order): bool
     {
-        return in_array($order->status, ['released', 'in_production', 'completed', 'closed'], true);
+        return in_array($order->status, ['confirmed', 'in_production', 'completed', 'released', 'closed'], true);
     }
 
     private function orderRules(?int $id = null): array
@@ -58,6 +58,8 @@ class OCSController extends Controller
     {
         return DB::table('ocs')
             ->leftJoin('bom_headers', 'ocs.bom_header_id', '=', 'bom_headers.id')
+            // Legacy cancelled orders stay archived and are not part of the new workflow.
+            ->where('ocs.status', '!=', 'cancelled')
             ->when($request->filled('cs'), function ($query) use ($request) {
                 $query->where('ocs.CS', 'like', '%' . $request->cs . '%');
             })
@@ -214,7 +216,7 @@ class OCSController extends Controller
     public function edit(string $id)
     {
         $order = DB::table('ocs')->where('id', $id)->first();
-        if ($this->isLocked($order)) return redirect()->route('admin.ocs.index')->with('error', 'Orders in production or completed are locked.');
+        if ($this->isLocked($order)) return redirect()->route('admin.ocs.index')->with('error', 'Confirmed, in-production, or completed orders are locked.');
         $boms = DB::table('bom_headers')->where('status', 'active')->orderBy('style_no')->get();
         $customers = DB::table('customer_info')->orderBy('name')->get();
         $sizes = DB::table('order_sizes')->where('cutsheet_id', $id)->orderBy('id')->get();
@@ -230,7 +232,7 @@ class OCSController extends Controller
                 ->with('error', 'Record not found.');
         }
 
-        if ($this->isLocked($currentOrder)) return back()->with('error', 'Orders in production or completed cannot be changed.');
+        if ($this->isLocked($currentOrder)) return back()->with('error', 'Confirmed, in-production, or completed orders cannot be changed.');
         $request->validate($this->orderRules((int) $id));
         $this->validateSizeTotal($request);
         $this->validateBomForOrder($request);
@@ -312,7 +314,7 @@ class OCSController extends Controller
     {
         $order = DB::table('ocs')->where('id', $id)->first();
         if (!$order) return redirect()->route('admin.ocs.index')->with('error', 'Record not found.');
-        if ($this->isLocked($order)) return redirect()->route('admin.ocs.index')->with('error', 'Orders in production or completed cannot be deleted.');
+        if ($this->isLocked($order)) return redirect()->route('admin.ocs.index')->with('error', 'Confirmed, in-production, or completed orders cannot be deleted.');
         try {
             $deleted = DB::table('ocs')->where('id', $id)->delete();
 
@@ -355,38 +357,28 @@ class OCSController extends Controller
     public function updateStatus(Request $request, $id, RequisitionService $requisitions, OrderCostSnapshotService $costings, \App\Services\AuditTrailService $audit)
     {
         $request->validate([
-            'status' => 'required|in:pending,confirmed,released,in_production,completed,closed,cancelled',
+            'status' => 'required|in:pending,confirmed,in_production,completed',
             'change_reason' => 'nullable|string|max:255',
         ]);
 
-        $allowed = [
-            'pending' => ['confirmed', 'cancelled'],
-            'confirmed' => ['released', 'cancelled'],
-            'released' => ['in_production', 'cancelled'],
-            'in_production' => ['completed'],
-            'completed' => ['closed'],
-            'closed' => [],
-            'cancelled' => [],
-        ];
         try {
             DB::transaction(function () use ($request, $id, $requisitions, $costings, $audit) {
                 $order = DB::table('ocs')->where('id', $id)->lockForUpdate()->first();
                 if (!$order) abort(404);
                 $allowed = [
-                    'pending' => ['confirmed', 'cancelled'], 'confirmed' => ['released', 'cancelled'],
-                    'released' => ['in_production', 'cancelled'], 'in_production' => ['completed'],
-                    'completed' => ['closed'], 'closed' => [], 'cancelled' => [],
+                    'pending' => ['confirmed'], 'confirmed' => ['in_production'],
+                    'in_production' => ['completed'], 'completed' => [],
                 ];
                 if ($request->status !== $order->status && !in_array($request->status, $allowed[$order->status] ?? [], true)) {
                     throw new \RuntimeException("Cannot change status from '{$order->status}' to '{$request->status}'.");
                 }
-                if ($request->status === 'released') {
+                if ($request->status === 'confirmed' && $request->status !== $order->status) {
                     DB::table('ocs')->where('id', $id)->update(['requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now()]);
                     CreateRequisitionForCutsheet::dispatch((int) $id)->afterCommit();
                 }
                 DB::table('ocs')->where('id', $id)->update(['status' => $request->status, 'updated_at' => now()]);
                 if ($request->status !== $order->status) $audit->record('status_changed', 'order_cutsheet', (int) $id, $request->user()?->id, ['status' => $order->status], ['status' => $request->status], $request->change_reason ?: 'Workflow status transition');
-                if ($request->status === 'closed') $costings->snapshot((int) $id);
+                if ($request->status === 'completed' && $request->status !== $order->status) $costings->snapshot((int) $id);
             });
         } catch (\Throwable $e) {
             Log::warning('Order status transition rejected', ['order_id' => $id, 'message' => $e->getMessage()]);

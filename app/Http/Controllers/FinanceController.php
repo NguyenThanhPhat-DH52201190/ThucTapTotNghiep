@@ -37,7 +37,7 @@ class FinanceController extends Controller
         DB::table('order_cost_components')->insert($data + [
             'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
         ]);
-        return back()->with('success', 'FOB cost component recorded. It will be included when the order costing snapshot is closed.');
+        return back()->with('success', 'FOB cost component recorded. It will be included when the order is completed.');
     }
 
     public function deleteFobCost($id)

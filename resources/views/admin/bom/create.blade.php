@@ -136,12 +136,12 @@ function addItem(data = {}) {
         <tr id="itemRow${i}">
             <td class="text-center">${i}</td>
             <td>
-                <input type="text" name="items[${i}][material_code]" class="form-control form-control-sm" required
-                       value="${data.code || ''}" placeholder="EX-V-TPU-180306">
+                <input type="text" name="items[${i}][material_code]" class="form-control form-control-sm material-code-input" required
+                       value="${data.code || ''}" placeholder="Type to search Material Master" autocomplete="off">
             </td>
             <td>
-                <input type="text" name="items[${i}][material_name]" class="form-control form-control-sm" required
-                       value="${data.name || ''}" placeholder="Material description">
+                <input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-description-input" required
+                       value="${data.name || ''}" placeholder="Selected material name" readonly>
             </td>
             <td>
                 <select name="items[${i}][material_type]" class="form-select form-select-sm">
@@ -151,11 +151,11 @@ function addItem(data = {}) {
                 </select>
             </td>
             <td>
-                <input type="text" name="items[${i}][colour]" class="form-control form-control-sm"
+                <input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input"
                        value="${data.colour || ''}" placeholder="Colour">
             </td>
             <td>
-                <input type="text" name="items[${i}][size]" class="form-control form-control-sm"
+                <input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input"
                        value="${data.size || ''}" placeholder="Size">
             </td>
             <td>
@@ -163,15 +163,8 @@ function addItem(data = {}) {
                        value="${data.width || ''}" placeholder="Width">
             </td>
             <td>
-                <select name="items[${i}][unit]" class="form-select form-select-sm">
-                    <option value="M" ${data.unit === 'M' ? 'selected' : ''}>M (Meter)</option>
-                    <option value="YD" ${data.unit === 'YD' ? 'selected' : ''}>YD (Yard)</option>
-                    <option value="KG" ${data.unit === 'KG' ? 'selected' : ''}>KG</option>
-                    <option value="PCS" ${data.unit === 'PCS' ? 'selected' : ''}>PCS</option>
-                    <option value="SET" ${data.unit === 'SET' ? 'selected' : ''}>SET</option>
-                    <option value="PR" ${data.unit === 'PR' ? 'selected' : ''}>PR (Pair)</option>
-                    <option value="ROLL" ${data.unit === 'ROLL' ? 'selected' : ''}>ROLL</option>
-                </select>
+                <input type="text" name="items[${i}][unit]" class="form-control form-control-sm material-unit-input"
+                       value="${data.unit || ''}" placeholder="Unit" readonly>
             </td>
             <td>
                 <input type="number" step="0.0001" min="0.0001" name="items[${i}][consumption_rate]" class="form-control form-control-sm" required
@@ -232,5 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
+
+@include('admin.bom.partials.material-autocomplete')
 
 @endsection

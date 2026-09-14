@@ -39,8 +39,8 @@ class OCSImport implements ToCollection, WithHeadingRow
             }
 
             $existing = DB::table('ocs')->where('CS', $cs)->lockForUpdate()->first();
-            if ($existing && in_array($existing->status, ['released', 'in_production', 'completed', 'closed'], true)) {
-                throw new \RuntimeException("CS {$cs} is released or locked and cannot be changed by import.");
+            if ($existing && $existing->status !== 'pending') {
+                throw new \RuntimeException("CS {$cs} is confirmed, archived, or locked and cannot be changed by import.");
             }
 
             DB::table('ocs')->updateOrInsert(

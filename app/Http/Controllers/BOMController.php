@@ -76,6 +76,22 @@ class BOMController extends Controller
         return view('admin.bom.create', compact('styles', 'customers'));
     }
 
+    public function materialSuggestions(Request $request)
+    {
+        $data = $request->validate(['q' => 'required|string|min:1|max:100']);
+        $term = trim($data['q']);
+
+        return response()->json(
+            DB::table('materials')
+                ->select('id', 'internal_code', 'material_name', 'color', 'size', 'unit')
+                ->where('internal_code', 'like', '%' . $term . '%')
+                ->orderByRaw('CASE WHEN internal_code LIKE ? THEN 0 ELSE 1 END', [$term . '%'])
+                ->orderBy('internal_code')
+                ->limit(20)
+                ->get()
+        );
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -87,8 +103,8 @@ class BOMController extends Controller
             'effective_date' => 'nullable|date',
             'notes' => 'nullable',
             'items' => 'required|array|min:1',
-            'items.*.material_code' => 'required',
-            'items.*.material_name' => 'required',
+            'items.*.material_code' => 'required|string|max:191|exists:materials,internal_code',
+            'items.*.material_name' => 'nullable|string|max:191',
             'items.*.material_type' => 'required',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
@@ -138,16 +154,18 @@ class BOMController extends Controller
             ]);
 
             foreach ($request->items as $i => $item) {
+                $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
                 $totalCost = ($item['consumption_rate'] ?? 0) * ($item['unit_cost'] ?? 0);
                 DB::table('bom_items')->insert([
                     'bom_header_id' => $headerId,
-                    'material_code' => $item['material_code'],
-                    'material_name' => $item['material_name'],
+                    'material_id' => $material->id,
+                    'material_code' => $material->internal_code,
+                    'material_name' => $material->material_name,
                     'material_type' => $item['material_type'],
                     'colour' => $item['colour'] ?? null,
                     'size' => $item['size'] ?? null,
                     'width' => $item['width'] ?? null,
-                    'unit' => $item['unit'] ?? 'M',
+                    'unit' => $material->unit,
                     'consumption_rate' => $item['consumption_rate'] ?? 0,
                     'waste_percent' => $item['waste_percent'] ?? 0,
                     'unit_cost' => $item['unit_cost'] ?? 0,
@@ -307,8 +325,8 @@ class BOMController extends Controller
             'effective_date' => 'nullable|date',
             'notes' => 'nullable', 'change_reason' => 'required|string|max:255',
             'items' => 'required|array|min:1',
-            'items.*.material_code' => 'required',
-            'items.*.material_name' => 'required',
+            'items.*.material_code' => 'required|string|max:191|exists:materials,internal_code',
+            'items.*.material_name' => 'nullable|string|max:191',
             'items.*.material_type' => 'required',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
@@ -357,16 +375,18 @@ class BOMController extends Controller
             DB::table('bom_items')->where('bom_header_id', $id)->delete();
 
             foreach ($request->items as $i => $item) {
+                $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
                 $totalCost = ($item['consumption_rate'] ?? 0) * ($item['unit_cost'] ?? 0);
                 DB::table('bom_items')->insert([
                     'bom_header_id' => $id,
-                    'material_code' => $item['material_code'],
-                    'material_name' => $item['material_name'],
+                    'material_id' => $material->id,
+                    'material_code' => $material->internal_code,
+                    'material_name' => $material->material_name,
                     'material_type' => $item['material_type'],
                     'colour' => $item['colour'] ?? null,
                     'size' => $item['size'] ?? null,
                     'width' => $item['width'] ?? null,
-                    'unit' => $item['unit'] ?? 'M',
+                    'unit' => $material->unit,
                     'consumption_rate' => $item['consumption_rate'] ?? 0,
                     'waste_percent' => $item['waste_percent'] ?? 0,
                     'unit_cost' => $item['unit_cost'] ?? 0,

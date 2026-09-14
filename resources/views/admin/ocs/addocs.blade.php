@@ -84,15 +84,8 @@
 
                     <!-- New Order Management Fields -->
                     <div class="col-md-4">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select">
-                            <option value="pending" {{ old('status') == 'pending' ? 'selected' : '' }}>⏳ Pending</option>
-                            <option value="confirmed" {{ old('status') == 'confirmed' ? 'selected' : '' }}>✅ Confirmed</option>
-                            <option value="released" {{ old('status') == 'released' ? 'selected' : '' }}>Released</option>
-                            <option value="in_production" {{ old('status') == 'in_production' ? 'selected' : '' }}>🏭 In Production</option>
-                            <option value="completed" {{ old('status') == 'completed' ? 'selected' : '' }}>✔ Completed</option>
-                            <option value="cancelled" {{ old('status') == 'cancelled' ? 'selected' : '' }}>❌ Cancelled</option>
-                        </select>
+                        <label class="form-label">Initial Status</label>
+                        <input class="form-control" value="Pending" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Priority</label>

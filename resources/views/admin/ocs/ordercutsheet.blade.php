@@ -57,11 +57,8 @@
                         <option value="">All</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="confirmed" {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confirmed</option>
-                        <option value="released" {{ request('status') == 'released' ? 'selected' : '' }}>Released</option>
                         <option value="in_production" {{ request('status') == 'in_production' ? 'selected' : '' }}>In Production</option>
                         <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
-                        <option value="closed" {{ request('status') == 'closed' ? 'selected' : '' }}>Closed</option>
-                        <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                     </select>
                 </div>
                 <div class="col-12 col-lg-2">
@@ -138,15 +135,12 @@
                                     @csrf @method('PATCH')
                                     <select name="status" class="form-select form-select-sm status-select" data-cs="{{ $item->CS }}"
                                             onchange="submitStatusChange(this)"
-                                            {{ in_array($item->status, ['closed', 'cancelled']) ? 'disabled' : '' }}
+                                            {{ $item->status === 'completed' ? 'disabled' : '' }}
                                             style="min-width:110px; font-size:0.75rem;">
                                         <option value="pending" {{ $item->status == 'pending' ? 'selected' : '' }}>⏳ Pending</option>
                                         <option value="confirmed" {{ $item->status == 'confirmed' ? 'selected' : '' }}>✅ Confirmed</option>
-                                        <option value="released" {{ $item->status == 'released' ? 'selected' : '' }}>Released</option>
                                         <option value="in_production" {{ $item->status == 'in_production' ? 'selected' : '' }}>🏭 In Production</option>
                                         <option value="completed" {{ $item->status == 'completed' ? 'selected' : '' }}>✔ Completed</option>
-                                        <option value="closed" {{ $item->status == 'closed' ? 'selected' : '' }}>Closed</option>
-                                        <option value="cancelled" {{ $item->status == 'cancelled' ? 'selected' : '' }}>❌ Cancelled</option>
                                     </select>
                                 </form>
                             </td>
@@ -183,7 +177,7 @@
                             <td><small>{{ $item->expected_ship_date ?? '-' }}</small></td>
                             @if($canManage)
                                 <td>
-                                    @if(in_array($item->status, ['in_production', 'completed']))
+                                    @if(in_array($item->status, ['confirmed', 'in_production', 'completed']))
                                         <span class="badge bg-secondary">Locked</span>
                                     @else
                                     <div class="d-flex gap-1">

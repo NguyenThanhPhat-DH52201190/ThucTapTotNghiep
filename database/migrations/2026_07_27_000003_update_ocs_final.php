@@ -13,7 +13,7 @@ return new class extends Migration
             if (!Schema::hasColumn('ocs', 'status')) {
                 $table->string('status', 30)->default('pending')
                       ->after('Qty')
-                      ->comment('pending|confirmed|in_production|completed|cancelled');
+                      ->comment('pending|confirmed|in_production|completed');
             }
             if (!Schema::hasColumn('ocs', 'bom_header_id')) {
                 $table->unsignedBigInteger('bom_header_id')->nullable()->after('status');

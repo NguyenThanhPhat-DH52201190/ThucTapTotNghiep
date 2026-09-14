@@ -14,7 +14,7 @@ class WorkOrderController extends Controller
         $data = $request->validate(['cutsheet_id' => 'required|exists:ocs,id', 'planned_qty' => 'required|integer|min:1', 'smv' => 'required|numeric|min:0.01']);
         DB::transaction(function () use ($data) {
             $order = DB::table('ocs')->where('id', $data['cutsheet_id'])->lockForUpdate()->firstOrFail();
-            if (in_array($order->status, ['closed', 'cancelled'], true)) throw ValidationException::withMessages(['cutsheet_id' => ['Order is closed or cancelled.']]);
+            if (in_array($order->status, ['completed', 'closed', 'cancelled'], true)) throw ValidationException::withMessages(['cutsheet_id' => ['Order is completed or archived.']]);
             $allocated = DB::table('work_orders')->where('cutsheet_id', $order->id)->where('status', '!=', 'cancelled')->sum('planned_qty');
             if ($allocated + $data['planned_qty'] > $order->Qty) throw ValidationException::withMessages(['planned_qty' => ['Planned quantity exceeds the remaining order quantity.']]);
             DB::table('work_orders')->insert($data + ['wo_number' => 'WO-'.now()->format('YmdHisv').'-'.Str::upper(Str::random(4)), 'status' => 'planned', 'created_at' => now(), 'updated_at' => now()]);

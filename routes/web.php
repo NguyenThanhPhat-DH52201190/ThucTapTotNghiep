@@ -169,6 +169,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('colors', ColorController::class)->except(['show']);
 
         // BOM
+        Route::get('bom/material-suggestions', [BOMController::class, 'materialSuggestions'])->name('bom.material-suggestions');
         Route::get('bom/export/{id}', [BOMController::class, 'export'])->name('bom.export');
         Route::post('bom/import-preview', [BOMController::class, 'importPreview'])->name('bom.import-preview');
         Route::post('bom/import-store', [BOMController::class, 'importStore'])->name('bom.import-store');

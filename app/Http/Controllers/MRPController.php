@@ -283,7 +283,7 @@ class MRPController extends Controller
                         'created_at' => now(), 'updated_at' => now(),
                     ]);
                     // This is a planning proposal only. It is revalidated and
-                    // converted to a real reservation when the order is released.
+                    // converted to a real reservation when the order is confirmed.
                     $lotQtyToAllocate = min($sourceAvailable, $lotBalances->sum('remaining'));
                     foreach ($lotBalances as $lot) {
                         if ($lotQtyToAllocate <= 0) break;

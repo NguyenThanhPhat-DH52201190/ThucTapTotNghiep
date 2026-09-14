@@ -29,7 +29,7 @@ class OCSController extends Controller
             'Customer' => 'required', 'customer_id' => 'nullable|exists:customer_info,id', 'Color' => 'required', 'ONum' => 'required',
             'CMT' => 'nullable|numeric|min:0', 'Qty' => 'required|integer|min:1',
             'order_type' => 'required|in:cmt,fob', 'material_ownership' => 'required|in:factory,customer',
-            'unit_price' => 'nullable|numeric|min:0',
+            'unit_price' => 'nullable|numeric|decimal:0,4|min:0',
             'bom_header_id' => 'nullable|exists:bom_headers,id',
             'expected_ship_date' => 'nullable|date', 'priority' => 'nullable|in:low,medium,high,urgent',
             'sizes' => 'required|array|min:1',

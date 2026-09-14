@@ -112,7 +112,7 @@ class BOMController extends Controller
             'items.*.unit' => 'nullable',
             'items.*.consumption_rate' => 'required|numeric|gt:0',
             'items.*.waste_percent' => 'nullable|numeric|min:0',
-            'items.*.unit_cost' => 'nullable|numeric|min:0',
+            'items.*.unit_cost' => 'nullable|numeric|decimal:0,4|min:0',
             'items.*.remark' => 'nullable',
         ]);
 
@@ -334,7 +334,7 @@ class BOMController extends Controller
             'items.*.unit' => 'nullable',
             'items.*.consumption_rate' => 'required|numeric|gt:0',
             'items.*.waste_percent' => 'nullable|numeric|min:0',
-            'items.*.unit_cost' => 'nullable|numeric|min:0',
+            'items.*.unit_cost' => 'nullable|numeric|decimal:0,4|min:0',
             'items.*.remark' => 'nullable',
         ]);
 

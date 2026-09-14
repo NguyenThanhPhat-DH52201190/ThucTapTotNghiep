@@ -198,7 +198,7 @@ class ProcurementController extends Controller
             'items.*.material_code' => 'required',
             'items.*.material_name' => 'required',
             'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'nullable|numeric|min:0',
+            'items.*.unit_price' => 'nullable|numeric|decimal:0,4|min:0',
             'items.*.mrp_suggestion_id' => 'nullable|exists:mrp_suggestions,id',
             'items.*.material_id' => 'nullable|exists:materials,id',
         ]);

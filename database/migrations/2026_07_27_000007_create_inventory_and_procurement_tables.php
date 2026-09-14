@@ -35,7 +35,7 @@ return new class extends Migration
             $table->decimal('reorder_point', 14, 4)->default(0);
             $table->string('location_bin', 100)->nullable();
             $table->string('batch_no', 100)->nullable();
-            $table->decimal('unit_cost', 12, 2)->default(0);
+            $table->decimal('unit_cost', 14, 4)->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
@@ -55,7 +55,7 @@ return new class extends Migration
             $table->foreignId('from_warehouse_id')->nullable()->constrained('warehouses')->nullOnDelete();
             $table->foreignId('to_warehouse_id')->nullable()->constrained('warehouses')->nullOnDelete();
             $table->string('batch_no', 100)->nullable();
-            $table->decimal('unit_cost', 12, 2)->default(0);
+            $table->decimal('unit_cost', 14, 4)->default(0);
             $table->decimal('total_cost', 14, 2)->default(0);
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
@@ -107,7 +107,7 @@ return new class extends Migration
             $table->string('unit', 20)->default('M');
             $table->decimal('quantity', 14, 4);
             $table->decimal('received_qty', 14, 4)->default(0);
-            $table->decimal('unit_price', 12, 2)->default(0);
+            $table->decimal('unit_price', 14, 4)->default(0);
             $table->decimal('total_price', 14, 2)->default(0);
             $table->date('expected_date')->nullable();
             $table->string('status', 30)->default('pending');  // pending | partial | received | cancelled

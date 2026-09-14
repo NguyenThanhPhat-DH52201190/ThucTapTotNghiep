@@ -175,8 +175,8 @@ function addItem(data = {}) {
                        value="${data.waste || ''}" placeholder="0">
             </td>
             <td>
-                <input type="number" step="0.01" min="0" name="items[${i}][unit_cost]" class="form-control form-control-sm"
-                       value="${data.cost || ''}" placeholder="0">
+                <input type="number" step="0.0001" min="0" name="items[${i}][unit_cost]" class="form-control form-control-sm"
+                       value="${data.cost || ''}" placeholder="0.0000">
             </td>
             <td>
                 <input type="text" name="items[${i}][remark]" class="form-control form-control-sm"

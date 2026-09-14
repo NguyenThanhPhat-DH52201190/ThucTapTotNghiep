@@ -114,7 +114,7 @@
                             <td>{{ $item->unit }}</td>
                             <td class="text-end">{{ number_format($item->consumption_rate, 4) }}</td>
                             <td class="text-end">{{ $item->waste_percent ? number_format($item->waste_percent, 1) . '%' : '-' }}</td>
-                            <td class="text-end">{{ number_format($item->unit_cost, 0) }}</td>
+                            <td class="text-end">{{ number_format($item->unit_cost, 4) }}</td>
                             <td class="text-end fw-bold">{{ number_format($item->total_cost, 0) }}</td>
                             <td><small>{{ $item->remark ?? '' }}</small></td>
                         </tr>
@@ -123,7 +123,7 @@
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="10" class="text-end">TOTAL COST:</td>
-                        <td class="text-end">{{ number_format($items->sum('unit_cost'), 0) }}</td>
+                        <td class="text-end">{{ number_format($items->sum('unit_cost'), 4) }}</td>
                         <td class="text-end text-primary">{{ number_format($items->sum('total_cost'), 0) }} đ</td>
                         <td></td>
                     </tr>

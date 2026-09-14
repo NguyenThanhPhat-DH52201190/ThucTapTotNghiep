@@ -42,7 +42,7 @@ return new class extends Migration
             $table->string('unit', 20)->default('M');                  // Unit: M, YD, PCS, KG, SET...
             $table->decimal('consumption_rate', 12, 4)->default(0);    // Yield - Định mức tiêu hao
             $table->decimal('waste_percent', 5, 2)->default(0);        // % hao hụt
-            $table->decimal('unit_cost', 12, 2)->default(0);           // Đơn giá
+            $table->decimal('unit_cost', 14, 4)->default(0);           // Đơn giá
             $table->decimal('total_cost', 12, 2)->default(0);          // Thành tiền
             $table->string('source')->default('local');                // local, imported
             $table->text('remark')->nullable();                        // Remark từ file Excel

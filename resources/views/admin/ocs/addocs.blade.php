@@ -80,7 +80,7 @@
                     </div>
                     <div class="col-md-2"><label class="form-label">Order Type</label><select name="order_type" class="form-select"><option value="cmt" {{ old('order_type','cmt')==='cmt'?'selected':'' }}>CMT</option><option value="fob" {{ old('order_type')==='fob'?'selected':'' }}>FOB</option></select></div>
                     <div class="col-md-3"><label class="form-label">Material Owner</label><select name="material_ownership" class="form-select"><option value="factory" {{ old('material_ownership','factory')==='factory'?'selected':'' }}>Factory</option><option value="customer" {{ old('material_ownership')==='customer'?'selected':'' }}>Customer</option></select></div>
-                    <div class="col-md-3"><label class="form-label">FOB Unit Price</label><input type="number" step="0.01" min="0" name="unit_price" class="form-control" value="{{ old('unit_price',0) }}"></div>
+                    <div class="col-md-3"><label class="form-label">FOB Unit Price</label><input type="number" step="0.0001" min="0" name="unit_price" class="form-control" value="{{ old('unit_price','0.0000') }}"></div>
 
                     <!-- New Order Management Fields -->
                     <div class="col-md-4">

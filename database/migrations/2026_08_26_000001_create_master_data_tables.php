@@ -54,7 +54,7 @@ return new class extends Migration
             $table->foreignId('material_id')->constrained('materials')->cascadeOnDelete();
             $table->foreignId('vendor_id')->constrained('suppliers')->cascadeOnDelete();
             $table->string('vendor_item_code')->nullable();
-            $table->decimal('unit_price', 12, 2)->default(0);
+            $table->decimal('unit_price', 14, 4)->default(0);
             $table->unsignedInteger('lead_time_days')->default(0);
             $table->boolean('is_default_vendor')->default(false);
             $table->timestamps();

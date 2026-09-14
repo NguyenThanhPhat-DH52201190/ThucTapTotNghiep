@@ -94,7 +94,7 @@ function addRow(data = {}) {
                 </select>
             </td>
             <td><input type="number" step="0.01" name="items[${i}][quantity]" class="form-control form-control-sm qty" required min="0.01" value="${data.qty || ''}" onchange="calcTotal()"></td>
-            <td><input type="number" step="0.01" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || ''}" onchange="calcTotal()"></td>
+            <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || ''}" placeholder="0.0000" onchange="calcTotal()"></td>
             <td class="row-total text-end">0</td>
             <td><input type="date" name="items[${i}][expected_date]" class="form-control form-control-sm" value="${data.date || ''}"></td>
             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${i})"><i class="bi bi-x"></i></button></td>

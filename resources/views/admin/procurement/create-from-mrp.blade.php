@@ -81,7 +81,7 @@
                                 <input type="hidden" name="items[{{ $i }}][material_id]" class="item-field" value="{{ $item->material_id }}">
                                 <input type="hidden" name="items[{{ $i }}][mrp_suggestion_id]" class="item-field" value="{{ $suggestions[$item->material_id]->id ?? '' }}">
                             </td>
-                            <td><input type="number" step="0.01" min="0.01" name="items[{{ $i }}][unit_price]" class="form-control form-control-sm item-field item-price" placeholder="Set price" required></td>
+                            <td><input type="number" step="0.0001" min="0.0001" name="items[{{ $i }}][unit_price]" class="form-control form-control-sm item-field item-price" placeholder="0.0000" required></td>
                             <td class="text-end fw-semibold item-total">0 đ</td>
                         </tr>
                         @endforeach

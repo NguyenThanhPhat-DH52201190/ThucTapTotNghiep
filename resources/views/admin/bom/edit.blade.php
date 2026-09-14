@@ -118,7 +118,7 @@
                             </td>
                             <td><input type="number" step="0.0001" min="0.0001" name="items[{{ $i }}][consumption_rate]" class="form-control form-control-sm" required value="{{ $item->consumption_rate }}"></td>
                             <td><input type="number" step="0.01" min="0" name="items[{{ $i }}][waste_percent]" class="form-control form-control-sm" value="{{ $item->waste_percent }}"></td>
-                            <td><input type="number" step="0.01" min="0" name="items[{{ $i }}][unit_cost]" class="form-control form-control-sm" value="{{ $item->unit_cost }}"></td>
+                            <td><input type="number" step="0.0001" min="0" name="items[{{ $i }}][unit_cost]" class="form-control form-control-sm" value="{{ number_format((float) $item->unit_cost, 4, '.', '') }}"></td>
                             <td><input type="text" name="items[{{ $i }}][remark]" class="form-control form-control-sm" value="{{ $item->remark }}"></td>
                             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)"><i class="bi bi-x"></i></button></td>
                         </tr>
@@ -172,7 +172,7 @@ function addItem(data = {}) {
             </td>
             <td><input type="number" step="0.0001" min="0.0001" name="items[${i}][consumption_rate]" class="form-control form-control-sm" required value="${data.yield || ''}"></td>
             <td><input type="number" step="0.01" min="0" name="items[${i}][waste_percent]" class="form-control form-control-sm" value="${data.waste || ''}"></td>
-            <td><input type="number" step="0.01" min="0" name="items[${i}][unit_cost]" class="form-control form-control-sm" value="${data.cost || ''}"></td>
+            <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_cost]" class="form-control form-control-sm" value="${data.cost || ''}" placeholder="0.0000"></td>
             <td><input type="text" name="items[${i}][remark]" class="form-control form-control-sm" value="${data.remark || ''}"></td>
             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)"><i class="bi bi-x"></i></button></td>
         </tr>

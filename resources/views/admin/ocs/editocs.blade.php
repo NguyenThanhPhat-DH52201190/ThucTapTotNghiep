@@ -86,7 +86,7 @@
                     </div>
                     <div class="col-md-2"><label class="form-label">Order Type</label><select name="order_type" class="form-select"><option value="cmt" {{ old('order_type',$order->order_type??'cmt')==='cmt'?'selected':'' }}>CMT</option><option value="fob" {{ old('order_type',$order->order_type??'cmt')==='fob'?'selected':'' }}>FOB</option></select></div>
                     <div class="col-md-3"><label class="form-label">Material Owner</label><select name="material_ownership" class="form-select"><option value="factory" {{ old('material_ownership',$order->material_ownership??'factory')==='factory'?'selected':'' }}>Factory</option><option value="customer" {{ old('material_ownership',$order->material_ownership??'factory')==='customer'?'selected':'' }}>Customer</option></select></div>
-                    <div class="col-md-3"><label class="form-label">FOB Unit Price</label><input type="number" step="0.01" min="0" name="unit_price" class="form-control" value="{{ old('unit_price',$order->unit_price??0) }}"></div>
+                    <div class="col-md-3"><label class="form-label">FOB Unit Price</label><input type="number" step="0.0001" min="0" name="unit_price" class="form-control" value="{{ old('unit_price', number_format((float) ($order->unit_price ?? 0), 4, '.', '')) }}"></div>
                     <div class="col-md-4">
                         <label class="form-label">Priority</label>
                         <select name="priority" class="form-select">

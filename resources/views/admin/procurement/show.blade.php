@@ -71,7 +71,7 @@
                             <td>{{ $item->unit }}</td>
                             <td class="text-end">{{ number_format($item->quantity, 2) }}</td>
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->unit_price, 0) }}</td>
+                            <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
                             <td class="text-end fw-bold">{{ number_format($item->total_price, 0) }} đ</td>
                             <td><small>{{ $item->expected_date ?? '-' }}</small></td>
                             <td>

@@ -38,7 +38,7 @@ return new class extends Migration
                 $table->unsignedInteger('completed_qty')->default(0);
             }
             if (!Schema::hasColumn('daily_revenues', 'unit_price')) {
-                $table->decimal('unit_price', 14, 2)->default(0);
+                $table->decimal('unit_price', 14, 4)->default(0);
             }
             if (!Schema::hasColumn('daily_revenues', 'total_revenue')) {
                 $table->decimal('total_revenue', 14, 2)->default(0);

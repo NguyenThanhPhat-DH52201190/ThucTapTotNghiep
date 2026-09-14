@@ -165,16 +165,24 @@ function calcTotal() {
     document.getElementById('totalAmount').textContent = totalAmt.toLocaleString('vi-VN', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' đ';
 }
 
-const initialItems = @json(old('items', isset($items) ? $items->map(fn ($item) => [
-    'code' => $item->material_code,
-    'name' => $item->material_name,
-    'unit' => $item->unit,
-    'qty' => $item->quantity,
-    'price' => number_format((float) $item->unit_price, 4, '.', ''),
-    'date' => $item->expected_date,
-    'materialId' => $item->material_id,
-    'suggestionId' => $item->mrp_suggestion_id,
-])->values() : []));
+@php
+    $initialPoItems = old('items');
+    if ($initialPoItems === null) {
+        $initialPoItems = isset($items) ? $items->map(function ($item) {
+            return [
+                'code' => $item->material_code,
+                'name' => $item->material_name,
+                'unit' => $item->unit,
+                'qty' => $item->quantity,
+                'price' => number_format((float) $item->unit_price, 4, '.', ''),
+                'date' => $item->expected_date,
+                'materialId' => $item->material_id,
+                'suggestionId' => $item->mrp_suggestion_id,
+            ];
+        })->values() : [];
+    }
+@endphp
+const initialItems = @json($initialPoItems);
 if (initialItems.length) initialItems.forEach(addRow); else addRow();
 calcTotal();
 </script>

@@ -4,7 +4,7 @@
 
 @php
 $canManage = auth()->user()->role === 'admin';
-$canEditFabric = in_array(auth()->user()->role, ['admin', 'ppic'], true);
+$canEditFabric = $canManage;
 $isAccountant = auth()->user()->role === 'accountant';
 $hidePpicCols = in_array(auth()->user()->role, ['ppic', 'accountant'], true);
 $hideMidCols = $isAccountant;
@@ -381,16 +381,6 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-date">Sew Start</th>
             <th scope="col" class="col-date">Sew End</th>
             @unless($hideMidCols)
-            <th scope="col" class="col-wide col-gap-left">Fabric1</th>
-            <th scope="col" class="col-date">ETA1</th>
-            <th scope="col" class="col-date">Actual</th>
-            <th scope="col" class="col-wide">Fabric2</th>
-            <th scope="col" class="col-date">ETA2</th>
-            <th scope="col" class="col-wide">Linning</th>
-            <th scope="col" class="col-date">ETA3</th>
-            <th scope="col" class="col-wide">Pocket</th>
-            <th scope="col" class="col-date">ETA4</th>
-            <th scope="col" class="col-wide">Trim</th>
             <th scope="col" class="col-date">Norm_date</th>
             @endunless
             @unless($hidePpicCols)
@@ -426,7 +416,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = 35 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 11 : 0);
+        $tableColspan = 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0);
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -498,16 +488,6 @@ $hideMidCols = $isAccountant;
             <td>{{ $item->planned_sew_start ?? '' }}</td>
             <td>{{ $item->planned_sew_end ?? '' }}</td>
             @unless($hideMidCols)
-            <td class="col-gap-left">{{ $item->Fabric1 }}</td>
-            <td>{{ $item->ETA1 }}</td>
-            <td>{{ $item->Actual }}</td>
-            <td>{{ $item->Fabric2 }}</td>
-            <td>{{ $item->ETA2 }}</td>
-            <td>{{ $item->Linning }}</td>
-            <td>{{ $item->ETA3 }}</td>
-            <td>{{ $item->Pocket }}</td>
-            <td>{{ $item->ETA4 }}</td>
-            <td>{{ $item->Trim }}</td>
             <td>{{ $item->Norm_date }}</td>
             @endunless
             @unless($hidePpicCols)
@@ -593,7 +573,7 @@ $hideMidCols = $isAccountant;
         @endif
         @else
         <tr>
-            <td colspan="{{ 29 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 11 : 0) }}" class="text-center">No data</td>
+            <td colspan="{{ 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>

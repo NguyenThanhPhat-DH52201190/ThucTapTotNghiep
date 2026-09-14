@@ -162,46 +162,6 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Fabric1</label>
-                        <input type="text" name="Fabric1" class="form-control" value="{{ old('Fabric1') }}">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">ETA1</label>
-                        <input type="date" name="ETA1" class="form-control" value="{{ old('ETA1') }}">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Actual</label>
-                        <input type="date" name="Actual" class="form-control" value="{{ old('Actual') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Fabric2</label>
-                        <input type="text" name="Fabric2" class="form-control" value="{{ old('Fabric2') }}">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">ETA2</label>
-                        <input type="date" name="ETA2" class="form-control" value="{{ old('ETA2') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Linning</label>
-                        <input type="text" name="Linning" class="form-control" value="{{ old('Linning') }}">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">ETA3</label>
-                        <input type="date" name="ETA3" class="form-control" value="{{ old('ETA3') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Pocket</label>
-                        <input type="text" name="Pocket" class="form-control" value="{{ old('Pocket') }}">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">ETA4</label>
-                        <input type="date" name="ETA4" class="form-control" value="{{ old('ETA4') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Trim</label>
-                        <input type="text" name="Trim" class="form-control" value="{{ old('Trim') }}">
-                    </div>
                     <div class="col-md-3">
                         <label class="form-label">Norm_date</label>
                         <input type="date" name="Norm_date" class="form-control" value="{{ old('Norm_date') }}">

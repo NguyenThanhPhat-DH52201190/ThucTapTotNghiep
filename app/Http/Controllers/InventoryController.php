@@ -229,29 +229,118 @@ class InventoryController extends Controller
     {
         $query = DB::table('inventory_balances')
             ->join('materials', 'inventory_balances.material_id', '=', 'materials.id')
-            ->select('inventory_balances.id', 'materials.internal_code as material_code', 'materials.material_name',
+            ->leftJoin('warehouses', 'inventory_balances.warehouse_id', '=', 'warehouses.id')
+            ->leftJoin('locations', 'inventory_balances.location_id', '=', 'locations.id')
+            ->select('inventory_balances.id', 'inventory_balances.material_id', 'materials.internal_code as material_code',
+                'materials.old_code', 'materials.material_name',
                 'materials.material_type', 'materials.unit', 'inventory_balances.balance_qty as current_qty',
-                'inventory_balances.balance_qty as available_qty', 'inventory_balances.unit_cost',
-                'inventory_balances.location as location_bin', 'inventory_balances.lot_roll_no as batch_no',
-                DB::raw('0 as reserved_qty'), DB::raw('0 as min_stock_level'), DB::raw('0 as reorder_point'),
-                DB::raw('NULL as warehouse_id'), DB::raw('NULL as warehouse_name'), DB::raw('NULL as warehouse_code'));
+                DB::raw('(inventory_balances.balance_qty - inventory_balances.reserved_qty) as available_qty'),
+                'inventory_balances.reserved_qty', 'inventory_balances.min_stock_level',
+                'inventory_balances.reorder_point', 'inventory_balances.unit_cost',
+                'inventory_balances.location as location_bin', 'inventory_balances.location_id',
+                'inventory_balances.warehouse_id', 'inventory_balances.lot_roll_no as batch_no',
+                'warehouses.name as warehouse_name', 'warehouses.code as warehouse_code',
+                'locations.location_code');
 
         if ($request->filled('material_code')) {
-            $query->where('materials.internal_code', 'like', '%' . $request->material_code . '%');
+            $query->where(fn ($q) => $q->where('materials.internal_code', 'like', '%' . $request->material_code . '%')
+                ->orWhere('materials.old_code', 'like', '%' . $request->material_code . '%'));
         }
         if ($request->filled('material_type')) {
             $query->where('materials.material_type', $request->material_type);
         }
         if ($request->filled('low_stock')) {
-            $query->whereRaw('inventory_balances.balance_qty <= 0');
+            $query->whereRaw('(inventory_balances.balance_qty - inventory_balances.reserved_qty) <= inventory_balances.reorder_point');
         }
 
         $items = $query->orderBy('materials.internal_code')
             ->paginate(20);
 
-        $warehouses = DB::table('warehouses')->orderBy('name')->get();
+        $materials = DB::table('materials')->orderBy('internal_code')->get();
+        $warehouses = DB::table('warehouses')->where('is_active', 1)->orderBy('name')->get();
+        $locations = DB::table('locations')->where('is_active', 1)->orderBy('location_code')->get();
 
-        return view('admin.inventory.index', compact('items', 'warehouses'));
+        return view('admin.inventory.index', compact('items', 'materials', 'warehouses', 'locations'));
+    }
+
+    public function store(Request $request, InventoryLedgerService $ledger)
+    {
+        $data = $request->validate([
+            'material_id' => 'required|exists:materials,id', 'warehouse_id' => 'required|exists:warehouses,id',
+            'location_id' => 'required|exists:locations,id', 'opening_qty' => 'required|numeric|min:0',
+            'unit_cost' => 'required|numeric|decimal:0,4|min:0', 'lot_roll_no' => 'nullable|string|max:191',
+            'min_stock_level' => 'required|numeric|min:0', 'reorder_point' => 'required|numeric|min:0',
+        ]);
+        $location = DB::table('locations')->where('id', $data['location_id'])
+            ->where('warehouse_id', $data['warehouse_id'])->first();
+        if (!$location) return back()->withInput()->with('error', 'Location does not belong to the selected warehouse.');
+        $material = DB::table('materials')->find($data['material_id']);
+        $exists = DB::table('inventory_balances')->where('material_id', $material->id)
+            ->where('warehouse_id', $data['warehouse_id'])->where('location_id', $data['location_id'])
+            ->where('material_color', $material->color)->where('material_size', $material->size)
+            ->where('lot_roll_no', $data['lot_roll_no'] ?? null)->exists();
+        if ($exists) return back()->withInput()->with('error', 'This material/location/lot inventory balance already exists.');
+
+        $ledger->receive([
+            'reference_type' => 'OPENING_BALANCE', 'reference_doc' => 'Manual opening balance',
+            'material_id' => $material->id, 'material_code' => $material->internal_code,
+            'color' => $material->color, 'size' => $material->size, 'quantity' => $data['opening_qty'],
+            'unit' => $material->unit, 'warehouse_id' => $data['warehouse_id'],
+            'location_id' => $data['location_id'], 'location' => $location->location_code,
+            'lot_roll_no' => $data['lot_roll_no'] ?? null, 'unit_cost' => $data['unit_cost'],
+            'notes' => 'Opening balance created manually', 'user_id' => $request->user()?->id,
+        ]);
+        DB::table('inventory_balances')->where('material_id', $material->id)
+            ->where('warehouse_id', $data['warehouse_id'])->where('location_id', $data['location_id'])
+            ->where('material_color', $material->color)->where('material_size', $material->size)
+            ->where('lot_roll_no', $data['lot_roll_no'] ?? null)
+            ->update(['min_stock_level' => $data['min_stock_level'], 'reorder_point' => $data['reorder_point']]);
+        return back()->with('success', 'Opening inventory created.');
+    }
+
+    public function update(Request $request, int $id, InventoryLedgerService $ledger)
+    {
+        $data = $request->validate([
+            'old_code' => 'nullable|string|max:191|unique:materials,old_code,' . $request->material_id,
+            'material_id' => 'required|exists:materials,id', 'new_qty' => 'required|numeric|min:0',
+            'min_stock_level' => 'required|numeric|min:0', 'reorder_point' => 'required|numeric|min:0',
+            'reason' => 'required|string|max:500',
+        ]);
+        $balance = DB::table('inventory_balances')->find($id);
+        if (!$balance || (int) $balance->material_id !== (int) $data['material_id']) abort(404);
+        DB::transaction(function () use ($balance, $data, $request, $ledger) {
+            DB::table('materials')->where('id', $balance->material_id)
+                ->update(['old_code' => $data['old_code'] ?: null, 'updated_at' => now()]);
+            DB::table('inventory_balances')->where('id', $balance->id)->update([
+                'min_stock_level' => $data['min_stock_level'], 'reorder_point' => $data['reorder_point'], 'updated_at' => now(),
+            ]);
+            if ((float) $balance->balance_qty !== (float) $data['new_qty']) {
+                $ledger->adjust(['balance_id' => $balance->id, 'new_qty' => $data['new_qty'],
+                    'reason' => $data['reason'], 'user_id' => $request->user()?->id]);
+            }
+        });
+        return back()->with('success', 'Inventory information updated.');
+    }
+
+    public function destroy(int $id)
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $balance = DB::table('inventory_balances')->where('id', $id)->lockForUpdate()->first();
+                if (!$balance) abort(404);
+                if ((float) $balance->balance_qty !== 0.0 || (float) $balance->reserved_qty !== 0.0) {
+                    throw new \RuntimeException('Only zero-quantity, unreserved inventory can be deleted.');
+                }
+                if (DB::table('inventory_transactions')->where('material_id', $balance->material_id)
+                    ->where(fn ($q) => $q->where('location_id', $balance->location_id)->orWhere('reference_id', $balance->id))->exists()) {
+                    throw new \RuntimeException('Inventory with transaction history cannot be deleted.');
+                }
+                DB::table('inventory_balances')->where('id', $id)->delete();
+            });
+            return back()->with('success', 'Inventory balance deleted.');
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function adjust(Request $request, $id, InventoryLedgerService $ledger)

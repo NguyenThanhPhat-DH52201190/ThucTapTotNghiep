@@ -232,6 +232,9 @@ Route::middleware('auth')->group(function () {
         Route::get('inventory/transactions', [InventoryController::class, 'transactions'])->name('inventory.transactions');
         Route::get('inventory/report', [InventoryController::class, 'stockReport'])->name('inventory.report');
         Route::post('inventory/{id}/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
+        Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::patch('inventory/{id}', [InventoryController::class, 'update'])->name('inventory.update');
+        Route::delete('inventory/{id}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
         Route::post('inventory/issues', [InventoryController::class, 'issue'])->name('inventory.issues.store');
         Route::resource('inventory', InventoryController::class)->only(['index']);
 

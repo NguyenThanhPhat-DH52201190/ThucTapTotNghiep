@@ -46,7 +46,7 @@ class MasterDataController extends Controller
             ->select('materials.*', 'material_categories.name as category_name', 'material_subcategories.name as subcategory_name', DB::raw('COUNT(material_vendors.id) as vendor_count'))
             ->when($request->filled('category_id'), fn ($query) => $query->where('materials.category_id', $request->integer('category_id')))
             ->when($request->filled('subcategory_id'), fn ($query) => $query->where('materials.subcategory_id', $request->integer('subcategory_id')))
-            ->groupBy('materials.id', 'materials.internal_code', 'materials.material_name', 'materials.color', 'materials.size', 'materials.unit', 'materials.material_type', 'materials.category_id', 'materials.subcategory_id', 'materials.created_at', 'materials.updated_at', 'material_categories.name', 'material_subcategories.name')
+            ->groupBy('materials.id', 'materials.internal_code', 'materials.old_code', 'materials.material_name', 'materials.color', 'materials.size', 'materials.unit', 'materials.material_type', 'materials.category_id', 'materials.subcategory_id', 'materials.created_at', 'materials.updated_at', 'material_categories.name', 'material_subcategories.name')
             ->orderBy('material_categories.name')
             ->orderBy('material_subcategories.name')
             ->orderBy('materials.internal_code')
@@ -61,7 +61,7 @@ class MasterDataController extends Controller
 
     private function materialRules(?int $id = null): array
     {
-        return ['internal_code' => 'required|string|max:191|unique:materials,internal_code' . ($id ? ',' . $id : ''), 'material_name' => 'required|string|max:191', 'color' => 'nullable|string|max:100', 'size' => 'nullable|string|max:100', 'unit' => 'required|string|max:20', 'category_id' => 'required|exists:material_categories,id', 'subcategory_id' => ['nullable', Rule::exists('material_subcategories', 'id')->where(fn ($query) => $query->where('category_id', request('category_id')))]];
+        return ['internal_code' => 'required|string|max:191|unique:materials,internal_code' . ($id ? ',' . $id : ''), 'old_code' => 'nullable|string|max:191|unique:materials,old_code' . ($id ? ',' . $id : ''), 'material_name' => 'required|string|max:191', 'color' => 'nullable|string|max:100', 'size' => 'nullable|string|max:100', 'unit' => 'required|string|max:20', 'category_id' => 'required|exists:material_categories,id', 'subcategory_id' => ['nullable', Rule::exists('material_subcategories', 'id')->where(fn ($query) => $query->where('category_id', request('category_id')))]];
     }
 
     private function materialData(Request $request, ?int $id = null): array

@@ -7,6 +7,9 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}</div>
     @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}</div>
+    @endif
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -59,13 +62,20 @@
                             <td><small>{{ $po->supplier_code }} - {{ $po->supplier_name }}</small></td>
                             <td>{{ $po->order_date }}</td>
                             <td><small>{{ $po->expected_delivery ?? '-' }}</small></td>
-                            <td class="text-end fw-bold">{{ number_format($po->total_amount, 0) }} đ</td>
+                            <td class="text-end fw-bold">{{ number_format($po->total_amount, 4) }} đ</td>
                             <td>
                                 @php $sc = match($po->status) { 'sent'=>'info', 'confirmed'=>'primary', 'received'=>'success', 'partial'=>'warning', 'cancelled'=>'danger', default=>'secondary' } @endphp
                                 <span class="badge bg-{{ $sc }}">{{ ucfirst($po->status) }}</span>
                             </td>
                             <td>
                                 <a href="{{ route('admin.procurement.show', $po->id) }}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
+                                @if($canManage && !in_array($po->status, ['partial', 'received']))
+                                    <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                    <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
+                                        @csrf @method('DELETE')
+                                        <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

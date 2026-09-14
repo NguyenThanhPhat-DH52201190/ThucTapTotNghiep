@@ -38,7 +38,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Amount (đ)</label>
-                            <input type="number" step="0.01" name="amount" class="form-control" required min="0">
+                            <input type="number" step="0.0001" name="amount" class="form-control" required min="0">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Payment Method</label>
@@ -67,13 +67,13 @@
                     @foreach($totalByCategory as $cat)
                         <div class="d-flex justify-content-between small mb-1">
                             <span>{{ ucfirst($cat->category) }}</span>
-                            <span class="fw-bold">{{ number_format($cat->total, 0) }} đ</span>
+                            <span class="fw-bold">{{ number_format($cat->total, 4) }} đ</span>
                         </div>
                     @endforeach
                     <hr class="my-1">
                     <div class="d-flex justify-content-between fw-bold">
                         <span>Total</span>
-                        <span>{{ number_format($totalByCategory->sum('total'), 0) }} đ</span>
+                        <span>{{ number_format($totalByCategory->sum('total'), 4) }} đ</span>
                     </div>
                 </div>
             </div>
@@ -111,7 +111,7 @@
                                         <span class="badge bg-{{ $ec }}">{{ $e->category }}</span>
                                     </td>
                                     <td><small>{{ $e->description }}</small></td>
-                                    <td class="text-end fw-bold text-danger">{{ number_format($e->amount, 0) }} đ</td>
+                                    <td class="text-end fw-bold text-danger">{{ number_format($e->amount, 4) }} đ</td>
                                     <td><small>{{ $e->payment_method ?? '-' }}</small></td>
                                     <td>
                                         @if($canManage)

@@ -16,10 +16,10 @@ return new class extends Migration
             $table->string('customer')->nullable();        // Customer from OCS
             $table->string('version')->default('V1');      // Version control
             $table->string('status')->default('draft');    // draft, active, archived
-            $table->decimal('total_fabric_cost', 12, 2)->default(0);
-            $table->decimal('total_trim_cost', 12, 2)->default(0);
-            $table->decimal('total_labor_cost', 12, 2)->default(0);
-            $table->decimal('total_cmt', 12, 2)->default(0);
+            $table->decimal('total_fabric_cost', 18, 4)->default(0);
+            $table->decimal('total_trim_cost', 18, 4)->default(0);
+            $table->decimal('total_labor_cost', 18, 4)->default(0);
+            $table->decimal('total_cmt', 18, 4)->default(0);
             $table->date('effective_date')->nullable();
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
@@ -43,7 +43,7 @@ return new class extends Migration
             $table->decimal('consumption_rate', 12, 4)->default(0);    // Yield - Định mức tiêu hao
             $table->decimal('waste_percent', 5, 2)->default(0);        // % hao hụt
             $table->decimal('unit_cost', 14, 4)->default(0);           // Đơn giá
-            $table->decimal('total_cost', 12, 2)->default(0);          // Thành tiền
+            $table->decimal('total_cost', 18, 4)->default(0);          // Thành tiền
             $table->string('source')->default('local');                // local, imported
             $table->text('remark')->nullable();                        // Remark từ file Excel
             $table->integer('sort_order')->default(0);

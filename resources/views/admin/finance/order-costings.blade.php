@@ -17,11 +17,11 @@
                         @php($driverVariance = $variances[$driver])
                         <tr>
                             <td>{{ $costing->CS }}</td><td>{{ $costing->SNo }} &mdash; {{ $costing->Sname }}</td>
-                            <td class="text-end">{{ number_format($costing->est_material_cost, 0) }}</td><td class="text-end">{{ number_format($costing->actual_material_cost, 0) }}</td>
-                            <td class="text-end">{{ number_format($costing->est_labor_cost, 0) }}</td><td class="text-end">{{ number_format($costing->actual_labor_cost, 0) }}</td><td class="text-end">{{ number_format($costing->actual_other_cost, 0) }}</td>
-                            <td class="text-end {{ $costing->total_variance > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($costing->total_variance, 0) }}</td>
-                            <td>{{ $driver }} ({{ number_format($driverVariance, 0) }})</td>
-                            <td class="text-end">{{ number_format($costing->revenue, 0) }}</td><td class="text-end fw-bold">{{ number_format($costing->final_profit, 0) }}</td>
+                            <td class="text-end">{{ number_format($costing->est_material_cost, 4) }}</td><td class="text-end">{{ number_format($costing->actual_material_cost, 4) }}</td>
+                            <td class="text-end">{{ number_format($costing->est_labor_cost, 4) }}</td><td class="text-end">{{ number_format($costing->actual_labor_cost, 4) }}</td><td class="text-end">{{ number_format($costing->actual_other_cost, 4) }}</td>
+                            <td class="text-end {{ $costing->total_variance > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($costing->total_variance, 4) }}</td>
+                            <td>{{ $driver }} ({{ number_format($driverVariance, 4) }})</td>
+                            <td class="text-end">{{ number_format($costing->revenue, 4) }}</td><td class="text-end fw-bold">{{ number_format($costing->final_profit, 4) }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="11" class="text-center py-3 text-muted">No completed order costing snapshots.</td></tr>

@@ -72,7 +72,7 @@
                             <td class="text-end">{{ number_format($item->min_stock_level, 2) }}</td>
                             <td class="text-end">{{ number_format($item->reorder_point, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_cost, 4) }}</td>
-                            <td class="text-end fw-bold">{{ number_format($item->current_qty * $item->unit_cost, 0) }} đ</td>
+                            <td class="text-end fw-bold">{{ number_format($item->current_qty * $item->unit_cost, 4) }} đ</td>
                             <td>
                                 @if($canManage)
                                     <button class="btn btn-sm btn-warning" onclick="adjust({{ $item->id }}, '{{ $item->material_code }}', {{ $item->current_qty }})">

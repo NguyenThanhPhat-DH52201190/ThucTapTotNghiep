@@ -93,9 +93,9 @@
                             <td>{{ $bom->style_name }}</td>
                             <td>{{ $bom->customer }}</td>
                             <td><span class="badge bg-secondary">{{ $bom->version }}</span></td>
-                            <td>{{ number_format($bom->total_fabric_cost, 0) }}</td>
-                            <td>{{ number_format($bom->total_trim_cost, 0) }}</td>
-                            <td><strong>{{ number_format($bom->total_fabric_cost + $bom->total_trim_cost, 0) }}</strong></td>
+                            <td>{{ number_format($bom->total_fabric_cost, 4) }}</td>
+                            <td>{{ number_format($bom->total_trim_cost, 4) }}</td>
+                            <td><strong>{{ number_format($bom->total_fabric_cost + $bom->total_trim_cost, 4) }}</strong></td>
                             <td>
                                 @if($bom->status === 'active')
                                     <span class="badge bg-success">Active</span>

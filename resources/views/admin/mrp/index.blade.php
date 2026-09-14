@@ -39,7 +39,7 @@
                             <td class="fw-bold">{{ $m->mrp_code }}</td>
                             <td><small>{{ $m->period_from ?: 'N/A' }} → {{ $m->period_to ?: 'N/A' }}</small></td>
                             <td>{{ $m->total_materials }}</td>
-                            <td class="fw-bold">{{ number_format($m->total_cost, 0) }} đ</td>
+                            <td class="fw-bold">{{ number_format($m->total_cost, 4) }} đ</td>
                             <td>
                                 @php $sc = match($m->status) { 'calculated'=>'success', 'approved'=>'primary', default=>'secondary' } @endphp
                                 <span class="badge bg-{{ $sc }}">{{ ucfirst($m->status) }}</span>

@@ -37,10 +37,10 @@ $canManage = auth()->user()->role === 'admin';
             @forelse($tableRows as $row)
             <tr>
                 <td>{{ $row['monthLabel'] }}</td>
-                <td>{{ $row['gsvPlan'] > 0 ? '$' . number_format($row['gsvPlan'], 2) : '$-' }}</td>
-                <td>{{ $row['gsvActual'] > 0 ? '$' . number_format($row['gsvActual'], 2) : '$-' }}</td>
-                <td>{{ $row['subconPlan'] > 0 ? '$' . number_format($row['subconPlan'], 2) : '$-' }}</td>
-                <td>{{ $row['subconActual'] > 0 ? '$' . number_format($row['subconActual'], 2) : '$-' }}</td>
+                <td>{{ $row['gsvPlan'] > 0 ? '$' . number_format($row['gsvPlan'], 4) : '$-' }}</td>
+                <td>{{ $row['gsvActual'] > 0 ? '$' . number_format($row['gsvActual'], 4) : '$-' }}</td>
+                <td>{{ $row['subconPlan'] > 0 ? '$' . number_format($row['subconPlan'], 4) : '$-' }}</td>
+                <td>{{ $row['subconActual'] > 0 ? '$' . number_format($row['subconActual'], 4) : '$-' }}</td>
             </tr>
             @empty
             <tr>
@@ -51,10 +51,10 @@ $canManage = auth()->user()->role === 'admin';
         <tfoot>
             <tr class="fw-bold table-light">
                 <td>Total</td>
-                <td>{{ '$' . number_format($totals['gsvPlan'] ?? 0, 2) }}</td>
-                <td>{{ '$' . number_format($totals['gsvActual'] ?? 0, 2) }}</td>
-                <td>{{ '$' . number_format($totals['subconPlan'] ?? 0, 2) }}</td>
-                <td>{{ '$' . number_format($totals['subconActual'] ?? 0, 2) }}</td>
+                <td>{{ '$' . number_format($totals['gsvPlan'] ?? 0, 4) }}</td>
+                <td>{{ '$' . number_format($totals['gsvActual'] ?? 0, 4) }}</td>
+                <td>{{ '$' . number_format($totals['subconPlan'] ?? 0, 4) }}</td>
+                <td>{{ '$' . number_format($totals['subconActual'] ?? 0, 4) }}</td>
             </tr>
         </tfoot>
     </table>

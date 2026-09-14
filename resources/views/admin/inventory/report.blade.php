@@ -19,7 +19,7 @@
                         <h3 class="mb-0">{{ number_format($s->total_available, 0) }}</h3>
                         <small class="text-muted">{{ $s->item_count }} items</small>
                         <hr class="my-2">
-                        <small>Value: <strong>{{ number_format($s->total_value, 0) }} đ</strong></small>
+                        <small>Value: <strong>{{ number_format($s->total_value, 4) }} đ</strong></small>
                     </div>
                 </div>
             </div>

@@ -27,7 +27,7 @@
             <div class="row g-3">
                 <div class="col-md-3"><small class="text-muted d-block">Period</small><strong>{{ $mrp->period_from ?? 'N/A' }} → {{ $mrp->period_to ?? 'N/A' }}</strong></div>
                 <div class="col-md-2"><small class="text-muted d-block">Total Materials</small><strong>{{ $mrp->total_materials }}</strong></div>
-                <div class="col-md-2"><small class="text-muted d-block">Total Cost</small><strong class="text-primary">{{ number_format($mrp->total_cost, 0) }} đ</strong></div>
+                <div class="col-md-2"><small class="text-muted d-block">Total Cost</small><strong class="text-primary">{{ number_format($mrp->total_cost, 4) }} đ</strong></div>
                 <div class="col-md-2"><small class="text-muted d-block">Created</small><strong>{{ $mrp->created_at ? \Carbon\Carbon::parse($mrp->created_at)->format('d/m/Y') : '' }}</strong></div>
                 @if($mrp->notes)
                     <div class="col-12"><small class="text-muted d-block">Notes</small><p class="mb-0">{{ $mrp->notes }}</p></div>

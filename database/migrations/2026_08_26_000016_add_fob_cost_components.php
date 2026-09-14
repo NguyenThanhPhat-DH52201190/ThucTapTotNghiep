@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreign('cutsheet_id')->references('id')->on('ocs')->restrictOnDelete();
             $table->string('cost_type', 30); // freight | qc | packing | overhead | other
             $table->string('cost_stage', 15); // estimated | actual
-            $table->decimal('amount', 14, 2)->default(0);
+            $table->decimal('amount', 18, 4)->default(0);
             $table->string('note')->nullable();
             // Legacy users table is MyISAM, so it cannot participate in a MySQL FK.
             $table->unsignedBigInteger('created_by')->nullable();
@@ -27,9 +27,9 @@ return new class extends Migration
         });
 
         Schema::table('order_costings', function (Blueprint $table) {
-            if (!Schema::hasColumn('order_costings', 'est_other_cost')) $table->decimal('est_other_cost', 14, 2)->default(0)->after('est_labor_cost');
-            if (!Schema::hasColumn('order_costings', 'actual_other_cost')) $table->decimal('actual_other_cost', 14, 2)->default(0)->after('actual_labor_cost');
-            if (!Schema::hasColumn('order_costings', 'other_variance')) $table->decimal('other_variance', 14, 2)->default(0)->after('labor_variance');
+            if (!Schema::hasColumn('order_costings', 'est_other_cost')) $table->decimal('est_other_cost', 18, 4)->default(0)->after('est_labor_cost');
+            if (!Schema::hasColumn('order_costings', 'actual_other_cost')) $table->decimal('actual_other_cost', 18, 4)->default(0)->after('actual_labor_cost');
+            if (!Schema::hasColumn('order_costings', 'other_variance')) $table->decimal('other_variance', 18, 4)->default(0)->after('labor_variance');
         });
     }
 

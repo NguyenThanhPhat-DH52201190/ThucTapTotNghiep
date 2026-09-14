@@ -13,11 +13,11 @@ return new class extends Migration
             $table->id();
             $table->integer('cutsheet_id');
             $table->foreign('cutsheet_id')->references('id')->on('ocs')->restrictOnDelete();
-            $table->decimal('est_material_cost', 14, 2)->default(0);
-            $table->decimal('est_labor_cost', 14, 2)->default(0);
-            $table->decimal('actual_material_cost', 14, 2)->default(0);
-            $table->decimal('actual_labor_cost', 14, 2)->default(0);
-            $table->decimal('final_profit', 14, 2)->default(0);
+            $table->decimal('est_material_cost', 18, 4)->default(0);
+            $table->decimal('est_labor_cost', 18, 4)->default(0);
+            $table->decimal('actual_material_cost', 18, 4)->default(0);
+            $table->decimal('actual_labor_cost', 18, 4)->default(0);
+            $table->decimal('final_profit', 18, 4)->default(0);
             $table->timestamps();
 
             $table->unique('cutsheet_id');
@@ -41,7 +41,7 @@ return new class extends Migration
                 $table->decimal('unit_price', 14, 4)->default(0);
             }
             if (!Schema::hasColumn('daily_revenues', 'total_revenue')) {
-                $table->decimal('total_revenue', 14, 2)->default(0);
+                $table->decimal('total_revenue', 18, 4)->default(0);
             }
         });
     }

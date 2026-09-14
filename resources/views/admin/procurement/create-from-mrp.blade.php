@@ -101,7 +101,7 @@
 const vendorPrices = @json($vendorPrices);
 
 function money(value) {
-    return Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' đ';
+    return Number(value || 0).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' đ';
 }
 
 function updateRowTotal(row) {

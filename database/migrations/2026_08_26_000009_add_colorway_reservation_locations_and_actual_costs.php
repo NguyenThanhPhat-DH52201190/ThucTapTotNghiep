@@ -70,13 +70,13 @@ return new class extends Migration
 
         Schema::table('daily_production_logs', function (Blueprint $table) {
             if (!Schema::hasColumn('daily_production_logs', 'labor_rate')) $table->decimal('labor_rate', 12, 2)->default(0)->after('working_hours');
-            if (!Schema::hasColumn('daily_production_logs', 'actual_labor_cost')) $table->decimal('actual_labor_cost', 14, 2)->default(0)->after('labor_rate');
+            if (!Schema::hasColumn('daily_production_logs', 'actual_labor_cost')) $table->decimal('actual_labor_cost', 18, 4)->default(0)->after('labor_rate');
         });
         Schema::table('order_costings', function (Blueprint $table) {
-            if (!Schema::hasColumn('order_costings', 'revenue')) $table->decimal('revenue', 14, 2)->default(0)->after('actual_labor_cost');
-            if (!Schema::hasColumn('order_costings', 'material_variance')) $table->decimal('material_variance', 14, 2)->default(0)->after('revenue');
-            if (!Schema::hasColumn('order_costings', 'labor_variance')) $table->decimal('labor_variance', 14, 2)->default(0)->after('material_variance');
-            if (!Schema::hasColumn('order_costings', 'total_variance')) $table->decimal('total_variance', 14, 2)->default(0)->after('labor_variance');
+            if (!Schema::hasColumn('order_costings', 'revenue')) $table->decimal('revenue', 18, 4)->default(0)->after('actual_labor_cost');
+            if (!Schema::hasColumn('order_costings', 'material_variance')) $table->decimal('material_variance', 18, 4)->default(0)->after('revenue');
+            if (!Schema::hasColumn('order_costings', 'labor_variance')) $table->decimal('labor_variance', 18, 4)->default(0)->after('material_variance');
+            if (!Schema::hasColumn('order_costings', 'total_variance')) $table->decimal('total_variance', 18, 4)->default(0)->after('labor_variance');
         });
     }
 

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->date('period_to')->nullable();
             $table->string('status', 30)->default('draft');           // draft | calculated | approved
             $table->integer('total_materials')->default(0);
-            $table->decimal('total_cost', 14, 2)->default(0);
+            $table->decimal('total_cost', 18, 4)->default(0);
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();

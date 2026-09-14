@@ -199,8 +199,8 @@
             <td>{{ $item->Distribution }}</td>
             <td>{{ $item->actualout }}</td>
             <td>{{ $item->cmp }}</td>
-            <td>{{ '$' . number_format(((float) $item->planout) * ((float) $item->cmp), 2) }}</td>
-            <td>{{ '$' . number_format(((float) $item->actualout) * ((float) $item->cmp), 2) }}</td>
+            <td>{{ '$' . number_format(((float) $item->planout) * ((float) $item->cmp), 4) }}</td>
+            <td>{{ '$' . number_format(((float) $item->actualout) * ((float) $item->cmp), 4) }}</td>
         </tr>
         @empty
         <tr>
@@ -214,8 +214,8 @@
             <td colspan="3" class="text-end">Total</td>
             <td>{{ $totalQty }}</td>
             <td></td>
-            <td>{{ '$' . number_format($totalPlanRevenue, 2) }}</td>
-            <td>{{ '$' . number_format($totalAmount, 2) }}</td>
+            <td>{{ '$' . number_format($totalPlanRevenue, 4) }}</td>
+            <td>{{ '$' . number_format($totalAmount, 4) }}</td>
         </tr>
     </tfoot>
     @endif
@@ -247,9 +247,9 @@
                     $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
                     $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
                     @endphp
-                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyPlanRevenue[$day] ?? 0, 0) }}</td>
+                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyPlanRevenue[$day] ?? 0, 4) }}</td>
                     @endforeach
-                    <td class="fw-bold">${{ number_format($totalPlanRevenue, 0) }}</td>
+                    <td class="fw-bold">${{ number_format($totalPlanRevenue, 4) }}</td>
                 </tr>
                 <tr>
                     <td class="fw-bold">Actual Revenue</td>
@@ -258,9 +258,9 @@
                     $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
                     $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
                     @endphp
-                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyActualRevenue[$day] ?? 0, 0) }}</td>
+                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyActualRevenue[$day] ?? 0, 4) }}</td>
                     @endforeach
-                    <td class="fw-bold">${{ number_format($totalAmount, 0) }}</td>
+                    <td class="fw-bold">${{ number_format($totalAmount, 4) }}</td>
                 </tr>
             </tbody>
         </table>

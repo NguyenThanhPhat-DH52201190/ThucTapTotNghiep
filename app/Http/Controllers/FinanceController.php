@@ -28,7 +28,7 @@ class FinanceController extends Controller
             'cutsheet_id' => 'required|exists:ocs,id',
             'cost_type' => 'required|in:freight,qc,packing,overhead,other',
             'cost_stage' => 'required|in:estimated,actual',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|decimal:0,4|min:0',
             'note' => 'nullable|string|max:255',
         ]);
         if (!DB::table('ocs')->where('id', $data['cutsheet_id'])->where('order_type', 'fob')->exists()) {
@@ -339,7 +339,7 @@ class FinanceController extends Controller
             'expense_date' => 'required|date',
             'category' => 'required|in:labor,overhead,utility,maintenance,other',
             'description' => 'required',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|decimal:0,4|min:0',
         ]);
 
         DB::table('expenses')->insert([

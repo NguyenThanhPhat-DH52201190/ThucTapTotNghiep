@@ -7,11 +7,21 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}</div>
     @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}</div>
+    @endif
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold"><i class="bi bi-receipt me-2"></i>{{ $po->po_number }}</h5>
             <div class="d-flex gap-2">
+                @if($canManage && !in_array($po->status, ['partial', 'received']))
+                    <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Edit</a>
+                    <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Delete</button>
+                    </form>
+                @endif
                 @if($canManage && $po->status !== 'received' && $po->status !== 'cancelled')
                     @if(in_array($po->status, ['confirmed', 'partial']))
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#receiveModal">Receive goods</button>
@@ -72,7 +82,7 @@
                             <td class="text-end">{{ number_format($item->quantity, 2) }}</td>
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
-                            <td class="text-end fw-bold">{{ number_format($item->total_price, 0) }} đ</td>
+                            <td class="text-end fw-bold">{{ number_format($item->total_price, 4) }} đ</td>
                             <td><small>{{ $item->expected_date ?? '-' }}</small></td>
                             <td>
                                 @php $sc = match($item->status) { 'partial'=>'warning', 'received'=>'success', 'cancelled'=>'danger', default=>'secondary' } @endphp
@@ -84,7 +94,7 @@
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="6" class="text-end">TOTAL:</td>
-                        <td class="text-end text-primary">{{ number_format($po->total_amount, 0) }} đ</td>
+                        <td class="text-end text-primary">{{ number_format($po->total_amount, 4) }} đ</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>

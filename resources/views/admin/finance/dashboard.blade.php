@@ -56,7 +56,7 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <small class="text-muted">Total Revenue</small>
-                    <h4 class="mb-0 text-success">{{ number_format($summary->total_revenue, 0) }} đ</h4>
+                    <h4 class="mb-0 text-success">{{ number_format($summary->total_revenue, 4) }} đ</h4>
                 </div>
             </div>
         </div>
@@ -64,7 +64,7 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <small class="text-muted">Total Cost (Actual)</small>
-                    <h4 class="mb-0 text-danger">{{ number_format($summary->total_actual_cost, 0) }} đ</h4>
+                    <h4 class="mb-0 text-danger">{{ number_format($summary->total_actual_cost, 4) }} đ</h4>
                 </div>
             </div>
         </div>
@@ -73,7 +73,7 @@
                 <div class="card-body">
                     <small class="text-muted">Gross Profit</small>
                     <h4 class="mb-0 {{ $summary->total_profit >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ number_format($summary->total_profit, 0) }} đ
+                        {{ number_format($summary->total_profit, 4) }} đ
                     </h4>
                 </div>
             </div>
@@ -129,7 +129,7 @@
                                     {{ ucfirst($cat) }}
                                 </span>
                             </span>
-                            <span class="fw-bold">{{ number_format($exp->total, 0) }} đ</span>
+                            <span class="fw-bold">{{ number_format($exp->total, 4) }} đ</span>
                         </div>
                     @empty
                         <p class="text-muted text-center py-3">No expenses recorded</p>
@@ -138,7 +138,7 @@
                         <hr>
                         <div class="d-flex justify-content-between fw-bold">
                             <span>Total</span>
-                            <span>{{ number_format($summary->total_expenses, 0) }} đ</span>
+                            <span>{{ number_format($summary->total_expenses, 4) }} đ</span>
                         </div>
                     @endif
                 </div>

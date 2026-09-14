@@ -18,7 +18,7 @@
             <div class="card border-0 shadow-sm bg-success text-white">
                 <div class="card-body">
                     <small>Total Revenue</small>
-                    <h4 class="mb-0">{{ number_format($summary->total_revenue, 0) }} đ</h4>
+                    <h4 class="mb-0">{{ number_format($summary->total_revenue, 4) }} đ</h4>
                 </div>
             </div>
         </div>
@@ -26,7 +26,7 @@
             <div class="card border-0 shadow-sm bg-danger text-white">
                 <div class="card-body">
                     <small>Total Actual Cost</small>
-                    <h4 class="mb-0">{{ number_format($summary->total_actual_cost, 0) }} đ</h4>
+                    <h4 class="mb-0">{{ number_format($summary->total_actual_cost, 4) }} đ</h4>
                 </div>
             </div>
         </div>
@@ -34,7 +34,7 @@
             <div class="card border-0 shadow-sm {{ $summary->total_profit >= 0 ? 'bg-primary' : 'bg-danger' }} text-white">
                 <div class="card-body">
                     <small>Total Profit</small>
-                    <h4 class="mb-0">{{ number_format($summary->total_profit, 0) }} đ</h4>
+                    <h4 class="mb-0">{{ number_format($summary->total_profit, 4) }} đ</h4>
                 </div>
             </div>
         </div>
@@ -75,12 +75,12 @@
                             <td class="fw-bold">{{ $r->style_no }}</td>
                             <td><small>{{ $r->customer }}</small></td>
                             <td class="text-end">{{ number_format($r->total_qty) }}</td>
-                            <td class="text-end">{{ number_format($r->revenue_per_unit, 0) }} đ</td>
-                            <td class="text-end">{{ number_format($r->actual_total_cost, 0) }} đ</td>
-                            <td class="text-end text-success">{{ number_format($r->total_revenue, 0) }} đ</td>
-                            <td class="text-end text-danger">{{ number_format($r->total_actual_cost, 0) }} đ</td>
+                            <td class="text-end">{{ number_format($r->revenue_per_unit, 4) }} đ</td>
+                            <td class="text-end">{{ number_format($r->actual_total_cost, 4) }} đ</td>
+                            <td class="text-end text-success">{{ number_format($r->total_revenue, 4) }} đ</td>
+                            <td class="text-end text-danger">{{ number_format($r->total_actual_cost, 4) }} đ</td>
                             <td class="text-end fw-bold {{ $r->total_profit >= 0 ? 'text-success' : 'text-danger' }}">
-                                {{ number_format($r->total_profit, 0) }} đ
+                                {{ number_format($r->total_profit, 4) }} đ
                             </td>
                             <td>
                                 @php

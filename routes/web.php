@@ -216,7 +216,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->name('procurement.status');
         Route::patch('procurement/{id}/eta', [ProcurementController::class, 'updateEta'])->name('procurement.eta.update');
         Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->name('procurement.receipts.store');
-        Route::resource('procurement', ProcurementController::class)->except(['store', 'edit', 'update']);
+        Route::resource('procurement', ProcurementController::class)->except(['store']);
 
         // Inventory
         Route::get('inventory/warehouses', [InventoryController::class, 'warehouses'])->name('inventory.warehouses');

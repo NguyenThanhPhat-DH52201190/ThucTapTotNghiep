@@ -161,7 +161,26 @@ class ProcurementController extends Controller
     public function create()
     {
         $suppliers = DB::table('suppliers')->where('status', 'active')->orderBy('name')->get();
-        return view('admin.procurement.create', compact('suppliers'));
+        $vendorMaterials = $this->vendorMaterials($suppliers->pluck('id')->all());
+        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials'));
+    }
+
+    public function edit($id)
+    {
+        $po = DB::table('purchase_orders')->find($id);
+        if (!$po) abort(404);
+        if ($this->hasReceipts((int) $id)) {
+            return redirect()->route('admin.procurement.show', $id)
+                ->with('error', 'PO đã phát sinh nhận hàng nên không thể sửa.');
+        }
+
+        $items = DB::table('po_items')->where('po_id', $id)->orderBy('id')->get();
+        $suppliers = DB::table('suppliers')
+            ->where(fn ($query) => $query->where('status', 'active')->orWhere('id', $po->supplier_id))
+            ->orderBy('name')->get();
+        $vendorMaterials = $this->vendorMaterials($suppliers->pluck('id')->all());
+
+        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials', 'po', 'items'));
     }
 
     public function createFromMrp($mrpId)
@@ -190,18 +209,7 @@ class ProcurementController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'order_date' => 'required|date',
-            'expected_delivery' => 'nullable|date|after_or_equal:order_date',
-            'items' => 'required|array|min:1',
-            'items.*.material_code' => 'required',
-            'items.*.material_name' => 'required',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'nullable|numeric|decimal:0,4|min:0',
-            'items.*.mrp_suggestion_id' => 'nullable|exists:mrp_suggestions,id',
-            'items.*.material_id' => 'nullable|exists:materials,id',
-        ]);
+        $this->validatePo($request);
 
         // Check supplier is active
         $supplier = DB::table('suppliers')->find($request->supplier_id);
@@ -321,6 +329,149 @@ class ProcurementController extends Controller
             ->where('po_items.po_id', $id)->pluck('mrp_suggestions.cutsheet_id')->all());
 
         return back()->with('success', "PO status updated to {$newStatus}");
+    }
+
+    public function update(Request $request, $id)
+    {
+        $data = $this->validatePo($request);
+        $supplier = DB::table('suppliers')->find($data['supplier_id']);
+        if (!$supplier || !in_array($supplier->status, ['active'], true)) {
+            return back()->with('error', 'Supplier is not active!')->withInput();
+        }
+
+        try {
+            $cutsheetIds = DB::transaction(function () use ($id, $data) {
+                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                if (!$po) abort(404);
+                if ($this->hasReceipts((int) $id)) {
+                    throw new \RuntimeException('PO đã phát sinh nhận hàng nên không thể sửa.');
+                }
+
+                $oldSuggestionIds = DB::table('po_items')->where('po_id', $id)
+                    ->pluck('mrp_suggestion_id')->filter()->all();
+                DB::table('po_items')->where('po_id', $id)->delete();
+
+                [$items, $totalAmount] = $this->preparePoItems($data['items'], (int) $id);
+                DB::table('po_items')->insert($items);
+                DB::table('purchase_orders')->where('id', $id)->update([
+                    'supplier_id' => $data['supplier_id'], 'order_date' => $data['order_date'],
+                    'expected_delivery' => $data['expected_delivery'] ?? null,
+                    'total_amount' => $totalAmount, 'notes' => $data['notes'] ?? null, 'updated_at' => now(),
+                ]);
+
+                $newSuggestionIds = collect($items)->pluck('mrp_suggestion_id')->filter()->all();
+                foreach (array_diff($oldSuggestionIds, $newSuggestionIds) as $suggestionId) {
+                    if (!DB::table('po_items')->where('mrp_suggestion_id', $suggestionId)->exists()) {
+                        DB::table('mrp_suggestions')->where('id', $suggestionId)
+                            ->update(['status' => 'pending', 'updated_at' => now()]);
+                    }
+                }
+                if ($newSuggestionIds) DB::table('mrp_suggestions')->whereIn('id', $newSuggestionIds)
+                    ->update(['status' => 'ordered', 'updated_at' => now()]);
+
+                return DB::table('mrp_suggestions')->whereIn('id', array_unique(array_merge($oldSuggestionIds, $newSuggestionIds)))
+                    ->pluck('cutsheet_id')->all();
+            });
+            $this->syncMaterialReadiness($cutsheetIds);
+            return redirect()->route('admin.procurement.show', $id)->with('success', 'PO updated successfully.');
+        } catch (\Throwable $e) {
+            Log::warning('PO update rejected', ['po_id' => $id, 'message' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $cutsheetIds = DB::transaction(function () use ($id) {
+                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                if (!$po) abort(404);
+                if ($this->hasReceipts((int) $id)) {
+                    throw new \RuntimeException('PO đã phát sinh nhận hàng nên không thể xóa.');
+                }
+                $suggestionIds = DB::table('po_items')->where('po_id', $id)
+                    ->pluck('mrp_suggestion_id')->filter()->all();
+                $cutsheetIds = DB::table('mrp_suggestions')->whereIn('id', $suggestionIds)
+                    ->pluck('cutsheet_id')->all();
+                DB::table('purchase_orders')->where('id', $id)->delete();
+                foreach ($suggestionIds as $suggestionId) {
+                    if (!DB::table('po_items')->where('mrp_suggestion_id', $suggestionId)->exists()) {
+                        DB::table('mrp_suggestions')->where('id', $suggestionId)
+                            ->update(['status' => 'pending', 'updated_at' => now()]);
+                    }
+                }
+                return $cutsheetIds;
+            });
+            $this->syncMaterialReadiness($cutsheetIds);
+            return redirect()->route('admin.procurement.index')->with('success', 'PO deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::warning('PO delete rejected', ['po_id' => $id, 'message' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    private function validatePo(Request $request): array
+    {
+        $data = $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id', 'order_date' => 'required|date',
+            'expected_delivery' => 'nullable|date|after_or_equal:order_date', 'notes' => 'nullable|string',
+            'items' => 'required|array|min:1', 'items.*.material_code' => 'required|string|max:100',
+            'items.*.material_name' => 'required|string|max:191', 'items.*.unit' => 'required|string|max:20',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit_price' => 'nullable|numeric|decimal:0,4|min:0',
+            'items.*.expected_date' => 'nullable|date', 'items.*.notes' => 'nullable|string',
+            'items.*.mrp_suggestion_id' => 'nullable|exists:mrp_suggestions,id',
+            'items.*.material_id' => 'nullable|exists:materials,id',
+        ]);
+        foreach ($data['items'] as $index => $item) {
+            $mapped = !empty($item['material_id']) && DB::table('material_vendors')
+                ->where('vendor_id', $data['supplier_id'])->where('material_id', $item['material_id'])->exists();
+            if (!$mapped) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "items.$index.material_id" => 'Material must be mapped to the selected supplier.',
+                ]);
+            }
+        }
+        return $data;
+    }
+
+    private function preparePoItems(array $requestItems, int $poId): array
+    {
+        $totalAmount = 0;
+        $items = [];
+        foreach ($requestItems as $item) {
+            $totalPrice = (float) $item['quantity'] * (float) ($item['unit_price'] ?? 0);
+            $totalAmount += $totalPrice;
+            $items[] = [
+                'po_id' => $poId, 'material_code' => $item['material_code'],
+                'material_name' => $item['material_name'], 'unit' => $item['unit'],
+                'quantity' => $item['quantity'], 'received_qty' => 0,
+                'unit_price' => $item['unit_price'] ?? 0, 'total_price' => $totalPrice,
+                'expected_date' => $item['expected_date'] ?? null, 'notes' => $item['notes'] ?? null,
+                'mrp_suggestion_id' => $item['mrp_suggestion_id'] ?? null,
+                'material_id' => $item['material_id'] ?? null, 'status' => 'pending',
+                'created_at' => now(), 'updated_at' => now(),
+            ];
+        }
+        return [$items, $totalAmount];
+    }
+
+    private function hasReceipts(int $poId): bool
+    {
+        return DB::table('po_receipts')->where('po_id', $poId)->exists()
+            || DB::table('po_items')->where('po_id', $poId)->where('received_qty', '>', 0)->exists();
+    }
+
+    private function vendorMaterials(array $supplierIds)
+    {
+        return DB::table('material_vendors')
+            ->join('materials', 'material_vendors.material_id', '=', 'materials.id')
+            ->whereIn('material_vendors.vendor_id', $supplierIds)
+            ->select(
+                'material_vendors.vendor_id', 'material_vendors.material_id', 'material_vendors.unit_price',
+                'material_vendors.vendor_item_code', 'materials.internal_code', 'materials.material_name',
+                'materials.unit', 'materials.color', 'materials.size'
+            )->orderBy('materials.internal_code')->get();
     }
 
     public function receive(Request $request, $id, AuditTrailService $audit)

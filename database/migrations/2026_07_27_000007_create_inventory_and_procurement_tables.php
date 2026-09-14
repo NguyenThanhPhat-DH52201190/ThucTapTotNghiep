@@ -56,7 +56,7 @@ return new class extends Migration
             $table->foreignId('to_warehouse_id')->nullable()->constrained('warehouses')->nullOnDelete();
             $table->string('batch_no', 100)->nullable();
             $table->decimal('unit_cost', 14, 4)->default(0);
-            $table->decimal('total_cost', 14, 2)->default(0);
+            $table->decimal('total_cost', 18, 4)->default(0);
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
@@ -91,7 +91,7 @@ return new class extends Migration
             $table->date('order_date');
             $table->date('expected_delivery')->nullable();
             $table->string('status', 30)->default('draft');  // draft | sent | confirmed | received | partial | cancelled
-            $table->decimal('total_amount', 14, 2)->default(0);
+            $table->decimal('total_amount', 18, 4)->default(0);
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
@@ -108,7 +108,7 @@ return new class extends Migration
             $table->decimal('quantity', 14, 4);
             $table->decimal('received_qty', 14, 4)->default(0);
             $table->decimal('unit_price', 14, 4)->default(0);
-            $table->decimal('total_price', 14, 2)->default(0);
+            $table->decimal('total_price', 18, 4)->default(0);
             $table->date('expected_date')->nullable();
             $table->string('status', 30)->default('pending');  // pending | partial | received | cancelled
             $table->text('notes')->nullable();

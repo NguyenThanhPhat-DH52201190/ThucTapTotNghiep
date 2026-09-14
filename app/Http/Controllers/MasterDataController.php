@@ -44,9 +44,13 @@ class MasterDataController extends Controller
             ->leftJoin('material_categories', 'materials.category_id', '=', 'material_categories.id')
             ->leftJoin('material_subcategories', 'materials.subcategory_id', '=', 'material_subcategories.id')
             ->select('materials.*', 'material_categories.name as category_name', 'material_subcategories.name as subcategory_name', DB::raw('COUNT(material_vendors.id) as vendor_count'))
-            ->when($request->filled('search'), fn ($query) => $query->where('materials.internal_code', 'like', '%' . $request->search . '%')->orWhere('materials.material_name', 'like', '%' . $request->search . '%'))
+            ->when($request->filled('category_id'), fn ($query) => $query->where('materials.category_id', $request->integer('category_id')))
+            ->when($request->filled('subcategory_id'), fn ($query) => $query->where('materials.subcategory_id', $request->integer('subcategory_id')))
             ->groupBy('materials.id', 'materials.internal_code', 'materials.material_name', 'materials.color', 'materials.size', 'materials.unit', 'materials.material_type', 'materials.category_id', 'materials.subcategory_id', 'materials.created_at', 'materials.updated_at', 'material_categories.name', 'material_subcategories.name')
-            ->orderBy('materials.internal_code')->paginate(20)->withQueryString();
+            ->orderBy('material_categories.name')
+            ->orderBy('material_subcategories.name')
+            ->orderBy('materials.internal_code')
+            ->paginate(20)->withQueryString();
         $suppliers = DB::table('suppliers')->where('status', 'active')->orderBy('name')->get();
         $vendorMappings = DB::table('material_vendors')->join('materials', 'material_vendors.material_id', '=', 'materials.id')->join('suppliers', 'material_vendors.vendor_id', '=', 'suppliers.id')
             ->select('material_vendors.*', 'materials.internal_code', 'materials.material_name', 'suppliers.code as supplier_code', 'suppliers.name as supplier_name')->orderByDesc('material_vendors.is_default_vendor')->orderBy('materials.internal_code')->get();

@@ -81,16 +81,16 @@
                         <thead class="table-light">
                             <tr>
                                 <th style="width:40px">#</th>
+                                <th>Type</th>
                                 <th>Code <span class="text-danger">*</span></th>
                                 <th>Description <span class="text-danger">*</span></th>
-                                <th>Type</th>
                                 <th>Colour</th>
                                 <th>Size</th>
+                                <th>Size Use</th>
                                 <th>Width</th>
                                 <th>Unit</th>
                                 <th>Yield (ĐM)</th>
                                 <th>Waste %</th>
-                                <th>Unit Price</th>
                                 <th>Remark</th>
                                 <th style="width:40px"></th>
                             </tr>
@@ -136,19 +136,19 @@ function addItem(data = {}) {
         <tr id="itemRow${i}">
             <td class="text-center">${i}</td>
             <td>
+                <select name="items[${i}][material_type]" class="form-select form-select-sm">
+                    ${materialTypes.map(t =>
+                        `<option value="${t.value}" ${(data.type || 'fabric') === t.value ? 'selected' : ''}>${t.label}</option>`
+                    ).join('')}
+                </select>
+            </td>
+            <td>
                 <input type="text" name="items[${i}][material_code]" class="form-control form-control-sm material-code-input" required
                        value="${data.code || ''}" placeholder="Type to search Material Master" autocomplete="off">
             </td>
             <td>
                 <input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-description-input" required
                        value="${data.name || ''}" placeholder="Selected material name" readonly>
-            </td>
-            <td>
-                <select name="items[${i}][material_type]" class="form-select form-select-sm">
-                    ${materialTypes.map(t =>
-                        `<option value="${t.value}" ${(data.type || 'fabric') === t.value ? 'selected' : ''}>${t.label}</option>`
-                    ).join('')}
-                </select>
             </td>
             <td>
                 <input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input"
@@ -158,6 +158,7 @@ function addItem(data = {}) {
                 <input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input"
                        value="${data.size || ''}" placeholder="Size">
             </td>
+            <td><select name="items[${i}][size_rule]" class="form-select form-select-sm"><option value="all">All sizes</option><option value="map_on_order">Map on order</option></select></td>
             <td>
                 <input type="number" step="0.01" name="items[${i}][width]" class="form-control form-control-sm"
                        value="${data.width || ''}" placeholder="Width">
@@ -173,10 +174,6 @@ function addItem(data = {}) {
             <td>
                 <input type="number" step="0.01" min="0" name="items[${i}][waste_percent]" class="form-control form-control-sm"
                        value="${data.waste || ''}" placeholder="0">
-            </td>
-            <td>
-                <input type="number" step="0.0001" min="0" name="items[${i}][unit_cost]" class="form-control form-control-sm"
-                       value="${data.cost || ''}" placeholder="0.0000">
             </td>
             <td>
                 <input type="text" name="items[${i}][remark]" class="form-control form-control-sm"

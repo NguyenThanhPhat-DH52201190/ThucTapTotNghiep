@@ -170,6 +170,11 @@
                                     <span class="badge bg-success" title="BOM: {{ $item->bom_style }} v{{ $item->bom_version }}">
                                         <i class="bi bi-file-text"></i> {{ $item->bom_style }}
                                     </span>
+                                    @if(($item->bom_kind ?? null) === 'order' && ($item->mapping_status ?? null) !== 'ready')
+                                        <a href="{{ route('admin.ocs.bom-size-mapping', $item->id) }}" class="badge bg-warning text-dark text-decoration-none">Map sizes</a>
+                                    @elseif(($item->bom_kind ?? null) === 'order')
+                                        <span class="badge bg-primary">BOM Ready</span>
+                                    @endif
                                 @else
                                     <span class="badge bg-secondary">No BOM</span>
                                 @endif

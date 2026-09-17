@@ -50,7 +50,7 @@
                         <th>Supplier</th>
                         <th>Order Date</th>
                         <th>Expected Delivery</th>
-                        <th class="text-end">Total Amount</th>
+                        <th class="text-end">Total Amount (USD)</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -62,7 +62,7 @@
                             <td><small>{{ $po->supplier_code }} - {{ $po->supplier_name }}</small></td>
                             <td>{{ $po->order_date }}</td>
                             <td><small>{{ $po->expected_delivery ?? '-' }}</small></td>
-                            <td class="text-end fw-bold">{{ number_format($po->total_amount, 4) }} đ</td>
+                            <td class="text-end fw-bold">{{ number_format($po->total_amount, 4) }} USD</td>
                             <td>
                                 @php $sc = match($po->status) { 'sent'=>'info', 'confirmed'=>'primary', 'received'=>'success', 'partial'=>'warning', 'cancelled'=>'danger', default=>'secondary' } @endphp
                                 <span class="badge bg-{{ $sc }}">{{ ucfirst($po->status) }}</span>

@@ -8,7 +8,7 @@
             <h5 class="mb-0 fw-bold"><i class="bi bi-cart-plus me-2"></i>Create Purchase Order from MRP: {{ $mrp->mrp_code }}</h5>
         </div>
         <div class="card-body">
-            <p class="mb-0">Total materials needed: <strong>{{ $items->count() }}</strong> | Estimated total: <strong id="estimatedTotal">0 đ</strong></p>
+            <p class="mb-0">Total materials needed: <strong>{{ $items->count() }}</strong> | Estimated total: <strong id="estimatedTotal">0.0000 USD</strong></p>
         </div>
     </div>
 
@@ -58,7 +58,7 @@
                             <th>Net Req.</th>
                             <th>Planned Order</th>
                             <th>Recommended Qty</th>
-                            <th>Unit Price</th>
+                            <th>Unit Price (USD)</th>
                             <th class="text-end">Amount</th>
                         </tr>
                     </thead>
@@ -82,7 +82,7 @@
                                 <input type="hidden" name="items[{{ $i }}][mrp_suggestion_id]" class="item-field" value="{{ $suggestions[$item->material_id]->id ?? '' }}">
                             </td>
                             <td><input type="number" step="0.0001" min="0.0001" name="items[{{ $i }}][unit_price]" class="form-control form-control-sm item-field item-price" placeholder="0.0000" required></td>
-                            <td class="text-end fw-semibold item-total">0 đ</td>
+                            <td class="text-end fw-semibold item-total">0.0000 USD</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -101,7 +101,7 @@
 const vendorPrices = @json($vendorPrices);
 
 function money(value) {
-    return Number(value || 0).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' đ';
+    return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' USD';
 }
 
 function updateRowTotal(row) {

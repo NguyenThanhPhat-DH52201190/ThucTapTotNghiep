@@ -83,16 +83,16 @@
                     <thead class="table-light">
                         <tr>
                             <th style="width:40px">#</th>
+                            <th>Type</th>
                             <th>Code *</th>
                             <th>Description *</th>
-                            <th>Type</th>
                             <th>Colour</th>
                             <th>Size</th>
+                            <th>Size Use</th>
                             <th>Width</th>
                             <th>Unit</th>
                             <th>Yield</th>
                             <th>Waste %</th>
-                            <th>Unit Price</th>
                             <th>Remark</th>
                             <th style="width:40px"></th>
                         </tr>
@@ -101,8 +101,6 @@
                         @foreach($items as $i => $item)
                         <tr id="itemRow{{ $i }}">
                             <td class="text-center">{{ $i + 1 }}</td>
-                            <td><input type="text" name="items[{{ $i }}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="{{ $item->material_code }}"></td>
-                            <td><input type="text" name="items[{{ $i }}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="{{ $item->material_name }}"></td>
                             <td>
                                 <select name="items[{{ $i }}][material_type]" class="form-select form-select-sm">
                                     @foreach(['fabric','lining','pocket','trim','thread','zipper','label','elastic','interlining','other'] as $type)
@@ -110,15 +108,17 @@
                                     @endforeach
                                 </select>
                             </td>
+                            <td><input type="text" name="items[{{ $i }}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="{{ $item->material_code }}"></td>
+                            <td><input type="text" name="items[{{ $i }}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="{{ $item->material_name }}"></td>
                             <td><input type="text" name="items[{{ $i }}][colour]" class="form-control form-control-sm material-colour-input" value="{{ $item->colour }}"></td>
                             <td><input type="text" name="items[{{ $i }}][size]" class="form-control form-control-sm material-size-input" value="{{ $item->size }}"></td>
+                            <td><select name="items[{{ $i }}][size_rule]" class="form-select form-select-sm"><option value="all" @selected(($item->size_rule ?? 'all') === 'all')>All sizes</option><option value="map_on_order" @selected(($item->size_rule ?? 'all') === 'map_on_order')>Map on order</option></select></td>
                             <td><input type="number" step="0.01" name="items[{{ $i }}][width]" class="form-control form-control-sm" value="{{ $item->width }}"></td>
                             <td>
                                 <input type="text" name="items[{{ $i }}][unit]" class="form-control form-control-sm material-unit-input" value="{{ $item->unit }}" readonly>
                             </td>
                             <td><input type="number" step="0.0001" min="0.0001" name="items[{{ $i }}][consumption_rate]" class="form-control form-control-sm" required value="{{ $item->consumption_rate }}"></td>
                             <td><input type="number" step="0.01" min="0" name="items[{{ $i }}][waste_percent]" class="form-control form-control-sm" value="{{ $item->waste_percent }}"></td>
-                            <td><input type="number" step="0.0001" min="0" name="items[{{ $i }}][unit_cost]" class="form-control form-control-sm" value="{{ number_format((float) $item->unit_cost, 4, '.', '') }}"></td>
                             <td><input type="text" name="items[{{ $i }}][remark]" class="form-control form-control-sm" value="{{ $item->remark }}"></td>
                             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)"><i class="bi bi-x"></i></button></td>
                         </tr>
@@ -157,22 +157,22 @@ function addItem(data = {}) {
     const html = `
         <tr id="itemRow${i}">
             <td class="text-center">${i}</td>
-            <td><input type="text" name="items[${i}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="${data.code || ''}" placeholder="Type to search Material Master"></td>
-            <td><input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="${data.name || ''}" placeholder="Selected material name"></td>
             <td>
                 <select name="items[${i}][material_type]" class="form-select form-select-sm">
                     ${materialTypes.map(t => `<option value="${t.value}" ${(data.type || 'fabric') === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}
                 </select>
             </td>
+            <td><input type="text" name="items[${i}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="${data.code || ''}" placeholder="Type to search Material Master"></td>
+            <td><input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="${data.name || ''}" placeholder="Selected material name"></td>
             <td><input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input" value="${data.colour || ''}"></td>
             <td><input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input" value="${data.size || ''}"></td>
+            <td><select name="items[${i}][size_rule]" class="form-select form-select-sm"><option value="all">All sizes</option><option value="map_on_order">Map on order</option></select></td>
             <td><input type="number" step="0.01" name="items[${i}][width]" class="form-control form-control-sm" value="${data.width || ''}"></td>
             <td>
                 <input type="text" name="items[${i}][unit]" class="form-control form-control-sm material-unit-input" value="${data.unit || ''}" placeholder="Unit" readonly>
             </td>
             <td><input type="number" step="0.0001" min="0.0001" name="items[${i}][consumption_rate]" class="form-control form-control-sm" required value="${data.yield || ''}"></td>
             <td><input type="number" step="0.01" min="0" name="items[${i}][waste_percent]" class="form-control form-control-sm" value="${data.waste || ''}"></td>
-            <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_cost]" class="form-control form-control-sm" value="${data.cost || ''}" placeholder="0.0000"></td>
             <td><input type="text" name="items[${i}][remark]" class="form-control form-control-sm" value="${data.remark || ''}"></td>
             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)"><i class="bi bi-x"></i></button></td>
         </tr>

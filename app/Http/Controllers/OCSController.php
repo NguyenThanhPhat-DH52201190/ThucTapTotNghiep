@@ -51,7 +51,9 @@ class OCSController extends Controller
     {
         if (!$request->bom_header_id) return;
         $bom = DB::table('bom_headers')->where('id', $request->bom_header_id)->first();
-        if (!$bom || $bom->status !== 'active') throw \Illuminate\Validation\ValidationException::withMessages(['bom_header_id' => ['Only an active BOM can be assigned.']]);
+        if (!$bom || $bom->status !== 'active' || ($bom->bom_kind ?? 'template') !== 'template') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['bom_header_id' => ['Only an active BOM template can be assigned.']]);
+        }
         if (trim((string) $bom->style_no) !== trim((string) $request->SNo)) throw \Illuminate\Validation\ValidationException::withMessages(['bom_header_id' => ['The BOM style must match the order style.']]);
     }
     private function getOrders(Request $request): Collection
@@ -72,7 +74,8 @@ class OCSController extends Controller
             ->when($request->filled('status'), function ($query) use ($request) {
                 $query->where('ocs.status', $request->status);
             })
-            ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version')
+            ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version',
+                'bom_headers.bom_kind', 'bom_headers.mapping_status')
             ->orderBy('ocs.CS', 'asc')
             ->get();
     }
@@ -129,7 +132,7 @@ class OCSController extends Controller
 
     public function create()
     {
-        $boms = DB::table('bom_headers')->where('status', 'active')->orderBy('style_no')->get();
+        $boms = DB::table('bom_headers')->where('status', 'active')->where('bom_kind', 'template')->orderBy('style_no')->get();
         $customers = DB::table('customer_info')->orderBy('name')->get();
         return view('admin.ocs.addocs', compact('boms', 'customers'));
     }
@@ -140,13 +143,13 @@ class OCSController extends Controller
         $this->validateSizeTotal($request);
         $this->validateBomForOrder($request);
         try {
-            DB::transaction(function () use ($request, $requisitions) {
+            [$orderId, $mappingStatus] = DB::transaction(function () use ($request, $requisitions) {
                 $orderId = DB::table('ocs')->insertGetId([
                     'CS' => $request->CS, 'CsDate' => $request->CsDate, 'SNo' => $request->SNo,
                     'Sname' => $request->Sname, 'Customer' => $request->Customer, 'customer_id' => $request->customer_id, 'Color' => $request->Color,
                     'ONum' => $request->ONum, 'CMT' => $request->CMT, 'Qty' => $request->Qty,
                     'order_type' => $request->order_type, 'material_ownership' => $request->material_ownership, 'unit_price' => $request->unit_price ?? 0,
-                    'status' => 'pending', 'bom_header_id' => $request->bom_header_id,
+                    'status' => 'pending', 'bom_header_id' => null,
                     'expected_ship_date' => $request->expected_ship_date, 'priority' => $request->priority ?? 'medium',
                     'order_notes' => $request->order_notes, 'created_at' => now(), 'updated_at' => now(),
                 ]);
@@ -154,7 +157,13 @@ class OCSController extends Controller
                     'cutsheet_id' => $orderId, 'size_name' => $size['size_name'], 'quantity' => $size['quantity'],
                     'created_at' => now(), 'updated_at' => now(),
                 ])->all());
+                [, $mappingStatus] = $this->createOrderBom($orderId, $request->integer('bom_header_id') ?: null, $request->user()?->id);
+                return [$orderId, $mappingStatus];
             });
+            if ($mappingStatus === 'needs_mapping') {
+                return redirect()->route('admin.ocs.bom-size-mapping', $orderId)
+                    ->with('success', 'OCS created. Complete BOM size mapping before confirmation.');
+            }
             return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown saved successfully');
         } catch (\Throwable $e) {
             Log::error('Failed to create OCS order', ['message' => $e->getMessage()]);
@@ -217,7 +226,9 @@ class OCSController extends Controller
     {
         $order = DB::table('ocs')->where('id', $id)->first();
         if ($this->isLocked($order)) return redirect()->route('admin.ocs.index')->with('error', 'Confirmed, in-production, or completed orders are locked.');
-        $boms = DB::table('bom_headers')->where('status', 'active')->orderBy('style_no')->get();
+        $boms = DB::table('bom_headers')->where('status', 'active')->where('bom_kind', 'template')->orderBy('style_no')->get();
+        $assignedBom = $order->bom_header_id ? DB::table('bom_headers')->find($order->bom_header_id) : null;
+        $order->selected_template_id = $assignedBom?->template_id ?: $order->bom_header_id;
         $customers = DB::table('customer_info')->orderBy('name')->get();
         $sizes = DB::table('order_sizes')->where('cutsheet_id', $id)->orderBy('id')->get();
         return view('admin.ocs.editocs', compact('order', 'boms', 'sizes', 'customers'));
@@ -237,12 +248,12 @@ class OCSController extends Controller
         $this->validateSizeTotal($request);
         $this->validateBomForOrder($request);
         try {
-            DB::transaction(function () use ($request, $id, $requisitions) {
+            $mappingStatus = DB::transaction(function () use ($request, $id, $requisitions, $currentOrder) {
                 DB::table('ocs')->where('id', $id)->update([
                     'CS' => $request->CS, 'CsDate' => $request->CsDate, 'SNo' => $request->SNo, 'Sname' => $request->Sname,
                     'Customer' => $request->Customer, 'customer_id' => $request->customer_id, 'Color' => $request->Color, 'ONum' => $request->ONum, 'CMT' => $request->CMT,
                     'order_type' => $request->order_type, 'material_ownership' => $request->material_ownership, 'unit_price' => $request->unit_price ?? 0,
-                    'Qty' => $request->Qty, 'bom_header_id' => $request->bom_header_id,
+                    'Qty' => $request->Qty, 'bom_header_id' => null,
                     'expected_ship_date' => $request->expected_ship_date, 'priority' => $request->priority ?? 'medium',
                     'order_notes' => $request->order_notes, 'updated_at' => now(),
                 ]);
@@ -251,7 +262,16 @@ class OCSController extends Controller
                     'cutsheet_id' => $id, 'size_name' => $size['size_name'], 'quantity' => $size['quantity'],
                     'created_at' => now(), 'updated_at' => now(),
                 ])->all());
+                [, $mappingStatus] = $this->createOrderBom((int) $id, $request->integer('bom_header_id') ?: null, $request->user()?->id);
+                if ($currentOrder->bom_header_id) {
+                    DB::table('bom_headers')->where('id', $currentOrder->bom_header_id)->where('bom_kind', 'order')->delete();
+                }
+                return $mappingStatus;
             });
+            if ($mappingStatus === 'needs_mapping') {
+                return redirect()->route('admin.ocs.bom-size-mapping', $id)
+                    ->with('success', 'OCS updated. Complete BOM size mapping before confirmation.');
+            }
             return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown updated successfully');
         } catch (\Throwable $e) {
             Log::error('Failed to update OCS order', ['message' => $e->getMessage(), 'id' => $id]);
@@ -316,7 +336,13 @@ class OCSController extends Controller
         if (!$order) return redirect()->route('admin.ocs.index')->with('error', 'Record not found.');
         if ($this->isLocked($order)) return redirect()->route('admin.ocs.index')->with('error', 'Confirmed, in-production, or completed orders cannot be deleted.');
         try {
-            $deleted = DB::table('ocs')->where('id', $id)->delete();
+            $deleted = DB::transaction(function () use ($id, $order) {
+                $deleted = DB::table('ocs')->where('id', $id)->delete();
+                if ($deleted && $order->bom_header_id) {
+                    DB::table('bom_headers')->where('id', $order->bom_header_id)->where('bom_kind', 'order')->delete();
+                }
+                return $deleted;
+            });
 
             if (!$deleted) {
                 return redirect()->route('admin.ocs.index')
@@ -334,6 +360,108 @@ class OCSController extends Controller
             return redirect()->route('admin.ocs.index')
                 ->with('error', 'Unable to delete the order. Please try again.');
         }
+    }
+
+    private function createOrderBom(int $orderId, ?int $templateId, ?int $userId): array
+    {
+        if (!$templateId) {
+            DB::table('ocs')->where('id', $orderId)->update(['bom_header_id' => null]);
+            return [null, 'not_applicable'];
+        }
+        $template = DB::table('bom_headers')->where('id', $templateId)->where('bom_kind', 'template')->firstOrFail();
+        $order = DB::table('ocs')->find($orderId);
+        $templateItems = DB::table('bom_items')->where('bom_header_id', $templateId)->orderBy('sort_order')->get();
+        $needsMapping = $templateItems->contains(fn ($item) => ($item->size_rule ?? 'all') === 'map_on_order');
+        $defaultCosts = DB::table('material_vendors')
+            ->where('is_default_vendor', true)
+            ->whereIn('material_id', $templateItems->pluck('material_id')->filter()->unique())
+            ->select('material_id', DB::raw('MAX(unit_price) as unit_cost'))
+            ->groupBy('material_id')->pluck('unit_cost', 'material_id');
+        $totalFabric = 0;
+        $totalTrim = 0;
+        foreach ($templateItems as $item) {
+            $unitCost = (float) ($defaultCosts[$item->material_id] ?? $item->unit_cost ?? 0);
+            $itemCost = (float) $item->consumption_rate * $unitCost;
+            if (in_array($item->material_type, ['fabric', 'lining', 'pocket'], true)) $totalFabric += $itemCost;
+            else $totalTrim += $itemCost;
+        }
+        $status = $needsMapping ? 'needs_mapping' : 'ready';
+        $orderBomId = DB::table('bom_headers')->insertGetId([
+            'template_id' => $template->id, 'cutsheet_id' => $orderId, 'bom_kind' => 'order',
+            'mapping_status' => $status, 'style_id' => $template->style_id ?? null,
+            'customer_id' => $template->customer_id ?? null, 'style_no' => $template->style_no,
+            'style_name' => $template->style_name, 'customer' => $template->customer,
+            'version' => $template->version . '-' . $order->CS, 'status' => 'active',
+            'total_fabric_cost' => $totalFabric, 'total_trim_cost' => $totalTrim,
+            'total_labor_cost' => $template->total_labor_cost, 'total_cmt' => $template->total_cmt,
+            'effective_date' => $template->effective_date, 'notes' => 'Order BOM cloned from template #' . $template->id,
+            'created_by' => $userId, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $sizes = DB::table('order_sizes')->where('cutsheet_id', $orderId)->get();
+        foreach ($templateItems as $source) {
+            $copy = (array) $source;
+            unset($copy['id']);
+            $copy['bom_header_id'] = $orderBomId;
+            $copy['unit_cost'] = (float) ($defaultCosts[$source->material_id] ?? $source->unit_cost ?? 0);
+            $copy['total_cost'] = (float) $source->consumption_rate * $copy['unit_cost'];
+            $copy['created_at'] = now();
+            $copy['updated_at'] = now();
+            $itemId = DB::table('bom_items')->insertGetId($copy);
+            if (($source->size_rule ?? 'all') === 'all') {
+                foreach ($sizes as $size) {
+                    DB::table('bom_item_size_mappings')->insert([
+                        'bom_item_id' => $itemId, 'order_size_id' => $size->id,
+                        'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                }
+            }
+        }
+        DB::table('ocs')->where('id', $orderId)->update(['bom_header_id' => $orderBomId, 'updated_at' => now()]);
+        return [$orderBomId, $status];
+    }
+
+    public function bomSizeMapping(int $id)
+    {
+        $order = DB::table('ocs')->find($id);
+        if (!$order || !$order->bom_header_id) abort(404);
+        $bom = DB::table('bom_headers')->where('id', $order->bom_header_id)->where('bom_kind', 'order')->firstOrFail();
+        $sizes = DB::table('order_sizes')->where('cutsheet_id', $id)->orderBy('id')->get();
+        $items = DB::table('bom_items')->where('bom_header_id', $bom->id)->orderBy('sort_order')->get();
+        $mapped = DB::table('bom_item_size_mappings')->whereIn('bom_item_id', $items->pluck('id'))
+            ->get()->groupBy('bom_item_id');
+        return view('admin.ocs.bom-size-mapping', compact('order', 'bom', 'sizes', 'items', 'mapped'));
+    }
+
+    public function saveBomSizeMapping(Request $request, int $id)
+    {
+        $order = DB::table('ocs')->find($id);
+        if (!$order || !$order->bom_header_id || $this->isLocked($order)) abort(404);
+        $bom = DB::table('bom_headers')->where('id', $order->bom_header_id)->where('bom_kind', 'order')->firstOrFail();
+        $items = DB::table('bom_items')->where('bom_header_id', $bom->id)->get();
+        $validSizeIds = DB::table('order_sizes')->where('cutsheet_id', $id)->pluck('id')->map(fn ($v) => (int) $v)->all();
+        $submitted = $request->input('mappings', []);
+        foreach ($items as $item) {
+            $sizeIds = array_values(array_unique(array_map('intval', $submitted[$item->id] ?? [])));
+            if (array_diff($sizeIds, $validSizeIds)) {
+                return back()->with('error', 'Invalid size mapping submitted.');
+            }
+            if (($item->size_rule ?? 'all') === 'map_on_order' && !$sizeIds) {
+                return back()->with('error', "Select at least one size for {$item->material_code}.");
+            }
+        }
+        DB::transaction(function () use ($items, $submitted, $bom, $validSizeIds) {
+            DB::table('bom_item_size_mappings')->whereIn('bom_item_id', $items->pluck('id'))->delete();
+            foreach ($items as $item) {
+                $sizeIds = ($item->size_rule ?? 'all') === 'all'
+                    ? $validSizeIds : array_values(array_unique(array_map('intval', $submitted[$item->id] ?? [])));
+                foreach ($sizeIds as $sizeId) DB::table('bom_item_size_mappings')->insert([
+                    'bom_item_id' => $item->id, 'order_size_id' => $sizeId,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            DB::table('bom_headers')->where('id', $bom->id)->update(['mapping_status' => 'ready', 'updated_at' => now()]);
+        });
+        return redirect()->route('admin.ocs.index')->with('success', 'Order BOM size mapping is ready.');
     }
 
     public function import(Request $request)
@@ -373,6 +501,10 @@ class OCSController extends Controller
                     throw new \RuntimeException("Cannot change status from '{$order->status}' to '{$request->status}'.");
                 }
                 if ($request->status === 'confirmed' && $request->status !== $order->status) {
+                    $bom = $order->bom_header_id ? DB::table('bom_headers')->find($order->bom_header_id) : null;
+                    if (!$bom || (($bom->bom_kind ?? 'template') === 'order' && ($bom->mapping_status ?? null) !== 'ready')) {
+                        throw new \RuntimeException('Complete the Order BOM size mapping before confirmation.');
+                    }
                     DB::table('ocs')->where('id', $id)->update(['requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now()]);
                     CreateRequisitionForCutsheet::dispatch((int) $id)->afterCommit();
                 }

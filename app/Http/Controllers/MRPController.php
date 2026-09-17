@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -146,12 +147,28 @@ class MRPController extends Controller
                     continue;
                 }
 
+                $bomHeader = DB::table('bom_headers')->where('id', $mtp->bom_header_id)->first();
+                if (!$bomHeader || (($bomHeader->bom_kind ?? 'template') === 'order'
+                    && ($bomHeader->mapping_status ?? null) !== 'ready')) {
+                    $skippedMtp[] = $mtp->CU . ' (BOM size mapping incomplete)';
+                    continue;
+                }
+
                 $bomItems = DB::table('bom_items')
                     ->where('bom_header_id', $mtp->bom_header_id)
                     ->get();
 
                 foreach ($bomItems as $bom) {
-                    $qty = $mtp->Qty_dis ?? 0;
+                    $orderQty = (float) DB::table('ocs')->where('id', $mtp->cutsheet_id)->value('Qty');
+                    $mappedQty = $orderQty;
+                    if (Schema::hasTable('bom_item_size_mappings')) {
+                        $mappedQty = (float) DB::table('bom_item_size_mappings')
+                            ->join('order_sizes', 'bom_item_size_mappings.order_size_id', '=', 'order_sizes.id')
+                            ->where('bom_item_size_mappings.bom_item_id', $bom->id)
+                            ->where('order_sizes.cutsheet_id', $mtp->cutsheet_id)->sum('order_sizes.quantity');
+                    }
+                    $ratio = (($bomHeader->bom_kind ?? 'template') === 'order' && $orderQty > 0) ? $mappedQty / $orderQty : 1;
+                    $qty = ($mtp->Qty_dis ?? 0) * $ratio;
                     $required = $qty * $bom->consumption_rate;
                     // Add waste
                     if ($bom->waste_percent > 0) {

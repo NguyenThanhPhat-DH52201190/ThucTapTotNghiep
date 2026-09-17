@@ -69,8 +69,8 @@
                 <thead class="table-light">
                     <tr>
                         <th>Code</th><th>Name</th><th>Unit</th><th class="text-end">Qty</th>
-                        <th class="text-end">Received</th><th class="text-end">Unit Price</th>
-                        <th class="text-end">Total</th><th>Expected</th><th>Status</th>
+                        <th class="text-end">Received</th><th class="text-end">Unit Price (USD)</th>
+                        <th class="text-end">Total (USD)</th><th>Expected</th><th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -82,7 +82,7 @@
                             <td class="text-end">{{ number_format($item->quantity, 2) }}</td>
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
-                            <td class="text-end fw-bold">{{ number_format($item->total_price, 4) }} đ</td>
+                            <td class="text-end fw-bold">{{ number_format($item->total_price, 4) }} USD</td>
                             <td><small>{{ $item->expected_date ?? '-' }}</small></td>
                             <td>
                                 @php $sc = match($item->status) { 'partial'=>'warning', 'received'=>'success', 'cancelled'=>'danger', default=>'secondary' } @endphp
@@ -94,7 +94,7 @@
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="6" class="text-end">TOTAL:</td>
-                        <td class="text-end text-primary">{{ number_format($po->total_amount, 4) }} đ</td>
+                        <td class="text-end text-primary">{{ number_format($po->total_amount, 4) }} USD</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>

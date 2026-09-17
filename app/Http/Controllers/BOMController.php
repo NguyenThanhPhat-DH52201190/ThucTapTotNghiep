@@ -46,9 +46,30 @@ class BOMController extends Controller
         return $request->user()?->role === 'admin';
     }
 
+    private function defaultMaterialCosts(array $items, array $fallback = []): array
+    {
+        $codes = collect($items)->pluck('material_code')->filter()->unique()->values();
+        if ($codes->isEmpty()) return $fallback;
+
+        $mapped = DB::table('materials')
+            ->join('material_vendors', function ($join) {
+                $join->on('material_vendors.material_id', '=', 'materials.id')
+                    ->where('material_vendors.is_default_vendor', true);
+            })
+            ->whereIn('materials.internal_code', $codes)
+            ->select('materials.internal_code', DB::raw('MAX(material_vendors.unit_price) as unit_cost'))
+            ->groupBy('materials.internal_code')
+            ->pluck('unit_cost', 'internal_code')
+            ->map(fn ($cost) => (float) $cost)
+            ->all();
+
+        return array_replace($fallback, $mapped);
+    }
+
     private function getBomList(Request $request)
     {
         return DB::table('bom_headers')
+            ->where('bom_kind', 'template')
             ->when($request->filled('style_no'), function ($q) use ($request) {
                 $q->where('style_no', 'like', '%' . $request->style_no . '%');
             })
@@ -108,11 +129,11 @@ class BOMController extends Controller
             'items.*.material_type' => 'required',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
+            'items.*.size_rule' => 'nullable|in:all,map_on_order',
             'items.*.width' => 'nullable|numeric',
             'items.*.unit' => 'nullable',
             'items.*.consumption_rate' => 'required|numeric|gt:0',
             'items.*.waste_percent' => 'nullable|numeric|min:0',
-            'items.*.unit_cost' => 'nullable|numeric|decimal:0,4|min:0',
             'items.*.remark' => 'nullable',
         ]);
 
@@ -122,9 +143,11 @@ class BOMController extends Controller
             // Calculate totals
             $totalFabric = 0;
             $totalTrim = 0;
+            $unitCosts = $this->defaultMaterialCosts($request->items);
 
             foreach ($request->items as $item) {
-                $totalCost = ($item['consumption_rate'] ?? 0) * ($item['unit_cost'] ?? 0);
+                $unitCost = $unitCosts[$item['material_code']] ?? 0;
+                $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
                 $type = $item['material_type'] ?? 'other';
                 if (in_array($type, ['fabric', 'lining', 'pocket'])) {
                     $totalFabric += $totalCost;
@@ -155,7 +178,8 @@ class BOMController extends Controller
 
             foreach ($request->items as $i => $item) {
                 $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
-                $totalCost = ($item['consumption_rate'] ?? 0) * ($item['unit_cost'] ?? 0);
+                $unitCost = $unitCosts[$item['material_code']] ?? 0;
+                $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
                 DB::table('bom_items')->insert([
                     'bom_header_id' => $headerId,
                     'material_id' => $material->id,
@@ -164,11 +188,12 @@ class BOMController extends Controller
                     'material_type' => $item['material_type'],
                     'colour' => $item['colour'] ?? null,
                     'size' => $item['size'] ?? null,
+                    'size_rule' => $item['size_rule'] ?? 'all',
                     'width' => $item['width'] ?? null,
                     'unit' => $material->unit,
                     'consumption_rate' => $item['consumption_rate'] ?? 0,
                     'waste_percent' => $item['waste_percent'] ?? 0,
-                    'unit_cost' => $item['unit_cost'] ?? 0,
+                    'unit_cost' => $unitCost,
                     'total_cost' => $totalCost,
                     'source' => $item['source'] ?? 'local',
                     'remark' => $item['remark'] ?? null,
@@ -330,11 +355,11 @@ class BOMController extends Controller
             'items.*.material_type' => 'required',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
+            'items.*.size_rule' => 'nullable|in:all,map_on_order',
             'items.*.width' => 'nullable|numeric',
             'items.*.unit' => 'nullable',
             'items.*.consumption_rate' => 'required|numeric|gt:0',
             'items.*.waste_percent' => 'nullable|numeric|min:0',
-            'items.*.unit_cost' => 'nullable|numeric|decimal:0,4|min:0',
             'items.*.remark' => 'nullable',
         ]);
 
@@ -343,9 +368,13 @@ class BOMController extends Controller
 
             $totalFabric = 0;
             $totalTrim = 0;
+            $existingCosts = DB::table('bom_items')->where('bom_header_id', $id)
+                ->pluck('unit_cost', 'material_code')->map(fn ($cost) => (float) $cost)->all();
+            $unitCosts = $this->defaultMaterialCosts($request->items, $existingCosts);
 
             foreach ($request->items as $item) {
-                $totalCost = ($item['consumption_rate'] ?? 0) * ($item['unit_cost'] ?? 0);
+                $unitCost = $unitCosts[$item['material_code']] ?? 0;
+                $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
                 $type = $item['material_type'] ?? 'other';
                 if (in_array($type, ['fabric', 'lining', 'pocket'])) {
                     $totalFabric += $totalCost;
@@ -376,7 +405,8 @@ class BOMController extends Controller
 
             foreach ($request->items as $i => $item) {
                 $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
-                $totalCost = ($item['consumption_rate'] ?? 0) * ($item['unit_cost'] ?? 0);
+                $unitCost = $unitCosts[$item['material_code']] ?? 0;
+                $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
                 DB::table('bom_items')->insert([
                     'bom_header_id' => $id,
                     'material_id' => $material->id,
@@ -385,11 +415,12 @@ class BOMController extends Controller
                     'material_type' => $item['material_type'],
                     'colour' => $item['colour'] ?? null,
                     'size' => $item['size'] ?? null,
+                    'size_rule' => $item['size_rule'] ?? 'all',
                     'width' => $item['width'] ?? null,
                     'unit' => $material->unit,
                     'consumption_rate' => $item['consumption_rate'] ?? 0,
                     'waste_percent' => $item['waste_percent'] ?? 0,
-                    'unit_cost' => $item['unit_cost'] ?? 0,
+                    'unit_cost' => $unitCost,
                     'total_cost' => $totalCost,
                     'source' => $item['source'] ?? 'local',
                     'remark' => $item['remark'] ?? null,

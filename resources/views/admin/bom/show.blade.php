@@ -87,16 +87,15 @@
                 <thead class="table-light">
                     <tr>
                         <th>#</th>
+                        <th>Type</th>
                         <th>Code</th>
                         <th>Description</th>
-                        <th>Type</th>
                         <th>Colour</th>
                         <th>Size</th>
                         <th>Width</th>
                         <th>Unit</th>
                         <th>Yield (ĐM)</th>
                         <th>Waste %</th>
-                        <th>Unit Price</th>
                         <th>Total</th>
                         <th>Remark</th>
                     </tr>
@@ -105,16 +104,15 @@
                     @foreach($items as $i => $item)
                         <tr>
                             <td class="text-center">{{ $i + 1 }}</td>
+                            <td><span class="badge bg-info">{{ $item->material_type }}</span></td>
                             <td><code>{{ $item->material_code }}</code></td>
                             <td>{{ $item->material_name }}</td>
-                            <td><span class="badge bg-info">{{ $item->material_type }}</span></td>
                             <td>{{ $item->colour ?? '-' }}</td>
                             <td>{{ $item->size ?? '-' }}</td>
                             <td>{{ $item->width ?? '-' }}</td>
                             <td>{{ $item->unit }}</td>
                             <td class="text-end">{{ number_format($item->consumption_rate, 4) }}</td>
                             <td class="text-end">{{ $item->waste_percent ? number_format($item->waste_percent, 1) . '%' : '-' }}</td>
-                            <td class="text-end">{{ number_format($item->unit_cost, 4) }}</td>
                             <td class="text-end fw-bold">{{ number_format($item->total_cost, 4) }}</td>
                             <td><small>{{ $item->remark ?? '' }}</small></td>
                         </tr>
@@ -123,7 +121,6 @@
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="10" class="text-end">TOTAL COST:</td>
-                        <td class="text-end">{{ number_format($items->sum('unit_cost'), 4) }}</td>
                         <td class="text-end text-primary">{{ number_format($items->sum('total_cost'), 4) }} đ</td>
                         <td></td>
                     </tr>

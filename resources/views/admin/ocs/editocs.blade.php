@@ -41,7 +41,7 @@
                         <select name="bom_header_id" id="bomHeader" class="form-select">
                             <option value="">-- Select BOM --</option>
                             @foreach($boms as $bom)
-                                <option value="{{ $bom->id }}" data-style-no="{{ $bom->style_no }}" data-style-name="{{ $bom->style_name }}" {{ old('bom_header_id', $order->bom_header_id) == $bom->id ? 'selected' : '' }}>
+                                <option value="{{ $bom->id }}" data-style-no="{{ $bom->style_no }}" data-style-name="{{ $bom->style_name }}" {{ old('bom_header_id', $order->selected_template_id) == $bom->id ? 'selected' : '' }}>
                                     {{ $bom->style_no }} - {{ $bom->style_name }} (v{{ $bom->version }})
                                 </option>
                             @endforeach

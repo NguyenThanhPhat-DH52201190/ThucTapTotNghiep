@@ -74,7 +74,7 @@ class ProcurementController extends Controller
                 $number = 'PO-' . now()->format('YmdHisv') . '-' . Str::upper(Str::random(6));
                 $poId = DB::table('purchase_orders')->insertGetId([
                     'po_number' => $number, 'supplier_id' => $vendor->id, 'order_date' => today(),
-                    'expected_delivery' => $suggestions->max('required_date'), 'status' => 'draft', 'currency' => 'VND',
+                    'expected_delivery' => $suggestions->max('required_date'), 'status' => 'draft', 'currency' => 'USD',
                     'total_amount' => 0, 'created_by' => $request->user()?->id, 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 foreach ($suggestions as $suggestion) {
@@ -249,6 +249,7 @@ class ProcurementController extends Controller
                 'order_date' => $request->order_date,
                 'expected_delivery' => $request->expected_delivery,
                 'status' => 'draft',
+                'currency' => 'USD',
                 'total_amount' => $totalAmount,
                 'notes' => $request->notes,
                 'created_by' => $request->user()->id,
@@ -356,6 +357,7 @@ class ProcurementController extends Controller
                 DB::table('purchase_orders')->where('id', $id)->update([
                     'supplier_id' => $data['supplier_id'], 'order_date' => $data['order_date'],
                     'expected_delivery' => $data['expected_delivery'] ?? null,
+                    'currency' => 'USD',
                     'total_amount' => $totalAmount, 'notes' => $data['notes'] ?? null, 'updated_at' => now(),
                 ]);
 

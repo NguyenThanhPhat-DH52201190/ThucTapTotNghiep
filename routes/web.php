@@ -153,6 +153,8 @@ Route::middleware('auth')->group(function () {
         // OCS
         Route::resource('ocs', OCSController::class)->except(['show']);
         Route::patch('ocs/{id}/status', [OCSController::class, 'updateStatus'])->name('ocs.status');
+        Route::get('ocs/{id}/bom-size-mapping', [OCSController::class, 'bomSizeMapping'])->name('ocs.bom-size-mapping');
+        Route::put('ocs/{id}/bom-size-mapping', [OCSController::class, 'saveBomSizeMapping'])->name('ocs.bom-size-mapping.save');
         Route::post('ocs/import', [OCSController::class, 'import'])->name('ocs.import');
 
         Route::get('revenue/export', [RevenueController::class, 'export'])->name('revenue.export');

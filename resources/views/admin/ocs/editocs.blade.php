@@ -82,7 +82,6 @@
                     <div class="col-md-4">
                         <label class="form-label">Status (managed by workflow)</label>
                         <input class="form-control" value="{{ strtoupper(str_replace('_', ' ', $order->status ?? 'pending')) }}" readonly>
-                        <div class="form-text">Use the workflow action on the order list to change status.</div>
                     </div>
                     <div class="col-md-2"><label class="form-label">Order Type</label><select name="order_type" class="form-select"><option value="cmt" {{ old('order_type',$order->order_type??'cmt')==='cmt'?'selected':'' }}>CMT</option><option value="fob" {{ old('order_type',$order->order_type??'cmt')==='fob'?'selected':'' }}>FOB</option></select></div>
                     <div class="col-md-3"><label class="form-label">Material Owner</label><select name="material_ownership" class="form-select"><option value="factory" {{ old('material_ownership',$order->material_ownership??'factory')==='factory'?'selected':'' }}>Factory</option><option value="customer" {{ old('material_ownership',$order->material_ownership??'factory')==='customer'?'selected':'' }}>Customer</option></select></div>

@@ -41,14 +41,14 @@
                             <td>{{ $index + 1 }}</td><td><code>{{ $row->material_code }}</code></td><td>{{ $row->material_name }}</td>
                             <td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
                             <td>{{ $row->material_color ?: '-' }} / {{ $row->material_size ?: '-' }}</td><td>{{ $row->unit }}</td>
-                            <td class="text-end">{{ number_format($row->applicable_qty, 4) }}</td>
+                            <td class="text-end">{{ number_format($row->applicable_qty, 0) }}</td>
                             <td class="text-end">{{ number_format($row->consumption_rate, 4) }}</td>
                             <td class="text-end">{{ number_format($row->waste_percent, 2) }}</td>
-                            <td class="text-end fw-bold">{{ number_format($row->required_qty, 4) }}</td>
-                            <td class="text-end">{{ number_format($row->on_hand_qty, 4) }}</td>
-                            <td class="text-end">{{ number_format($row->reserved_qty, 4) }}</td>
-                            <td class="text-end">{{ number_format($row->available_qty, 4) }}</td>
-                            <td class="text-end fw-bold {{ $row->shortage_qty > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($row->shortage_qty, 4) }}</td>
+                            <td class="text-end fw-bold">{{ number_format($row->required_qty, 0) }}</td>
+                            <td class="text-end">{{ number_format($row->on_hand_qty, 0) }}</td>
+                            <td class="text-end">{{ number_format($row->reserved_qty, 0) }}</td>
+                            <td class="text-end">{{ number_format($row->available_qty, 0) }}</td>
+                            <td class="text-end fw-bold {{ $row->shortage_qty > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($row->shortage_qty, 0) }}</td>
                             <td>@if($row->shortage_qty > 0)<span class="badge bg-danger">Shortage</span>@else<span class="badge bg-success">Sufficient</span>@endif</td>
                         </tr>
                     @empty

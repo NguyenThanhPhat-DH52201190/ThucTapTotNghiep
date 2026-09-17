@@ -155,6 +155,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('ocs/{id}/status', [OCSController::class, 'updateStatus'])->name('ocs.status');
         Route::get('ocs/{id}/bom-size-mapping', [OCSController::class, 'bomSizeMapping'])->name('ocs.bom-size-mapping');
         Route::put('ocs/{id}/bom-size-mapping', [OCSController::class, 'saveBomSizeMapping'])->name('ocs.bom-size-mapping.save');
+        Route::get('ocs/{id}/material-requirements', [OCSController::class, 'materialRequirements'])->name('ocs.material-requirements');
         Route::post('ocs/import', [OCSController::class, 'import'])->name('ocs.import');
 
         Route::get('revenue/export', [RevenueController::class, 'export'])->name('revenue.export');

@@ -164,7 +164,11 @@ class OCSController extends Controller
                 return redirect()->route('admin.ocs.bom-size-mapping', $orderId)
                     ->with('success', 'OCS created. Complete BOM size mapping before confirmation.');
             }
-            return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown saved successfully');
+            if ($request->filled('bom_header_id')) {
+                return redirect()->route('admin.ocs.material-requirements', $orderId)
+                    ->with('success', 'OCS and material requirements created successfully.');
+            }
+            return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown saved successfully.');
         } catch (\Throwable $e) {
             Log::error('Failed to create OCS order', ['message' => $e->getMessage()]);
             return back()->withInput()->with('error', 'Unable to save the order. Please try again.');
@@ -272,7 +276,11 @@ class OCSController extends Controller
                 return redirect()->route('admin.ocs.bom-size-mapping', $id)
                     ->with('success', 'OCS updated. Complete BOM size mapping before confirmation.');
             }
-            return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown updated successfully');
+            if ($request->filled('bom_header_id')) {
+                return redirect()->route('admin.ocs.material-requirements', $id)
+                    ->with('success', 'OCS and material requirements updated successfully.');
+            }
+            return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown updated successfully.');
         } catch (\Throwable $e) {
             Log::error('Failed to update OCS order', ['message' => $e->getMessage(), 'id' => $id]);
             return back()->withInput()->with('error', 'Unable to update the order. Please try again.');
@@ -461,7 +469,70 @@ class OCSController extends Controller
             }
             DB::table('bom_headers')->where('id', $bom->id)->update(['mapping_status' => 'ready', 'updated_at' => now()]);
         });
-        return redirect()->route('admin.ocs.index')->with('success', 'Order BOM size mapping is ready.');
+        return redirect()->route('admin.ocs.material-requirements', $id)
+            ->with('success', 'Order BOM size mapping is ready. Material requirements have been calculated.');
+    }
+
+    public function materialRequirements(int $id)
+    {
+        $order = DB::table('ocs')->find($id);
+        if (!$order) abort(404);
+        if (!$order->bom_header_id) {
+            return redirect()->route('admin.ocs.index')->with('error', 'Select a BOM before viewing material requirements.');
+        }
+
+        $bom = DB::table('bom_headers')->find($order->bom_header_id);
+        if (!$bom) abort(404);
+        if (($bom->bom_kind ?? 'template') === 'order' && ($bom->mapping_status ?? null) !== 'ready') {
+            return redirect()->route('admin.ocs.bom-size-mapping', $id)
+                ->with('error', 'Complete BOM size mapping before calculating material requirements.');
+        }
+
+        $items = DB::table('bom_items')->where('bom_header_id', $bom->id)->orderBy('sort_order')->get();
+        $balances = DB::table('inventory_balances')
+            ->whereIn('material_id', $items->pluck('material_id')->filter()->unique())
+            ->get();
+
+        $requirements = $items->map(function ($item) use ($order, $bom, $balances) {
+            $applicableQty = (float) $order->Qty;
+            if (($bom->bom_kind ?? 'template') === 'order') {
+                $applicableQty = (float) DB::table('bom_item_size_mappings')
+                    ->join('order_sizes', 'bom_item_size_mappings.order_size_id', '=', 'order_sizes.id')
+                    ->where('bom_item_size_mappings.bom_item_id', $item->id)
+                    ->where('order_sizes.cutsheet_id', $order->id)
+                    ->sum('order_sizes.quantity');
+            }
+
+            $materialColor = DB::table('bom_colorways')->where('bom_item_id', $item->id)
+                ->where('garment_color', $order->Color)->value('material_color') ?? $item->colour;
+            $matchingBalances = $balances->where('material_id', $item->material_id);
+            if ($materialColor !== null && trim((string) $materialColor) !== '') {
+                $matchingBalances = $matchingBalances->filter(fn ($balance) =>
+                    strcasecmp(trim((string) $balance->material_color), trim((string) $materialColor)) === 0);
+            }
+            if ($item->size !== null && trim((string) $item->size) !== '') {
+                $matchingBalances = $matchingBalances->filter(fn ($balance) =>
+                    strcasecmp(trim((string) $balance->material_size), trim((string) $item->size)) === 0);
+            }
+
+            $requiredQty = $applicableQty * (float) $item->consumption_rate
+                * (1 + ((float) $item->waste_percent / 100));
+            $onHand = (float) $matchingBalances->sum('balance_qty');
+            $reserved = (float) $matchingBalances->sum('reserved_qty');
+            $available = max(0, $onHand - $reserved);
+
+            return (object) [
+                'material_code' => $item->material_code, 'material_name' => $item->material_name,
+                'material_type' => $item->material_type, 'material_color' => $materialColor,
+                'material_size' => $item->size, 'unit' => $item->unit,
+                'applicable_qty' => $applicableQty, 'consumption_rate' => (float) $item->consumption_rate,
+                'waste_percent' => (float) $item->waste_percent, 'required_qty' => round($requiredQty, 4),
+                'on_hand_qty' => round($onHand, 4), 'reserved_qty' => round($reserved, 4),
+                'available_qty' => round($available, 4), 'shortage_qty' => round(max(0, $requiredQty - $available), 4),
+            ];
+        });
+
+        return view('admin.ocs.material-requirements', compact('order', 'bom', 'requirements'));
     }
 
     public function import(Request $request)

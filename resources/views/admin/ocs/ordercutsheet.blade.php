@@ -174,6 +174,7 @@
                                         <a href="{{ route('admin.ocs.bom-size-mapping', $item->id) }}" class="badge bg-warning text-dark text-decoration-none">Map sizes</a>
                                     @elseif(($item->bom_kind ?? null) === 'order')
                                         <span class="badge bg-primary">BOM Ready</span>
+                                        <a href="{{ route('admin.ocs.material-requirements', $item->id) }}" class="badge bg-info text-dark text-decoration-none">Materials</a>
                                     @endif
                                 @else
                                     <span class="badge bg-secondary">No BOM</span>

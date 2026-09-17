@@ -54,7 +54,6 @@ class OCSController extends Controller
         if (!$bom || $bom->status !== 'active' || ($bom->bom_kind ?? 'template') !== 'template') {
             throw \Illuminate\Validation\ValidationException::withMessages(['bom_header_id' => ['Only an active BOM template can be assigned.']]);
         }
-        if (trim((string) $bom->style_no) !== trim((string) $request->SNo)) throw \Illuminate\Validation\ValidationException::withMessages(['bom_header_id' => ['The BOM style must match the order style.']]);
     }
     private function getOrders(Request $request): Collection
     {

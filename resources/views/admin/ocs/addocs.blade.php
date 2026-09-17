@@ -50,13 +50,11 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">SNo (Style) <span class="text-danger">*</span></label>
-                        <select name="SNo" id="styleNo" class="form-select" required>
-                            <option value="">-- Select BOM first --</option>
-                        </select>
+                        <input type="text" name="SNo" id="styleNo" class="form-control" value="{{ old('SNo') }}" required placeholder="Enter style code">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">SName <span class="text-danger">*</span></label>
-                        <input type="text" id="styleName" name="Sname" class="form-control" value="{{ old('Sname') }}" required readonly>
+                        <input type="text" id="styleName" name="Sname" class="form-control" value="{{ old('Sname') }}" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Customer master</label>
@@ -128,15 +126,13 @@ function addSizeRow(){document.getElementById('sizeRows').insertAdjacentHTML('be
 document.getElementById('customerMaster')?.addEventListener('change',function(){const option=this.options[this.selectedIndex];if(option.dataset.name)document.getElementById('customerName').value=option.dataset.name;});
 
 const bomHeader = document.getElementById('bomHeader');
-const styleNo = document.getElementById('styleNo');
 const styleName = document.getElementById('styleName');
-function syncStyleFromBom() {
+function syncStyleNameFromBom() {
     const bom = bomHeader.options[bomHeader.selectedIndex];
-    const selectedStyleNo = bom?.dataset.styleNo;
-    styleNo.replaceChildren(new Option(selectedStyleNo || '-- Select BOM first --', selectedStyleNo || ''));
-    styleName.value = bom?.dataset.styleName || '';
+    if (bom?.value && bom.dataset.styleName) styleName.value = bom.dataset.styleName;
 }
-bomHeader.addEventListener('change', syncStyleFromBom);
-syncStyleFromBom();
+bomHeader.addEventListener('change', syncStyleNameFromBom);
+syncStyleNameFromBom();
+
 </script>
 @endpush

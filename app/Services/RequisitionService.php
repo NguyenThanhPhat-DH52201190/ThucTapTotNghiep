@@ -15,7 +15,7 @@ class RequisitionService
             $order = DB::table('ocs')->where('id', $cutsheetId)->lockForUpdate()->first();
             if (!$order || !$order->bom_header_id) throw new RuntimeException('A confirmed order must have an assigned BOM.');
             $bom = DB::table('bom_headers')->where('id', $order->bom_header_id)->first();
-            if (!$bom || $bom->status !== 'active' || trim($bom->style_no) !== trim($order->SNo)) throw new RuntimeException('Confirmation requires an active BOM that matches the order style.');
+            if (!$bom || $bom->status !== 'active') throw new RuntimeException('Confirmation requires an active BOM.');
             if (($bom->bom_kind ?? 'template') === 'order' && ($bom->mapping_status ?? null) !== 'ready') {
                 throw new RuntimeException('Complete the Order BOM size mapping before confirmation.');
             }

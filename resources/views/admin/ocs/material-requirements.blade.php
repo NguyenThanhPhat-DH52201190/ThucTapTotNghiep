@@ -2,17 +2,16 @@
 @section('title', 'Material Requirements - ' . $order->CS)
 @section('content')
 <div class="container-fluid px-0">
-    <div class="d-flex justify-content-end align-items-center mb-3">
-        @if(($bom->bom_kind ?? 'template') === 'order')
-            <a href="{{ route('admin.ocs.bom-size-mapping', $order->id) }}" class="btn btn-outline-primary"><i class="bi bi-grid-3x3-gap"></i> Size Mapping</a>
-        @endif
-    </div>
-
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white"><h5 class="mb-0 fw-bold"><i class="bi bi-boxes me-2"></i>Material Requirements — {{ $order->CS }}</h5></div>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-boxes me-2"></i>Material Requirements — {{ $order->CS }}</h5>
+            <a href="{{ route('admin.ocs.material-requirements.export', $order->id) }}" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+            </a>
+        </div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3"><span class="text-muted">Style</span><div class="fw-semibold">{{ $order->SNo }} — {{ $order->Sname }}</div></div>
@@ -41,7 +40,7 @@
                             <td>{{ $index + 1 }}</td><td><code>{{ $row->material_code }}</code></td><td>{{ $row->material_name }}</td>
                             <td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
                             <td>{{ $row->material_color ?: '-' }} / {{ $row->material_size ?: '-' }}</td><td>{{ $row->unit }}</td>
-                            <td class="text-end">{{ number_format($row->applicable_qty, 0) }}</td>
+                            <td class="text-end">{{ number_format($row->product_qty, 0) }}</td>
                             <td class="text-end">{{ number_format($row->consumption_rate, 4) }}</td>
                             <td class="text-end">{{ number_format($row->waste_percent, 2) }}</td>
                             <td class="text-end fw-bold">{{ number_format($row->required_qty, 0) }}</td>

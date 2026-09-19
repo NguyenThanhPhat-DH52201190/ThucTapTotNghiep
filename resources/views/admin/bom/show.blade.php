@@ -91,7 +91,8 @@
                         <th>Code</th>
                         <th>Description</th>
                         <th>Colour</th>
-                        <th>Size</th>
+                        <th>Material Size</th>
+                        <th>Product Sizes</th>
                         <th>Width</th>
                         <th>Unit</th>
                         <th>Yield (ĐM)</th>
@@ -109,6 +110,7 @@
                             <td>{{ $item->material_name }}</td>
                             <td>{{ $item->colour ?? '-' }}</td>
                             <td>{{ $item->size ?? '-' }}</td>
+                            <td>{{ ($itemSizeNames[$item->id] ?? collect())->pluck('size_name')->implode(', ') ?: 'All' }}</td>
                             <td>{{ $item->width ?? '-' }}</td>
                             <td>{{ $item->unit }}</td>
                             <td class="text-end">{{ number_format($item->consumption_rate, 4) }}</td>
@@ -120,7 +122,7 @@
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
-                        <td colspan="10" class="text-end">TOTAL COST:</td>
+                        <td colspan="11" class="text-end">TOTAL COST:</td>
                         <td class="text-end text-primary">{{ number_format($items->sum('total_cost'), 4) }} đ</td>
                         <td></td>
                     </tr>

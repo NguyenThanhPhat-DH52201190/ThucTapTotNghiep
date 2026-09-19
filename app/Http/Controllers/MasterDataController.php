@@ -37,6 +37,50 @@ class MasterDataController extends Controller
         return back()->with('success', 'Customer deleted. Existing OCS records keep their customer name.');
     }
 
+    public function customerSizes()
+    {
+        $customers = DB::table('customer_info')->orderBy('name')->get();
+        $sizes = DB::table('customer_sizes')->orderBy('sort_order')->orderBy('size_name')->get()->groupBy('customer_id');
+        return view('admin.master-data.customer-sizes', compact('customers', 'sizes'));
+    }
+
+    public function saveCustomerSizes(Request $request, int $id)
+    {
+        abort_unless(DB::table('customer_info')->where('id', $id)->exists(), 404);
+        $data = $request->validate(['sizes' => 'required|string|max:2000']);
+        $sizes = collect(preg_split('/[,\r\n]+/', $data['sizes']))
+            ->map(fn ($size) => trim($size))->filter()->unique(fn ($size) => mb_strtolower($size))->values();
+        if ($sizes->isEmpty()) return back()->with('error', 'Enter at least one size.');
+
+        DB::transaction(function () use ($id, $sizes) {
+            $existing = DB::table('customer_sizes')->where('customer_id', $id)->get()
+                ->keyBy(fn ($row) => mb_strtolower(trim($row->size_name)));
+            $submittedKeys = $sizes->map(fn ($size) => mb_strtolower($size));
+            $removedIds = $existing->except($submittedKeys)->pluck('id');
+            if ($removedIds->isNotEmpty() && DB::table('bom_item_customer_sizes')->whereIn('customer_size_id', $removedIds)->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'sizes' => ['A size cannot be removed while it is assigned to a BOM item. Update the BOM first.'],
+                ]);
+            }
+
+            DB::table('customer_sizes')->whereIn('id', $removedIds)->delete();
+            foreach ($sizes as $index => $size) {
+                $current = $existing->get(mb_strtolower($size));
+                if ($current) {
+                    DB::table('customer_sizes')->where('id', $current->id)->update([
+                        'size_name' => $size, 'sort_order' => $index + 1, 'updated_at' => now(),
+                    ]);
+                } else {
+                    DB::table('customer_sizes')->insert([
+                        'customer_id' => $id, 'size_name' => $size, 'sort_order' => $index + 1,
+                        'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                }
+            }
+        });
+        return back()->with('success', 'Customer size breakdown saved.');
+    }
+
     public function materials(Request $request)
     {
         $materials = DB::table('materials')

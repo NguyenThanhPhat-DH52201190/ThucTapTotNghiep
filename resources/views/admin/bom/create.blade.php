@@ -85,8 +85,8 @@
                                 <th>Code <span class="text-danger">*</span></th>
                                 <th>Description <span class="text-danger">*</span></th>
                                 <th>Colour</th>
-                                <th>Size</th>
-                                <th>Size Use</th>
+                                <th>Material Size</th>
+                                <th style="min-width:190px">Apply To Product Sizes</th>
                                 <th>Width</th>
                                 <th>Unit</th>
                                 <th>Yield (ĐM)</th>
@@ -102,7 +102,7 @@
                 </div>
             </div>
             <div class="card-footer text-muted">
-                <small><i class="bi bi-info-circle"></i> Tip: You can copy-paste from Excel directly into the Code field</small>
+                <small><i class="bi bi-info-circle"></i> Material Size is the material specification (for example 143 mm). Product Sizes determine which garment sizes consume that BOM item.</small>
             </div>
         </div>
 
@@ -115,6 +115,22 @@
 
 <script>
 let itemCount = 0;
+const customerSizes = @json($customerSizes);
+
+function productSizeOptions(selected = []) {
+    const customerId = document.getElementById('customer_id').value;
+    const sizes = customerSizes[customerId] || [];
+    const values = (selected || []).map(String);
+    const allSelected = values.length === 0 || values.includes('all');
+    return `<option value="all" ${allSelected ? 'selected' : ''}>All product sizes</option>` +
+        sizes.map(size => `<option value="${size.id}" ${values.includes(String(size.id)) ? 'selected' : ''}>${size.size_name}</option>`).join('');
+}
+
+function refreshProductSizes() {
+    document.querySelectorAll('.product-size-select').forEach(select => {
+        select.innerHTML = productSizeOptions([]);
+    });
+}
 
 const materialTypes = [
     { value: 'fabric', label: 'Fabric (Vải chính)' },
@@ -158,7 +174,12 @@ function addItem(data = {}) {
                 <input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input"
                        value="${data.size || ''}" placeholder="Size">
             </td>
-            <td><select name="items[${i}][size_rule]" class="form-select form-select-sm"><option value="all">All sizes</option><option value="map_on_order">Map on order</option></select></td>
+            <td>
+                <select multiple name="items[${i}][customer_size_ids][]" class="form-select form-select-sm product-size-select" title="Leave All selected when this material is used by every product size">
+                    ${productSizeOptions(data.customerSizeIds || [])}
+                </select>
+                <small class="text-muted">Ctrl/Cmd to select multiple</small>
+            </td>
             <td>
                 <input type="number" step="0.01" name="items[${i}][width]" class="form-control form-control-sm"
                        value="${data.width || ''}" placeholder="Width">
@@ -218,6 +239,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             }
         }
+    });
+    document.getElementById('customer_id').addEventListener('change', refreshProductSizes);
+    document.addEventListener('change', function(event) {
+        if (!event.target.classList.contains('product-size-select')) return;
+        const all = event.target.querySelector('option[value="all"]');
+        if (all?.selected && event.target.selectedOptions.length > 1) all.selected = false;
     });
 });
 

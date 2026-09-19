@@ -57,7 +57,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Customer master</label>
-                        <select name="customer_id" id="customerMaster" class="form-select"><option value="">-- Select customer or enter manually --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-name="{{ $customer->name }}" @selected(old('customer_id', $order->customer_id) == $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' · '.$customer->brand : '' }}</option>@endforeach</select>
+                        <select name="customer_id" id="customerMaster" class="form-select"><option value="">-- Select customer --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-name="{{ $customer->name }}" data-sizes='@json(($customerSizes[$customer->id] ?? collect())->pluck("size_name")->values())' @selected(old('customer_id', $order->customer_id) == $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' · '.$customer->brand : '' }}</option>@endforeach</select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Customer name <span class="text-danger">*</span></label>
@@ -103,7 +103,7 @@
                     </div>
                 </div>
 
-                <div class="card border mt-4"><div class="card-header d-flex justify-content-between"><strong>Size breakdown</strong><button type="button" class="btn btn-sm btn-outline-primary" onclick="addSizeRow()">Add size</button></div><div class="card-body" id="sizeRows">@forelse(old('sizes', $sizes->map(fn($size) => ['size_name'=>$size->size_name,'quantity'=>$size->quantity])->all()) as $index => $size)<div class="row g-2 size-row {{ $index ? 'mt-2' : '' }}"><div class="col-md-5"><input name="sizes[{{ $index }}][size_name]" class="form-control" value="{{ $size['size_name'] }}" required></div><div class="col-md-5"><input type="number" min="0" name="sizes[{{ $index }}][quantity]" class="form-control" value="{{ $size['quantity'] }}" required></div></div>@empty<div class="row g-2 size-row"><div class="col-md-5"><input name="sizes[0][size_name]" class="form-control" required></div><div class="col-md-5"><input type="number" min="0" name="sizes[0][quantity]" class="form-control" required></div></div>@endforelse</div></div>
+                <div class="card border mt-4"><div class="card-header"><strong>Size breakdown by customer</strong></div><div class="card-body" id="sizeRows">@foreach(old('sizes', $sizes->map(fn($size) => ['size_name'=>$size->size_name,'quantity'=>$size->quantity])->all()) as $index => $size)<div class="row g-2 size-row {{ $index ? 'mt-2' : '' }}"><div class="col-md-5"><select name="sizes[{{ $index }}][size_name]" class="form-select customer-size-select" data-current="{{ $size['size_name'] }}" required></select></div><div class="col-md-5"><input type="number" min="0" name="sizes[{{ $index }}][quantity]" class="form-control" value="{{ $size['quantity'] }}" required></div></div>@endforeach</div></div>
 
                 <div class="mt-4 d-flex gap-2">
                     <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Update</button>
@@ -117,9 +117,11 @@
 @endsection
 @push('scripts')
 <script>
-let sizeIndex={{ max(1, $sizes->count()) }};
-function addSizeRow(){document.getElementById('sizeRows').insertAdjacentHTML('beforeend', `<div class="row g-2 size-row mt-2"><div class="col-md-5"><input name="sizes[${sizeIndex}][size_name]" class="form-control" required></div><div class="col-md-5"><input type="number" min="0" name="sizes[${sizeIndex}][quantity]" class="form-control" required></div><div class="col-md-2"><button type="button" class="btn btn-outline-danger" onclick="this.closest('.size-row').remove()">Remove</button></div></div>`);sizeIndex++;}
-document.getElementById('customerMaster')?.addEventListener('change',function(){const option=this.options[this.selectedIndex];if(option.dataset.name)document.getElementById('customerName').value=option.dataset.name;});
+const customerMaster = document.getElementById('customerMaster');
+function customerSizeNames(){const option=customerMaster.options[customerMaster.selectedIndex];try{return JSON.parse(option?.dataset.sizes||'[]');}catch{return [];}}
+function renderCustomerSizes(reset=false){const sizes=customerSizeNames(),box=document.getElementById('sizeRows');if(reset||!box.querySelector('.size-row')){box.innerHTML=sizes.length?sizes.map((size,i)=>`<div class="row g-2 size-row ${i?'mt-2':''}"><div class="col-md-5"><input class="form-control" value="${size}" readonly><input type="hidden" name="sizes[${i}][size_name]" value="${size}"></div><div class="col-md-5"><input type="number" min="0" name="sizes[${i}][quantity]" class="form-control" value="0" required></div></div>`).join(''):'<div class="text-muted">Configure sizes for this customer in Customer Size Breakdown first.</div>';return;}box.querySelectorAll('.customer-size-select').forEach(select=>{const current=select.dataset.current;const values=sizes.includes(current)?sizes:[current,...sizes].filter(Boolean);select.innerHTML=values.map(size=>`<option value="${size}" ${size===current?'selected':''}>${size}</option>`).join('');});}
+customerMaster?.addEventListener('change',function(){const option=this.options[this.selectedIndex];if(option.dataset.name)document.getElementById('customerName').value=option.dataset.name;renderCustomerSizes(true);});
+renderCustomerSizes(false);
 
 const bomHeader = document.getElementById('bomHeader');
 const styleName = document.getElementById('styleName');

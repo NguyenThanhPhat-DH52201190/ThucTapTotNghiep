@@ -17,6 +17,7 @@ use App\Http\Controllers\MpsScheduleController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\AuditTrailController;
+use App\Http\Controllers\NormController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -133,6 +134,8 @@ Route::middleware('auth')->group(function () {
         Route::post('master-data/customers', [MasterDataController::class, 'storeCustomer'])->name('master-data.customers.store');
         Route::patch('master-data/customers/{id}', [MasterDataController::class, 'updateCustomer'])->name('master-data.customers.update');
         Route::delete('master-data/customers/{id}', [MasterDataController::class, 'destroyCustomer'])->name('master-data.customers.destroy');
+        Route::get('master-data/customer-sizes', [MasterDataController::class, 'customerSizes'])->name('master-data.customer-sizes');
+        Route::put('master-data/customer-sizes/{id}', [MasterDataController::class, 'saveCustomerSizes'])->name('master-data.customer-sizes.save');
         Route::get('master-data/materials', [MasterDataController::class, 'materials'])->name('master-data.materials');
         Route::post('master-data/materials', [MasterDataController::class, 'storeMaterial'])->name('master-data.materials.store');
         Route::patch('master-data/materials/{id}', [MasterDataController::class, 'updateMaterial'])->name('master-data.materials.update');
@@ -153,10 +156,13 @@ Route::middleware('auth')->group(function () {
         // OCS
         Route::resource('ocs', OCSController::class)->except(['show']);
         Route::patch('ocs/{id}/status', [OCSController::class, 'updateStatus'])->name('ocs.status');
-        Route::get('ocs/{id}/bom-size-mapping', [OCSController::class, 'bomSizeMapping'])->name('ocs.bom-size-mapping');
-        Route::put('ocs/{id}/bom-size-mapping', [OCSController::class, 'saveBomSizeMapping'])->name('ocs.bom-size-mapping.save');
         Route::get('ocs/{id}/material-requirements', [OCSController::class, 'materialRequirements'])->name('ocs.material-requirements');
+        Route::get('ocs/{id}/material-requirements/export', [OCSController::class, 'exportMaterialRequirements'])->name('ocs.material-requirements.export');
         Route::post('ocs/import', [OCSController::class, 'import'])->name('ocs.import');
+
+        Route::get('norm/materials', [NormController::class, 'materials'])->name('norm.materials');
+        Route::get('norm/materials/export', [NormController::class, 'exportMaterials'])->name('norm.materials.export');
+        Route::get('norm/materials/{id}', [NormController::class, 'materialDetail'])->name('norm.materials.show');
 
         Route::get('revenue/export', [RevenueController::class, 'export'])->name('revenue.export');
 

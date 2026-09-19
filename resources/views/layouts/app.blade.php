@@ -129,6 +129,18 @@
                     Inventory
                 </a>
 
+                <a class="d-flex justify-content-between align-items-center gap-2 mb-1"
+                    data-bs-toggle="collapse" href="#normMenu" role="button" aria-expanded="{{ request()->routeIs('admin.norm.*') ? 'true' : 'false' }}">
+                    <span class="d-flex align-items-center gap-2"><i class="bi bi-rulers"></i>NORM</span>
+                    <i class="bi bi-chevron-down small"></i>
+                </a>
+                <div class="collapse ps-3 {{ request()->routeIs('admin.norm.*') ? 'show' : '' }}" id="normMenu">
+                    <a href="{{ route('admin.norm.materials') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.norm.materials*') ? 'active' : '' }}">
+                        <i class="bi bi-box-seam"></i>
+                        Materials
+                    </a>
+                </div>
+
                 <a href="{{ route('admin.shopfloor.dashboard') }}"
                     class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-gear"></i>

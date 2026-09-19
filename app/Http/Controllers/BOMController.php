@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -14,6 +15,46 @@ class BOMController extends Controller
     private function customers()
     {
         return DB::table('customer_info')->select('id', 'name', 'brand')->orderBy('name')->get();
+    }
+
+    private function customerSizes()
+    {
+        return DB::table('customer_sizes')->select('id', 'customer_id', 'size_name')
+            ->orderBy('customer_id')->orderBy('sort_order')->orderBy('size_name')->get()->groupBy('customer_id');
+    }
+
+    private function validatedItemSizeMappings(Request $request): array
+    {
+        $customerId = $request->integer('customer_id');
+        $allowed = $customerId
+            ? DB::table('customer_sizes')->where('customer_id', $customerId)->pluck('id')->map(fn ($id) => (int) $id)
+            : collect();
+        $result = [];
+        foreach ((array) $request->input('items', []) as $index => $item) {
+            $raw = collect((array) ($item['customer_size_ids'] ?? ['all']))->map(fn ($value) => (string) $value);
+            if ($raw->contains('all') || $raw->isEmpty()) {
+                $result[$index] = [];
+                continue;
+            }
+            $ids = $raw->filter(fn ($value) => ctype_digit($value))->map(fn ($value) => (int) $value)->unique()->values();
+            if (!$customerId || $ids->count() !== $raw->count() || $ids->diff($allowed)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    "items.$index.customer_size_ids" => 'Product sizes must belong to the customer selected for this BOM.',
+                ]);
+            }
+            $result[$index] = $ids->all();
+        }
+        return $result;
+    }
+
+    private function saveItemSizeMappings(int $bomItemId, array $customerSizeIds): void
+    {
+        foreach ($customerSizeIds as $customerSizeId) {
+            DB::table('bom_item_customer_sizes')->insert([
+                'bom_item_id' => $bomItemId, 'customer_size_id' => $customerSizeId,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
     }
 
     private function resolveCustomer(?int $customerId, ?string $fallbackName = null): array
@@ -94,7 +135,8 @@ class BOMController extends Controller
     {
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
         $customers = $this->customers();
-        return view('admin.bom.create', compact('styles', 'customers'));
+        $customerSizes = $this->customerSizes();
+        return view('admin.bom.create', compact('styles', 'customers', 'customerSizes'));
     }
 
     public function materialSuggestions(Request $request)
@@ -129,13 +171,14 @@ class BOMController extends Controller
             'items.*.material_type' => 'required',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
-            'items.*.size_rule' => 'nullable|in:all,map_on_order',
             'items.*.width' => 'nullable|numeric',
             'items.*.unit' => 'nullable',
             'items.*.consumption_rate' => 'required|numeric|gt:0',
             'items.*.waste_percent' => 'nullable|numeric|min:0',
             'items.*.remark' => 'nullable',
+            'items.*.customer_size_ids' => 'nullable|array',
         ]);
+        $itemSizeMappings = $this->validatedItemSizeMappings($request);
 
         try {
             DB::beginTransaction();
@@ -180,7 +223,7 @@ class BOMController extends Controller
                 $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
                 $unitCost = $unitCosts[$item['material_code']] ?? 0;
                 $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
-                DB::table('bom_items')->insert([
+                $bomItemId = DB::table('bom_items')->insertGetId([
                     'bom_header_id' => $headerId,
                     'material_id' => $material->id,
                     'material_code' => $material->internal_code,
@@ -188,7 +231,7 @@ class BOMController extends Controller
                     'material_type' => $item['material_type'],
                     'colour' => $item['colour'] ?? null,
                     'size' => $item['size'] ?? null,
-                    'size_rule' => $item['size_rule'] ?? 'all',
+                    'size_rule' => 'all',
                     'width' => $item['width'] ?? null,
                     'unit' => $material->unit,
                     'consumption_rate' => $item['consumption_rate'] ?? 0,
@@ -201,6 +244,7 @@ class BOMController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                $this->saveItemSizeMappings($bomItemId, $itemSizeMappings[$i] ?? []);
             }
 
             DB::commit();
@@ -223,10 +267,14 @@ class BOMController extends Controller
         $items = DB::table('bom_items')->where('bom_header_id', $id)->orderBy('sort_order')->get();
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
         $customers = $this->customers();
+        $itemSizeNames = DB::table('bom_item_customer_sizes')
+            ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
+            ->whereIn('bom_item_customer_sizes.bom_item_id', $items->pluck('id'))
+            ->select('bom_item_customer_sizes.bom_item_id', 'customer_sizes.size_name')->get()->groupBy('bom_item_id');
         $techPack = DB::table('tech_packs')->where('bom_header_id', $id)->first();
         $colorways = DB::table('bom_colorways')->join('bom_items', 'bom_colorways.bom_item_id', '=', 'bom_items.id')
             ->where('bom_items.bom_header_id', $id)->select('bom_colorways.*', 'bom_items.material_code', 'bom_items.material_name')->get();
-        return view('admin.bom.show', compact('bom', 'items', 'styles', 'customers', 'techPack', 'colorways'));
+        return view('admin.bom.show', compact('bom', 'items', 'styles', 'customers', 'techPack', 'colorways', 'itemSizeNames'));
     }
 
     public function clone(Request $request, $id)
@@ -260,6 +308,11 @@ class BOMController extends Controller
                             'material_color' => $colorway->material_color, 'notes' => $colorway->notes,
                             'created_at' => now(), 'updated_at' => now(),
                         ]);
+                    }
+                    if ((int) $customer['customer_id'] === (int) $source->customer_id) {
+                        foreach (DB::table('bom_item_customer_sizes')->where('bom_item_id', $item->id)->pluck('customer_size_id') as $customerSizeId) {
+                            $this->saveItemSizeMappings($newItemId, [(int) $customerSizeId]);
+                        }
                     }
                 }
                 return $cloneId;
@@ -331,7 +384,10 @@ class BOMController extends Controller
         $items = DB::table('bom_items')->where('bom_header_id', $id)->orderBy('sort_order')->get();
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
         $customers = $this->customers();
-        return view('admin.bom.edit', compact('bom', 'items', 'styles', 'customers'));
+        $customerSizes = $this->customerSizes();
+        $itemSizeMappings = DB::table('bom_item_customer_sizes')->whereIn('bom_item_id', $items->pluck('id'))
+            ->get()->groupBy('bom_item_id')->map(fn ($rows) => $rows->pluck('customer_size_id')->map(fn ($id) => (int) $id)->values());
+        return view('admin.bom.edit', compact('bom', 'items', 'styles', 'customers', 'customerSizes', 'itemSizeMappings'));
     }
 
     public function update(Request $request, $id)
@@ -355,13 +411,14 @@ class BOMController extends Controller
             'items.*.material_type' => 'required',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
-            'items.*.size_rule' => 'nullable|in:all,map_on_order',
             'items.*.width' => 'nullable|numeric',
             'items.*.unit' => 'nullable',
             'items.*.consumption_rate' => 'required|numeric|gt:0',
             'items.*.waste_percent' => 'nullable|numeric|min:0',
             'items.*.remark' => 'nullable',
+            'items.*.customer_size_ids' => 'nullable|array',
         ]);
+        $itemSizeSelections = $this->validatedItemSizeMappings($request);
 
         try {
             DB::beginTransaction();
@@ -401,13 +458,15 @@ class BOMController extends Controller
             ]);
 
             // Delete old items, re-insert
+            $oldItemIds = DB::table('bom_items')->where('bom_header_id', $id)->pluck('id');
+            DB::table('bom_item_customer_sizes')->whereIn('bom_item_id', $oldItemIds)->delete();
             DB::table('bom_items')->where('bom_header_id', $id)->delete();
 
             foreach ($request->items as $i => $item) {
                 $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
                 $unitCost = $unitCosts[$item['material_code']] ?? 0;
                 $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
-                DB::table('bom_items')->insert([
+                $bomItemId = DB::table('bom_items')->insertGetId([
                     'bom_header_id' => $id,
                     'material_id' => $material->id,
                     'material_code' => $material->internal_code,
@@ -415,7 +474,7 @@ class BOMController extends Controller
                     'material_type' => $item['material_type'],
                     'colour' => $item['colour'] ?? null,
                     'size' => $item['size'] ?? null,
-                    'size_rule' => $item['size_rule'] ?? 'all',
+                    'size_rule' => 'all',
                     'width' => $item['width'] ?? null,
                     'unit' => $material->unit,
                     'consumption_rate' => $item['consumption_rate'] ?? 0,
@@ -428,6 +487,7 @@ class BOMController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                $this->saveItemSizeMappings($bomItemId, $itemSizeSelections[$i] ?? []);
             }
 
             DB::commit();
@@ -447,6 +507,8 @@ class BOMController extends Controller
 
     public function destroy($id)
     {
+        $itemIds = DB::table('bom_items')->where('bom_header_id', $id)->pluck('id');
+        DB::table('bom_item_customer_sizes')->whereIn('bom_item_id', $itemIds)->delete();
         DB::table('bom_headers')->where('id', $id)->delete();
         return redirect()->route('admin.bom.index')
             ->with('success', 'BOM deleted successfully!');

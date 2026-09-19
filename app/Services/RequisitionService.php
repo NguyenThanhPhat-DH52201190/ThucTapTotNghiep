@@ -43,13 +43,15 @@ class RequisitionService
                     ]);
                     DB::table('bom_items')->where('id', $item->id)->update(['material_id' => $materialId, 'updated_at' => now()]);
                 }
-                $applicableQty = $order->Qty;
-                if (($bom->bom_kind ?? 'template') === 'order' && Schema::hasTable('bom_item_size_mappings')) {
-                    $applicableQty = DB::table('bom_item_size_mappings')
-                        ->join('order_sizes', 'bom_item_size_mappings.order_size_id', '=', 'order_sizes.id')
-                        ->where('bom_item_size_mappings.bom_item_id', $item->id)
-                        ->where('order_sizes.cutsheet_id', $order->id)->sum('order_sizes.quantity');
-                }
+                $mappedSizeNames = Schema::hasTable('bom_item_customer_sizes')
+                    ? DB::table('bom_item_customer_sizes')
+                        ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
+                        ->where('bom_item_customer_sizes.bom_item_id', $item->id)->pluck('customer_sizes.size_name')
+                    : collect();
+                $applicableQty = $mappedSizeNames->isEmpty()
+                    ? (float) $order->Qty
+                    : (float) DB::table('order_sizes')->where('cutsheet_id', $order->id)
+                        ->whereIn('size_name', $mappedSizeNames)->sum('quantity');
                 $qty = $applicableQty * $item->consumption_rate * (1 + ($item->waste_percent / 100));
                 $materialColor = DB::table('bom_colorways')->where('bom_item_id', $item->id)
                     ->where('garment_color', $order->Color)->value('material_color') ?? $item->colour;

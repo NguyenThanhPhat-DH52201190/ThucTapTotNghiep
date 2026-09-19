@@ -160,15 +160,18 @@ class MRPController extends Controller
 
                 foreach ($bomItems as $bom) {
                     $orderQty = (float) DB::table('ocs')->where('id', $mtp->cutsheet_id)->value('Qty');
-                    $mappedQty = $orderQty;
-                    if (Schema::hasTable('bom_item_size_mappings')) {
-                        $mappedQty = (float) DB::table('bom_item_size_mappings')
-                            ->join('order_sizes', 'bom_item_size_mappings.order_size_id', '=', 'order_sizes.id')
-                            ->where('bom_item_size_mappings.bom_item_id', $bom->id)
-                            ->where('order_sizes.cutsheet_id', $mtp->cutsheet_id)->sum('order_sizes.quantity');
-                    }
-                    $ratio = (($bomHeader->bom_kind ?? 'template') === 'order' && $orderQty > 0) ? $mappedQty / $orderQty : 1;
-                    $qty = ($mtp->Qty_dis ?? 0) * $ratio;
+                    $mappedSizeNames = Schema::hasTable('bom_item_customer_sizes')
+                        ? DB::table('bom_item_customer_sizes')
+                            ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
+                            ->where('bom_item_customer_sizes.bom_item_id', $bom->id)->pluck('customer_sizes.size_name')
+                        : collect();
+                    $applicableOrderQty = $mappedSizeNames->isEmpty()
+                        ? $orderQty
+                        : (float) DB::table('order_sizes')->where('cutsheet_id', $mtp->cutsheet_id)
+                            ->whereIn('size_name', $mappedSizeNames)->sum('quantity');
+                    $qty = $orderQty > 0
+                        ? (float) ($mtp->Qty_dis ?? 0) * ($applicableOrderQty / $orderQty)
+                        : 0;
                     $required = $qty * $bom->consumption_rate;
                     // Add waste
                     if ($bom->waste_percent > 0) {

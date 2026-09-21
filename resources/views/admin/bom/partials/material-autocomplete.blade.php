@@ -10,6 +10,10 @@
         pointer-events: none;
         background-color: var(--bs-secondary-bg);
     }
+
+    .material-master-input {
+        background-color: var(--bs-secondary-bg);
+    }
 </style>
 <script>
 (() => {
@@ -48,10 +52,12 @@
         input.value = material.internal_code;
         const row = input.closest('tr');
         const description = row?.querySelector('.material-description-input');
+        const category = row?.querySelector('.material-category-select');
         const colour = row?.querySelector('.material-colour-input');
         const size = row?.querySelector('.material-size-input');
         const unit = row?.querySelector('.material-unit-input');
         if (description) description.value = material.material_name;
+        if (category) category.value = String(material.category_id || '');
         if (colour) colour.value = material.color || '';
         if (size) size.value = material.size || '';
         if (unit) unit.value = material.unit || '';
@@ -110,6 +116,12 @@
         requestController?.abort();
 
         const query = input.value.trim();
+        const categoryId = row?.querySelector('.material-category-select')?.value;
+        if (!categoryId) {
+            closeSuggestions();
+            input.setCustomValidity('Please select Type before searching for a material code.');
+            return;
+        }
         if (!query) {
             closeSuggestions();
             input.setCustomValidity('');
@@ -119,7 +131,7 @@
         debounceTimer = setTimeout(async () => {
             requestController = new AbortController();
             try {
-                const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}`, {
+                const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}&category_id=${encodeURIComponent(categoryId)}`, {
                     headers: { Accept: 'application/json' },
                     signal: requestController.signal,
                 });
@@ -133,6 +145,14 @@
 
     document.addEventListener('focusout', event => {
         if (event.target.closest('.material-code-input')) setTimeout(closeSuggestions, 150);
+    });
+    document.addEventListener('change', event => {
+        const category = event.target.closest('.material-category-select');
+        if (!category) return;
+        const row = category.closest('tr');
+        ['.material-code-input', '.material-description-input', '.material-colour-input', '.material-size-input', '.material-unit-input']
+            .forEach(selector => { const field = row?.querySelector(selector); if (field) field.value = ''; });
+        closeSuggestions();
     });
     window.addEventListener('resize', closeSuggestions);
     document.addEventListener('scroll', closeSuggestions, true);

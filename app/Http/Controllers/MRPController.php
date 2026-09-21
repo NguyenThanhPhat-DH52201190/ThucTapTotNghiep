@@ -16,15 +16,8 @@ class MRPController extends Controller
         if (!empty($bom->material_id)) return (int) $bom->material_id;
 
         $material = DB::table('materials')->where('internal_code', $bom->material_code)->first();
-        $id = $material?->id ?? DB::table('materials')->insertGetId([
-            'internal_code' => $bom->material_code,
-            'material_name' => $bom->material_name,
-            'color' => $bom->colour,
-            'size' => $bom->size,
-            'unit' => $bom->unit,
-            'material_type' => $bom->material_type,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        if (!$material) throw new \RuntimeException("Material {$bom->material_code} does not exist in Material Master.");
+        $id = $material->id;
 
         DB::table('bom_items')->where('id', $bom->id)->update(['material_id' => $id, 'updated_at' => now()]);
         return (int) $id;
@@ -237,17 +230,9 @@ class MRPController extends Controller
                 $receiptDate = ($cutDates->first() ? \Carbon\Carbon::parse($cutDates->first()) : now()->addDays($leadTime))->format('Y-m-d');
                 $releaseDate = \Carbon\Carbon::parse($receiptDate)->subDays($leadTime)->format('Y-m-d');
 
-                // Backfill a master material for legacy BOM rows on first use.
                 $material = DB::table('materials')->where('internal_code', $req['material_code'])->first();
-                if (!$material) {
-                    $materialId = DB::table('materials')->insertGetId([
-                        'internal_code' => $req['material_code'], 'material_name' => $req['material_name'],
-                        'unit' => $req['unit'], 'material_type' => $req['material_type'],
-                        'created_at' => now(), 'updated_at' => now(),
-                    ]);
-                } else {
-                    $materialId = $material->id;
-                }
+                if (!$material) throw new \RuntimeException("Material {$req['material_code']} does not exist in Material Master.");
+                $materialId = $material->id;
 
                 $itemId = DB::table('mrp_items')->insertGetId([
                     'mrp_header_id' => $headerId,

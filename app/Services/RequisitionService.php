@@ -36,12 +36,7 @@ class RequisitionService
             foreach ($items as $item) {
                 $materialId = $item->material_id ?: DB::table('materials')->where('internal_code', $item->material_code)->value('id');
                 if (!$materialId) {
-                    $materialId = DB::table('materials')->insertGetId([
-                        'internal_code' => $item->material_code, 'material_name' => $item->material_name,
-                        'color' => $item->colour, 'size' => $item->size, 'unit' => $item->unit,
-                        'material_type' => $item->material_type, 'created_at' => now(), 'updated_at' => now(),
-                    ]);
-                    DB::table('bom_items')->where('id', $item->id)->update(['material_id' => $materialId, 'updated_at' => now()]);
+                    throw new RuntimeException("Material {$item->material_code} does not exist in Material Master.");
                 }
                 $mappedSizeNames = Schema::hasTable('bom_item_customer_sizes')
                     ? DB::table('bom_item_customer_sizes')

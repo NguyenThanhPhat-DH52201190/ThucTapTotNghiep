@@ -23,6 +23,26 @@ class BOMController extends Controller
             ->orderBy('customer_id')->orderBy('sort_order')->orderBy('size_name')->get()->groupBy('customer_id');
     }
 
+    private function materialCategories()
+    {
+        return DB::table('material_categories')->select('id', 'name', 'slug')->orderBy('name')->get();
+    }
+
+    private function validatedItemMaterials(Request $request): array
+    {
+        $result = [];
+        foreach ((array) $request->input('items', []) as $index => $item) {
+            $material = DB::table('materials')->where('internal_code', trim((string) ($item['material_code'] ?? '')))->first();
+            if (!$material || (int) $material->category_id !== (int) ($item['category_id'] ?? 0)) {
+                throw ValidationException::withMessages([
+                    "items.$index.material_code" => 'The selected material must belong to the selected Type.',
+                ]);
+            }
+            $result[$index] = $material;
+        }
+        return $result;
+    }
+
     private function validatedItemSizeMappings(Request $request): array
     {
         $customerId = $request->integer('customer_id');
@@ -136,17 +156,19 @@ class BOMController extends Controller
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
         $customers = $this->customers();
         $customerSizes = $this->customerSizes();
-        return view('admin.bom.create', compact('styles', 'customers', 'customerSizes'));
+        $materialCategories = $this->materialCategories();
+        return view('admin.bom.create', compact('styles', 'customers', 'customerSizes', 'materialCategories'));
     }
 
     public function materialSuggestions(Request $request)
     {
-        $data = $request->validate(['q' => 'required|string|min:1|max:100']);
+        $data = $request->validate(['q' => 'required|string|min:1|max:100', 'category_id' => 'required|integer|exists:material_categories,id']);
         $term = trim($data['q']);
 
         return response()->json(
             DB::table('materials')
-                ->select('id', 'internal_code', 'material_name', 'color', 'size', 'unit')
+                ->select('id', 'category_id', 'internal_code', 'material_name', 'material_type', 'color', 'size', 'unit')
+                ->where('category_id', $data['category_id'])
                 ->where('internal_code', 'like', '%' . $term . '%')
                 ->orderByRaw('CASE WHEN internal_code LIKE ? THEN 0 ELSE 1 END', [$term . '%'])
                 ->orderBy('internal_code')
@@ -168,7 +190,8 @@ class BOMController extends Controller
             'items' => 'required|array|min:1',
             'items.*.material_code' => 'required|string|max:191|exists:materials,internal_code',
             'items.*.material_name' => 'nullable|string|max:191',
-            'items.*.material_type' => 'required',
+            'items.*.material_type' => 'nullable',
+            'items.*.category_id' => 'required|integer|exists:material_categories,id',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
             'items.*.width' => 'nullable|numeric',
@@ -179,6 +202,7 @@ class BOMController extends Controller
             'items.*.customer_size_ids' => 'nullable|array',
         ]);
         $itemSizeMappings = $this->validatedItemSizeMappings($request);
+        $itemMaterials = $this->validatedItemMaterials($request);
 
         try {
             DB::beginTransaction();
@@ -188,10 +212,10 @@ class BOMController extends Controller
             $totalTrim = 0;
             $unitCosts = $this->defaultMaterialCosts($request->items);
 
-            foreach ($request->items as $item) {
+            foreach ($request->items as $i => $item) {
                 $unitCost = $unitCosts[$item['material_code']] ?? 0;
                 $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
-                $type = $item['material_type'] ?? 'other';
+                $type = $itemMaterials[$i]->material_type ?? 'other';
                 if (in_array($type, ['fabric', 'lining', 'pocket'])) {
                     $totalFabric += $totalCost;
                 } else {
@@ -220,7 +244,7 @@ class BOMController extends Controller
             ]);
 
             foreach ($request->items as $i => $item) {
-                $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
+                $material = $itemMaterials[$i];
                 $unitCost = $unitCosts[$item['material_code']] ?? 0;
                 $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
                 $bomItemId = DB::table('bom_items')->insertGetId([
@@ -228,9 +252,9 @@ class BOMController extends Controller
                     'material_id' => $material->id,
                     'material_code' => $material->internal_code,
                     'material_name' => $material->material_name,
-                    'material_type' => $item['material_type'],
-                    'colour' => $item['colour'] ?? null,
-                    'size' => $item['size'] ?? null,
+                    'material_type' => $material->material_type,
+                    'colour' => $material->color,
+                    'size' => $material->size,
                     'size_rule' => 'all',
                     'width' => $item['width'] ?? null,
                     'unit' => $material->unit,
@@ -385,9 +409,12 @@ class BOMController extends Controller
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
         $customers = $this->customers();
         $customerSizes = $this->customerSizes();
+        $materialCategories = $this->materialCategories();
+        $materialCategoryIds = DB::table('materials')->whereIn('id', $items->pluck('material_id')->filter())
+            ->pluck('category_id', 'id');
         $itemSizeMappings = DB::table('bom_item_customer_sizes')->whereIn('bom_item_id', $items->pluck('id'))
             ->get()->groupBy('bom_item_id')->map(fn ($rows) => $rows->pluck('customer_size_id')->map(fn ($id) => (int) $id)->values());
-        return view('admin.bom.edit', compact('bom', 'items', 'styles', 'customers', 'customerSizes', 'itemSizeMappings'));
+        return view('admin.bom.edit', compact('bom', 'items', 'styles', 'customers', 'customerSizes', 'itemSizeMappings', 'materialCategories', 'materialCategoryIds'));
     }
 
     public function update(Request $request, $id)
@@ -408,7 +435,8 @@ class BOMController extends Controller
             'items' => 'required|array|min:1',
             'items.*.material_code' => 'required|string|max:191|exists:materials,internal_code',
             'items.*.material_name' => 'nullable|string|max:191',
-            'items.*.material_type' => 'required',
+            'items.*.material_type' => 'nullable',
+            'items.*.category_id' => 'required|integer|exists:material_categories,id',
             'items.*.colour' => 'nullable',
             'items.*.size' => 'nullable',
             'items.*.width' => 'nullable|numeric',
@@ -419,6 +447,7 @@ class BOMController extends Controller
             'items.*.customer_size_ids' => 'nullable|array',
         ]);
         $itemSizeSelections = $this->validatedItemSizeMappings($request);
+        $itemMaterials = $this->validatedItemMaterials($request);
 
         try {
             DB::beginTransaction();
@@ -429,10 +458,10 @@ class BOMController extends Controller
                 ->pluck('unit_cost', 'material_code')->map(fn ($cost) => (float) $cost)->all();
             $unitCosts = $this->defaultMaterialCosts($request->items, $existingCosts);
 
-            foreach ($request->items as $item) {
+            foreach ($request->items as $i => $item) {
                 $unitCost = $unitCosts[$item['material_code']] ?? 0;
                 $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
-                $type = $item['material_type'] ?? 'other';
+                $type = $itemMaterials[$i]->material_type ?? 'other';
                 if (in_array($type, ['fabric', 'lining', 'pocket'])) {
                     $totalFabric += $totalCost;
                 } else {
@@ -463,7 +492,7 @@ class BOMController extends Controller
             DB::table('bom_items')->where('bom_header_id', $id)->delete();
 
             foreach ($request->items as $i => $item) {
-                $material = DB::table('materials')->where('internal_code', $item['material_code'])->first();
+                $material = $itemMaterials[$i];
                 $unitCost = $unitCosts[$item['material_code']] ?? 0;
                 $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
                 $bomItemId = DB::table('bom_items')->insertGetId([
@@ -471,9 +500,9 @@ class BOMController extends Controller
                     'material_id' => $material->id,
                     'material_code' => $material->internal_code,
                     'material_name' => $material->material_name,
-                    'material_type' => $item['material_type'],
-                    'colour' => $item['colour'] ?? null,
-                    'size' => $item['size'] ?? null,
+                    'material_type' => $material->material_type,
+                    'colour' => $material->color,
+                    'size' => $material->size,
                     'size_rule' => 'all',
                     'width' => $item['width'] ?? null,
                     'unit' => $material->unit,
@@ -617,6 +646,7 @@ class BOMController extends Controller
         }
 
         $parsedItems = [];
+        $missingMaterialCodes = [];
         for ($i = $headerRow + 1; $i < count($rows); $i++) {
             $row = $rows[$i];
             // Skip empty rows
@@ -632,26 +662,21 @@ class BOMController extends Controller
                 'consumption_rate' => is_numeric($row[$colMap['consumption_rate']] ?? '') ? (float)$row[$colMap['consumption_rate']] : 0,
                 'remark' => $row[$colMap['remark']] ?? '',
                 'material_type' => 'other',
+                'category_id' => null,
             ];
 
             if (!empty($item['material_code'])) {
-                // Auto-detect material type from code or description
-                $code = strtolower($item['material_code']);
-                $desc = strtolower($item['material_name']);
-                if (strpos($code, 'v-') !== false || strpos($code, 'fabric') !== false || strpos($desc, 'vải') !== false) {
-                    $item['material_type'] = 'fabric';
-                } elseif (strpos($code, 'lót') !== false || strpos($desc, 'lót') !== false || strpos($code, 'lining') !== false) {
-                    $item['material_type'] = 'lining';
-                } elseif (strpos($code, 'zip') !== false || strpos($code, 'yk') !== false || strpos($desc, 'dây kéo') !== false || strpos($desc, 'khóa') !== false) {
-                    $item['material_type'] = 'zipper';
-                } elseif (strpos($code, 'chỉ') !== false || strpos($desc, 'chỉ') !== false || strpos($code, 'thread') !== false) {
-                    $item['material_type'] = 'thread';
-                } elseif (strpos($desc, 'nhãn') !== false || strpos($code, 'label') !== false) {
-                    $item['material_type'] = 'label';
-                } elseif (strpos($desc, 'thun') !== false || strpos($code, 'elastic') !== false) {
-                    $item['material_type'] = 'elastic';
+                $material = DB::table('materials')->where('internal_code', trim($item['material_code']))->first();
+                if ($material) {
+                    $item['material_code'] = $material->internal_code;
+                    $item['material_name'] = $material->material_name;
+                    $item['material_type'] = $material->material_type;
+                    $item['category_id'] = $material->category_id;
+                    $item['colour'] = $material->color;
+                    $item['size'] = $material->size;
+                    $item['unit'] = $material->unit;
                 } else {
-                    $item['material_type'] = 'trim';
+                    $missingMaterialCodes[] = trim($item['material_code']);
                 }
 
                 $parsedItems[] = $item;
@@ -660,6 +685,10 @@ class BOMController extends Controller
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet);
+
+        if ($missingMaterialCodes) {
+            return back()->with('error', 'These material codes do not exist in Material Master: ' . implode(', ', array_unique($missingMaterialCodes)));
+        }
 
         return view('admin.bom.import-preview', [
             'parsedItems' => $parsedItems,

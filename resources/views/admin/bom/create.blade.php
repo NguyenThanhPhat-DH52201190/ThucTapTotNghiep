@@ -116,6 +116,13 @@
 <script>
 let itemCount = 0;
 const customerSizes = @json($customerSizes);
+const materialCategories = @json($materialCategories);
+
+function materialCategoryOptions(selected = '') {
+    return `<option value="">Select type</option>` + materialCategories.map(category =>
+        `<option value="${category.id}" ${String(selected) === String(category.id) ? 'selected' : ''}>${category.name}</option>`
+    ).join('');
+}
 
 function productSizeOptions(selected = []) {
     const customerId = document.getElementById('customer_id').value;
@@ -132,19 +139,6 @@ function refreshProductSizes() {
     });
 }
 
-const materialTypes = [
-    { value: 'fabric', label: 'Fabric (Vải chính)' },
-    { value: 'lining', label: 'Lining (Vải lót)' },
-    { value: 'pocket', label: 'Pocket (Túi)' },
-    { value: 'trim', label: 'Trim (Phụ liệu)' },
-    { value: 'thread', label: 'Thread (Chỉ)' },
-    { value: 'zipper', label: 'Zipper (Dây kéo)' },
-    { value: 'label', label: 'Label (Nhãn)' },
-    { value: 'elastic', label: 'Elastic (Thun)' },
-    { value: 'interlining', label: 'Interlining (Keo)' },
-    { value: 'other', label: 'Other (Khác)' },
-];
-
 function addItem(data = {}) {
     itemCount++;
     const i = itemCount;
@@ -152,10 +146,8 @@ function addItem(data = {}) {
         <tr id="itemRow${i}">
             <td class="text-center">${i}</td>
             <td>
-                <select name="items[${i}][material_type]" class="form-select form-select-sm">
-                    ${materialTypes.map(t =>
-                        `<option value="${t.value}" ${(data.type || 'fabric') === t.value ? 'selected' : ''}>${t.label}</option>`
-                    ).join('')}
+                <select name="items[${i}][category_id]" class="form-select form-select-sm material-category-select" required>
+                    ${materialCategoryOptions(data.categoryId || '')}
                 </select>
             </td>
             <td>
@@ -167,12 +159,12 @@ function addItem(data = {}) {
                        value="${data.name || ''}" placeholder="Selected material name" readonly>
             </td>
             <td>
-                <input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input"
-                       value="${data.colour || ''}" placeholder="Colour">
+                <input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input material-master-input"
+                       value="${data.colour || ''}" placeholder="Colour" readonly>
             </td>
             <td>
-                <input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input"
-                       value="${data.size || ''}" placeholder="Size">
+                <input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input material-master-input"
+                       value="${data.size || ''}" placeholder="Size" readonly>
             </td>
             <td>
                 <select multiple name="items[${i}][customer_size_ids][]" class="form-select form-select-sm product-size-select" title="Leave All selected when this material is used by every product size">

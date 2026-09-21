@@ -225,12 +225,14 @@ class ProcurementController extends Controller
             $totalAmount = 0;
             $poItems = [];
             foreach ($request->items as $item) {
+                $material = DB::table('materials')->find($item['material_id']);
+                if (!$material) throw new \RuntimeException('Selected material no longer exists in Material Master.');
                 $totalPrice = ($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0);
                 $totalAmount += $totalPrice;
                 $poItems[] = [
-                    'material_code' => $item['material_code'],
-                    'material_name' => $item['material_name'],
-                    'unit' => $item['unit'] ?? 'M',
+                    'material_code' => $material->internal_code,
+                    'material_name' => $material->material_name,
+                    'unit' => $material->unit,
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'] ?? 0,
                     'total_price' => $totalPrice,
@@ -442,16 +444,18 @@ class ProcurementController extends Controller
         $totalAmount = 0;
         $items = [];
         foreach ($requestItems as $item) {
+            $material = DB::table('materials')->find($item['material_id']);
+            if (!$material) throw new \RuntimeException('Selected material no longer exists in Material Master.');
             $totalPrice = (float) $item['quantity'] * (float) ($item['unit_price'] ?? 0);
             $totalAmount += $totalPrice;
             $items[] = [
-                'po_id' => $poId, 'material_code' => $item['material_code'],
-                'material_name' => $item['material_name'], 'unit' => $item['unit'],
+                'po_id' => $poId, 'material_code' => $material->internal_code,
+                'material_name' => $material->material_name, 'unit' => $material->unit,
                 'quantity' => $item['quantity'], 'received_qty' => 0,
                 'unit_price' => $item['unit_price'] ?? 0, 'total_price' => $totalPrice,
                 'expected_date' => $item['expected_date'] ?? null, 'notes' => $item['notes'] ?? null,
                 'mrp_suggestion_id' => $item['mrp_suggestion_id'] ?? null,
-                'material_id' => $item['material_id'] ?? null, 'status' => 'pending',
+                'material_id' => $material->id, 'status' => 'pending',
                 'created_at' => now(), 'updated_at' => now(),
             ];
         }

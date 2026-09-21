@@ -102,16 +102,17 @@
                         <tr id="itemRow{{ $i }}">
                             <td class="text-center">{{ $i + 1 }}</td>
                             <td>
-                                <select name="items[{{ $i }}][material_type]" class="form-select form-select-sm">
-                                    @foreach(['fabric','lining','pocket','trim','thread','zipper','label','elastic','interlining','other'] as $type)
-                                        <option value="{{ $type }}" {{ $item->material_type === $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
+                                <select name="items[{{ $i }}][category_id]" class="form-select form-select-sm material-category-select" required>
+                                    <option value="">Select type</option>
+                                    @foreach($materialCategories as $category)
+                                        <option value="{{ $category->id }}" @selected((string) ($materialCategoryIds[$item->material_id] ?? '') === (string) $category->id)>{{ $category->name }}</option>
                                     @endforeach
                                 </select>
                             </td>
                             <td><input type="text" name="items[{{ $i }}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="{{ $item->material_code }}"></td>
                             <td><input type="text" name="items[{{ $i }}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="{{ $item->material_name }}"></td>
-                            <td><input type="text" name="items[{{ $i }}][colour]" class="form-control form-control-sm material-colour-input" value="{{ $item->colour }}"></td>
-                            <td><input type="text" name="items[{{ $i }}][size]" class="form-control form-control-sm material-size-input" value="{{ $item->size }}"></td>
+                            <td><input type="text" name="items[{{ $i }}][colour]" class="form-control form-control-sm material-colour-input material-master-input" value="{{ $item->colour }}" readonly></td>
+                            <td><input type="text" name="items[{{ $i }}][size]" class="form-control form-control-sm material-size-input material-master-input" value="{{ $item->size }}" readonly></td>
                             <td>
                                 @php($selectedSizes = ($itemSizeMappings[$item->id] ?? collect())->map(fn($id) => (string) $id))
                                 <select multiple name="items[{{ $i }}][customer_size_ids][]" class="form-select form-select-sm product-size-select">
@@ -148,6 +149,13 @@
 <script>
 let itemCount = {{ count($items) }};
 const customerSizes = @json($customerSizes);
+const materialCategories = @json($materialCategories);
+
+function materialCategoryOptions(selected = '') {
+    return `<option value="">Select type</option>` + materialCategories.map(category =>
+        `<option value="${category.id}" ${String(selected) === String(category.id) ? 'selected' : ''}>${category.name}</option>`
+    ).join('');
+}
 
 function productSizeOptions(selected = []) {
     const customerId = document.getElementById('customer_id').value;
@@ -162,19 +170,6 @@ function refreshProductSizes() {
     document.querySelectorAll('.product-size-select').forEach(select => select.innerHTML = productSizeOptions([]));
 }
 
-const materialTypes = [
-    { value: 'fabric', label: 'Fabric (Vải chính)' },
-    { value: 'lining', label: 'Lining (Vải lót)' },
-    { value: 'pocket', label: 'Pocket (Túi)' },
-    { value: 'trim', label: 'Trim (Phụ liệu)' },
-    { value: 'thread', label: 'Thread (Chỉ)' },
-    { value: 'zipper', label: 'Zipper (Dây kéo)' },
-    { value: 'label', label: 'Label (Nhãn)' },
-    { value: 'elastic', label: 'Elastic (Thun)' },
-    { value: 'interlining', label: 'Interlining (Keo)' },
-    { value: 'other', label: 'Other (Khác)' },
-];
-
 function addItem(data = {}) {
     itemCount++;
     const i = itemCount;
@@ -182,14 +177,14 @@ function addItem(data = {}) {
         <tr id="itemRow${i}">
             <td class="text-center">${i}</td>
             <td>
-                <select name="items[${i}][material_type]" class="form-select form-select-sm">
-                    ${materialTypes.map(t => `<option value="${t.value}" ${(data.type || 'fabric') === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}
+                <select name="items[${i}][category_id]" class="form-select form-select-sm material-category-select" required>
+                    ${materialCategoryOptions(data.categoryId || '')}
                 </select>
             </td>
             <td><input type="text" name="items[${i}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="${data.code || ''}" placeholder="Type to search Material Master"></td>
             <td><input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="${data.name || ''}" placeholder="Selected material name"></td>
-            <td><input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input" value="${data.colour || ''}"></td>
-            <td><input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input" value="${data.size || ''}"></td>
+            <td><input type="text" name="items[${i}][colour]" class="form-control form-control-sm material-colour-input material-master-input" value="${data.colour || ''}" readonly></td>
+            <td><input type="text" name="items[${i}][size]" class="form-control form-control-sm material-size-input material-master-input" value="${data.size || ''}" readonly></td>
             <td>
                 <select multiple name="items[${i}][customer_size_ids][]" class="form-select form-select-sm product-size-select">
                     ${productSizeOptions(data.customerSizeIds || [])}

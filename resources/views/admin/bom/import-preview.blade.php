@@ -89,11 +89,9 @@
                                 {{ $item['material_name'] }}
                             </td>
                             <td>
-                                <select name="items[{{ $i }}][material_type]" class="form-select form-select-sm" style="min-width:120px">
-                                    @foreach(['fabric','lining','pocket','trim','thread','zipper','label','elastic','interlining','other'] as $type)
-                                        <option value="{{ $type }}" {{ $item['material_type'] === $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
-                                    @endforeach
-                                </select>
+                                <input type="hidden" name="items[{{ $i }}][material_type]" value="{{ $item['material_type'] }}">
+                                <input type="hidden" name="items[{{ $i }}][category_id]" value="{{ $item['category_id'] }}">
+                                {{ ucfirst($item['material_type']) }}
                             </td>
                             <td>
                                 <input type="hidden" name="items[{{ $i }}][colour]" value="{{ $item['colour'] }}">
@@ -108,11 +106,8 @@
                                 {{ $item['width'] ?: '-' }}
                             </td>
                             <td>
-                                <select name="items[{{ $i }}][unit]" class="form-select form-select-sm" style="min-width:70px">
-                                    @foreach(['M','YD','KG','PCS','SET','PR','ROLL'] as $unit)
-                                        <option value="{{ $unit }}" {{ $item['unit'] === $unit ? 'selected' : '' }}>{{ $unit }}</option>
-                                    @endforeach
-                                </select>
+                                <input type="hidden" name="items[{{ $i }}][unit]" value="{{ $item['unit'] }}">
+                                {{ $item['unit'] }}
                             </td>
                             <td>
                                 <input type="number" step="0.0001" min="0.0001" name="items[{{ $i }}][consumption_rate]" class="form-control form-control-sm" required

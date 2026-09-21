@@ -125,7 +125,14 @@ class MasterDataController extends Controller
     public function updateMaterial(Request $request, int $id)
     {
         $data = $this->materialData($request, $id);
-        DB::table('materials')->where('id', $id)->update($data + ['updated_at' => now()]);
+        DB::transaction(function () use ($id, $data) {
+            DB::table('materials')->where('id', $id)->update($data + ['updated_at' => now()]);
+            DB::table('bom_items')->where('material_id', $id)->update([
+                'material_code' => $data['internal_code'], 'material_name' => $data['material_name'],
+                'material_type' => $data['material_type'], 'colour' => $data['color'] ?? null,
+                'size' => $data['size'] ?? null, 'unit' => $data['unit'], 'updated_at' => now(),
+            ]);
+        });
         return back()->with('success', 'Material updated.');
     }
 
@@ -143,7 +150,9 @@ class MasterDataController extends Controller
         $slug = $this->uniqueCategorySlug($data['name'], $id);
         DB::transaction(function () use ($id, $data, $slug) {
             DB::table('material_categories')->where('id', $id)->update(['name' => $data['name'], 'slug' => $slug, 'updated_at' => now()]);
+            $materialIds = DB::table('materials')->where('category_id', $id)->pluck('id');
             DB::table('materials')->where('category_id', $id)->update(['material_type' => $slug, 'updated_at' => now()]);
+            DB::table('bom_items')->whereIn('material_id', $materialIds)->update(['material_type' => $slug, 'updated_at' => now()]);
         });
         return back()->with('success', 'Category updated.');
     }

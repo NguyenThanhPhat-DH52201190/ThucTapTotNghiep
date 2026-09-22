@@ -18,6 +18,7 @@ use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\AuditTrailController;
 use App\Http\Controllers\NormController;
+use App\Http\Controllers\StockRecordController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -137,6 +138,7 @@ Route::middleware('auth')->group(function () {
         Route::get('master-data/customer-sizes', [MasterDataController::class, 'customerSizes'])->name('master-data.customer-sizes');
         Route::put('master-data/customer-sizes/{id}', [MasterDataController::class, 'saveCustomerSizes'])->name('master-data.customer-sizes.save');
         Route::get('master-data/materials', [MasterDataController::class, 'materials'])->name('master-data.materials');
+        Route::get('master-data/materials/{id}/image', [MasterDataController::class, 'materialImage'])->name('master-data.material-image');
         Route::post('master-data/materials', [MasterDataController::class, 'storeMaterial'])->name('master-data.materials.store');
         Route::patch('master-data/materials/{id}', [MasterDataController::class, 'updateMaterial'])->name('master-data.materials.update');
         Route::post('master-data/material-categories', [MasterDataController::class, 'storeMaterialCategory'])->name('master-data.material-categories.store');
@@ -155,6 +157,7 @@ Route::middleware('auth')->group(function () {
 
         // OCS
         Route::resource('ocs', OCSController::class)->except(['show']);
+        Route::get('ocs/{id}/image', [OCSController::class, 'image'])->name('ocs.image');
         Route::patch('ocs/{id}/status', [OCSController::class, 'updateStatus'])->name('ocs.status');
         Route::get('ocs/{id}/material-requirements', [OCSController::class, 'materialRequirements'])->name('ocs.material-requirements');
         Route::get('ocs/{id}/material-requirements/export', [OCSController::class, 'exportMaterialRequirements'])->name('ocs.material-requirements.export');
@@ -186,6 +189,7 @@ Route::middleware('auth')->group(function () {
         Route::post('bom/{bom}/tech-pack', [BOMController::class, 'saveTechPack'])->name('bom.tech-pack.save');
         Route::post('bom/{bom}/colorways', [BOMController::class, 'saveColorways'])->name('bom.colorways.save');
         Route::resource('bom', BOMController::class);
+        Route::get('bom/{id}/image', [BOMController::class, 'image'])->name('bom.image');
 
         // Shop Floor Control
         Route::get('shopfloor/dashboard', [ShopFloorController::class, 'dashboard'])->name('shopfloor.dashboard');
@@ -216,6 +220,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('mrp', MRPController::class)->except(['store', 'edit', 'update']);
 
         // Procurement
+        Route::post('procurement/{id}/pdf', [\App\Http\Controllers\PurchaseOrderPdfController::class, 'export'])->name('procurement.pdf');
         Route::get('procurement/suppliers', [ProcurementController::class, 'suppliers'])->name('procurement.suppliers');
         Route::post('procurement/suppliers', [ProcurementController::class, 'suppliersStore'])->name('procurement.suppliers.store');
         Route::patch('procurement/suppliers/{id}', [ProcurementController::class, 'supplierUpdate'])->name('procurement.suppliers.update');
@@ -228,6 +233,11 @@ Route::middleware('auth')->group(function () {
         Route::resource('procurement', ProcurementController::class)->except(['store']);
 
         // Inventory
+        Route::get('stock-records', [StockRecordController::class, 'index'])->name('stock-records.index');
+        Route::post('stock-records/sync', [StockRecordController::class, 'sync'])->name('stock-records.sync');
+        Route::get('stock-records/{id}', [StockRecordController::class, 'show'])->name('stock-records.show');
+        Route::patch('stock-records/{id}/position', [StockRecordController::class, 'position'])->name('stock-records.position');
+        Route::put('stock-records/{id}/priorities', [StockRecordController::class, 'priorities'])->name('stock-records.priorities');
         Route::get('inventory/warehouses', [InventoryController::class, 'warehouses'])->name('inventory.warehouses');
         Route::post('inventory/warehouses', [InventoryController::class, 'warehousesStore'])->name('inventory.warehouses.store');
         Route::patch('inventory/warehouses/{id}', [InventoryController::class, 'warehouseUpdate'])->name('inventory.warehouses.update');

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -37,7 +38,36 @@ class OCSController extends Controller
             'sizes' => 'required|array|min:1',
             'sizes.*.size_name' => 'required|string|max:50|distinct',
             'sizes.*.quantity' => 'required|integer|min:0',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
         ];
+    }
+
+    private function storeImage(Request $request): ?string
+    {
+        if (!$request->hasFile('image')) return null;
+        $path = $request->file('image')->store('ocs-images', 'local');
+        if (!$path) throw new \RuntimeException('Unable to store the OCS image.');
+        return $path;
+    }
+
+    private function deleteImage(?string $path): void
+    {
+        if (!$path) return;
+        try {
+            Storage::disk('local')->delete($path);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to remove OCS image', ['path' => $path, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function image(string $id)
+    {
+        $path = DB::table('ocs')->where('id', $id)->value('image_path');
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+        return Storage::disk('local')->response($path, null, [
+            'Cache-Control' => 'private, no-cache',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function validateSizeTotal(Request $request): void
@@ -163,14 +193,17 @@ class OCSController extends Controller
         $this->validateSizeTotal($request);
         $this->validateCustomerSizes($request);
         $this->validateBomForOrder($request);
+        $imagePath = null;
         try {
-            [$orderId, $mappingStatus] = DB::transaction(function () use ($request, $requisitions) {
+            $imagePath = $this->storeImage($request);
+            [$orderId, $mappingStatus] = DB::transaction(function () use ($request, $requisitions, $imagePath) {
                 $orderId = DB::table('ocs')->insertGetId([
                     'CS' => $request->CS, 'CsDate' => $request->CsDate, 'SNo' => $request->SNo,
                     'Sname' => $request->Sname, 'Customer' => $request->Customer, 'customer_id' => $request->customer_id, 'Color' => $request->Color,
                     'ONum' => $request->ONum, 'CMT' => $request->CMT, 'Qty' => $request->Qty,
                     'order_type' => $request->order_type, 'material_ownership' => $request->material_ownership, 'unit_price' => $request->unit_price ?? 0,
                     'status' => 'pending', 'bom_header_id' => null,
+                    'image_path' => $imagePath,
                     'expected_ship_date' => $request->expected_ship_date, 'priority' => $request->priority ?? 'medium',
                     'order_notes' => $request->order_notes, 'created_at' => now(), 'updated_at' => now(),
                 ]);
@@ -187,6 +220,7 @@ class OCSController extends Controller
             }
             return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown saved successfully.');
         } catch (\Throwable $e) {
+            $this->deleteImage($imagePath);
             Log::error('Failed to create OCS order', ['message' => $e->getMessage()]);
             return back()->withInput()->with('error', 'Unable to save the order. Please try again.');
         }
@@ -246,7 +280,7 @@ class OCSController extends Controller
     public function edit(string $id)
     {
         $order = DB::table('ocs')->where('id', $id)->first();
-        if ($this->isLocked($order)) return redirect()->route('admin.ocs.index')->with('error', 'Confirmed, in-production, or completed orders are locked.');
+        abort_if(!$order, 404);
         $boms = DB::table('bom_headers')->where('status', 'active')->where('bom_kind', 'template')->orderBy('style_no')->get();
         $assignedBom = $order->bom_header_id ? DB::table('bom_headers')->find($order->bom_header_id) : null;
         $order->selected_template_id = $assignedBom?->template_id ?: $order->bom_header_id;
@@ -265,18 +299,19 @@ class OCSController extends Controller
                 ->with('error', 'Record not found.');
         }
 
-        if ($this->isLocked($currentOrder)) return back()->with('error', 'Confirmed, in-production, or completed orders cannot be changed.');
         $request->validate($this->orderRules((int) $id));
         $this->validateSizeTotal($request);
         $this->validateCustomerSizes($request);
         $this->validateBomForOrder($request);
         try {
-            $mappingStatus = DB::transaction(function () use ($request, $id, $requisitions, $currentOrder) {
+            $imagePath = $this->storeImage($request);
+            $mappingStatus = DB::transaction(function () use ($request, $id, $requisitions, $currentOrder, $imagePath) {
                 DB::table('ocs')->where('id', $id)->update([
                     'CS' => $request->CS, 'CsDate' => $request->CsDate, 'SNo' => $request->SNo, 'Sname' => $request->Sname,
                     'Customer' => $request->Customer, 'customer_id' => $request->customer_id, 'Color' => $request->Color, 'ONum' => $request->ONum, 'CMT' => $request->CMT,
                     'order_type' => $request->order_type, 'material_ownership' => $request->material_ownership, 'unit_price' => $request->unit_price ?? 0,
-                    'Qty' => $request->Qty, 'bom_header_id' => null,
+                    'Qty' => $request->Qty,
+                    'image_path' => $imagePath ?? $currentOrder->image_path,
                     'expected_ship_date' => $request->expected_ship_date, 'priority' => $request->priority ?? 'medium',
                     'order_notes' => $request->order_notes, 'updated_at' => now(),
                 ]);
@@ -285,6 +320,12 @@ class OCSController extends Controller
                     'cutsheet_id' => $id, 'size_name' => $size['size_name'], 'quantity' => $size['quantity'],
                     'created_at' => now(), 'updated_at' => now(),
                 ])->all());
+                $assignedBom = $currentOrder->bom_header_id
+                    ? DB::table('bom_headers')->find($currentOrder->bom_header_id) : null;
+                // Keep the order's customized BOM and item references when only order details change.
+                if ($assignedBom && (int) ($assignedBom->template_id ?: $assignedBom->id) === $request->integer('bom_header_id')) {
+                    return $assignedBom->mapping_status;
+                }
                 [, $mappingStatus] = $this->createOrderBom((int) $id, $request->integer('bom_header_id') ?: null, $request->user()?->id);
                 if ($currentOrder->bom_header_id) {
                     $oldItemIds = DB::table('bom_items')->where('bom_header_id', $currentOrder->bom_header_id)->pluck('id');
@@ -293,6 +334,7 @@ class OCSController extends Controller
                 }
                 return $mappingStatus;
             });
+            if ($imagePath) $this->deleteImage($currentOrder->image_path);
             if ($request->filled('bom_header_id')) {
                 return redirect()->route('admin.norm.materials.show', $id)
                     ->with('success', 'OCS and material requirements updated successfully.');
@@ -300,6 +342,7 @@ class OCSController extends Controller
             return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown updated successfully.');
         } catch (\Throwable $e) {
             Log::error('Failed to update OCS order', ['message' => $e->getMessage(), 'id' => $id]);
+            $this->deleteImage($imagePath ?? null);
             return back()->withInput()->with('error', 'Unable to update the order. Please try again.');
         }
         /*
@@ -377,6 +420,7 @@ class OCSController extends Controller
                     ->with('error', 'Record not found.');
             }
 
+            $this->deleteImage($order->image_path ?? null);
             return redirect()->route('admin.ocs.index')
                 ->with('success', 'Deleted successfully');
         } catch (\Throwable $e) {

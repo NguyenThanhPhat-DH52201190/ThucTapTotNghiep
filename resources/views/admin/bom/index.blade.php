@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'BOM & Tech Pack')
 @section('content')
+@include('admin.partials.image-popover')
 
 @php $canManage = auth()->user()->role === 'admin'; @endphp
 
@@ -89,7 +90,15 @@
                 <tbody>
                     @forelse($boms as $bom)
                         <tr>
-                            <td><strong>{{ $bom->style_no }}</strong></td>
+                            <td>
+                                @if(!empty($bom->image_path))
+                                    <button type="button" class="order-image-trigger border-0 bg-transparent p-0 fw-bold text-start"
+                                            data-image-url="{{ route('admin.bom.image', $bom->id, false) }}"
+                                            aria-label="View image for {{ $bom->style_no }}">{{ $bom->style_no }}</button>
+                                @else
+                                    <strong>{{ $bom->style_no }}</strong>
+                                @endif
+                            </td>
                             <td>{{ $bom->style_name }}</td>
                             <td>{{ $bom->customer }}</td>
                             <td><span class="badge bg-secondary">{{ $bom->version }}</span></td>

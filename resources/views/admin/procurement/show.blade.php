@@ -2,8 +2,10 @@
 @section('title', 'PO - ' . $po->po_number)
 @section('content')
 @php $canManage = auth()->user()->role === 'admin'; @endphp
+@include('admin.procurement.partials.pdf-modal')
 
 <div class="container-fluid px-0">
+    @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}</div>
     @endif
@@ -15,6 +17,7 @@
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold"><i class="bi bi-receipt me-2"></i>{{ $po->po_number }}</h5>
             <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
                 @if($canManage && !in_array($po->status, ['partial', 'received']))
                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Edit</a>
                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
@@ -130,17 +133,27 @@
 </div>
 
 @if($canManage && in_array($po->status, ['confirmed', 'partial']))
-<div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-lg"><form method="POST" action="{{ route('admin.procurement.receipts.store', $po->id) }}" class="modal-content">@csrf
+<div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form id="receiveForm" method="POST" action="{{ route('admin.procurement.receipts.store', $po->id) }}" class="modal-content">@csrf
     <div class="modal-header"><h5 class="modal-title">Receive goods</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
         <div class="row g-3 mb-3"><div class="col-md-3"><label class="form-label">Receipt date</label><input type="date" name="received_date" class="form-control" value="{{ now()->toDateString() }}" required></div><div class="col-md-4"><label class="form-label">Warehouse</label><select name="warehouse_id" class="form-select" required><option value="">Select warehouse</option>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->code }} — {{ $warehouse->name }}</option>@endforeach</select></div><div class="col-md-5"><label class="form-label">Delivery reference</label><input name="reference_number" class="form-control"></div><div class="col-md-6"><label class="form-label">Location</label><select name="location_id" class="form-select" required><option value="">Select location</option>@foreach($locations as $location)<option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}">{{ $location->location_code }}{{ $location->location_name ? ' — '.$location->location_name : '' }}</option>@endforeach</select><small class="text-muted">Location must belong to the selected warehouse.</small></div></div>
-        <table class="table table-sm"><thead><tr><th>Material</th><th>Remaining</th><th>Color</th><th>Size</th><th>Lot/Roll</th><th>Receive qty</th></tr></thead><tbody>
+        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Material</th><th>Remaining</th><th>Color</th><th>Size</th><th>Lot No</th><th>Roll No</th><th>Receive qty</th><th></th></tr></thead><tbody id="receiptRows">
         @foreach($items as $item)
             @if($item->quantity > $item->received_qty)
-            <tr><td>{{ $item->material_code }} - {{ $item->material_name }}<input type="hidden" name="items[{{ $item->id }}][po_item_id]" value="{{ $item->id }}"></td><td>{{ number_format($item->quantity - $item->received_qty, 2) }}</td><td><input name="items[{{ $item->id }}][material_color]" class="form-control" value="{{ $item->color }}" required></td><td><input name="items[{{ $item->id }}][material_size]" class="form-control" value="{{ $item->default_material_size }}" placeholder="e.g. M" required></td><td><input name="items[{{ $item->id }}][lot_roll_no]" class="form-control" placeholder="Lot/Roll" required></td><td><input type="number" step="0.0001" min="0.0001" max="{{ $item->quantity - $item->received_qty }}" name="items[{{ $item->id }}][quantity]" class="form-control" required></td></tr>
+            <tr data-po-item="{{ $item->id }}" data-remaining="{{ $item->quantity - $item->received_qty }}">
+                <td>{{ $item->material_code }} - {{ $item->material_name }}<input type="hidden" data-field="po_item_id" value="{{ $item->id }}"></td>
+                <td>{{ number_format($item->quantity - $item->received_qty, 0) }}</td>
+                <td><input class="form-control" style="min-width:100px" value="{{ $item->default_material_color }}" readonly aria-label="Material color"></td>
+                <td><input data-field="material_size" class="form-control" style="min-width:80px" value="{{ $item->default_material_size }}" required></td>
+                <td><input data-field="lot_no" class="form-control" style="min-width:110px" maxlength="40" placeholder="Lot No" required></td>
+                <td><input data-field="roll_no" class="form-control" style="min-width:110px" maxlength="40" placeholder="Roll No" required></td>
+                <td><input data-field="quantity" type="number" step="0.0001" min="0.0001" max="{{ $item->quantity - $item->received_qty }}" class="form-control" style="min-width:110px" required></td>
+                <td><div class="d-flex gap-1"><button type="button" class="btn btn-sm btn-outline-primary add-receipt-row">Add</button><button type="button" class="btn btn-sm btn-outline-danger remove-receipt-row" aria-label="Remove receipt row">×</button></div></td>
+            </tr>
             @endif
         @endforeach
-        </tbody></table><label class="form-label">Notes</label><textarea name="notes" class="form-control"></textarea>
+        </tbody></table></div>
+        <div id="receiptRowError" class="text-danger small mb-2" role="alert"></div><label class="form-label">Notes</label><textarea name="notes" class="form-control"></textarea>
     </div><div class="modal-footer"><button class="btn btn-primary">Post receipt</button></div>
 </form></div></div>
 @endif
@@ -158,3 +171,73 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+(() => {
+    const form = document.getElementById('receiveForm');
+    if (!form) return;
+    const rows = document.getElementById('receiptRows');
+    const error = document.getElementById('receiptRowError');
+    const previousItems = @json(old('items', []));
+    const previousMeta = @json(old());
+    if (Object.keys(previousItems).length) {
+        const templates = new Map([...rows.children].map(row => [row.dataset.poItem, row.cloneNode(true)]));
+        const restored = [];
+        Object.values(previousItems).forEach(entry => {
+            const template = templates.get(String(entry.po_item_id));
+            if (!template) return;
+            const copy = template.cloneNode(true);
+            ['material_size', 'lot_no', 'roll_no', 'quantity'].forEach(field => {
+                copy.querySelector(`[data-field="${field}"]`).value = entry[field] ?? '';
+            });
+            restored.push(copy);
+        });
+        if (restored.length) rows.replaceChildren(...restored);
+        ['received_date', 'warehouse_id', 'location_id', 'reference_number', 'notes'].forEach(name => {
+            if (previousMeta[name] != null) form.elements[name].value = previousMeta[name];
+        });
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('receiveModal')).show();
+    }
+    const warehouse = form.elements.warehouse_id;
+    const location = form.elements.location_id;
+    function filterLocations() {
+        [...location.options].forEach(option => {
+            if (!option.value) return;
+            option.hidden = option.dataset.warehouse !== warehouse.value;
+            option.disabled = option.hidden;
+        });
+        if (location.selectedOptions[0]?.disabled) location.value = '';
+    }
+    warehouse.addEventListener('change', filterLocations);
+    filterLocations();
+    function renumber() {
+        [...rows.children].forEach((row, index) => row.querySelectorAll('[data-field]').forEach(input => input.name = `items[${index}][${input.dataset.field}]`));
+    }
+    rows.addEventListener('click', event => {
+        const row = event.target.closest('tr');
+        if (event.target.closest('.add-receipt-row')) {
+            const copy = row.cloneNode(true);
+            ['quantity', 'roll_no'].forEach(field => copy.querySelector(`[data-field="${field}"]`).value = '');
+            row.after(copy);
+            renumber();
+            copy.querySelector('[data-field="roll_no"]').focus();
+        } else if (event.target.closest('.remove-receipt-row')) {
+            if (rows.children.length === 1) { error.textContent = 'Keep at least one receipt row.'; return; }
+            row.remove(); renumber();
+        }
+    });
+    form.addEventListener('submit', event => {
+        const totals = {};
+        error.textContent = '';
+        rows.querySelectorAll('tr').forEach(row => {
+            const id = row.dataset.poItem;
+            totals[id] = (totals[id] || 0) + Math.round(Number(row.querySelector('[data-field="quantity"]').value) * 10000);
+            if (totals[id] > Math.round(Number(row.dataset.remaining) * 10000)) error.textContent = 'Total receive quantity for a material exceeds its remaining quantity.';
+        });
+        if (error.textContent) event.preventDefault();
+    });
+    renumber();
+})();
+</script>
+@endpush

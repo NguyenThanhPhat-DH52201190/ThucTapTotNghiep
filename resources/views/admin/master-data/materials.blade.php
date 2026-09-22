@@ -1,6 +1,8 @@
 @extends('layouts.app')
 @section('title', 'Material Master')
 @section('content')
+@include('admin.partials.image-popover')
+@if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 <style>
 #taxonomyModal .modal-dialog{max-width:min(1200px,calc(100vw - 2rem))}
 .taxonomy-subcategory-update{min-width:0}
@@ -11,24 +13,35 @@
  <div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#taxonomyModal">Manage categories</button><button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#mappingModal">Map supplier</button><button class="btn btn-primary" onclick="newMaterial()">Add material</button></div>
 </div></div>
 <form method="GET" class="row g-2 mb-3 align-items-end">
+ @foreach(['mapping_category_id', 'mapping_subcategory_id', 'mapping_page'] as $key)@if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
+ @endforeach
  <div class="col-12 col-md-4"><label class="form-label">Category</label><select id="materialCategoryFilter" name="category_id" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select></div>
  <div class="col-12 col-md-4"><label class="form-label">Subcategory</label><select id="materialSubcategoryFilter" name="subcategory_id" class="form-select"><option value="">All subcategories</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}" @selected((string) request('subcategory_id') === (string) $subcategory->id)>{{ $subcategory->name }}</option>@endforeach</select></div>
  <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-dark">Filter</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials') }}">Reset</a></div>
 </form>
 <div class="card shadow-sm border-0 mb-4"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
  <thead class="table-light"><tr><th>Code</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Color / Size</th><th>Unit</th><th>Suppliers</th><th class="text-end">Action</th></tr></thead>
- <tbody>@forelse($materials as $material)<tr><td><code>{{ $material->internal_code }}</code></td><td class="fw-semibold">{{ $material->material_name }}</td><td><span class="badge bg-info">{{ $material->category_name ?: ucfirst($material->material_type) }}</span></td><td>{{ $material->subcategory_name ?: '-' }}</td><td>{{ $material->color ?: '-' }} / {{ $material->size ?: '-' }}</td><td>{{ $material->unit }}</td><td>{{ $material->vendor_count }}</td><td class="text-end"><button class="btn btn-sm btn-warning" onclick='editMaterial(@json($material))'><i class="bi bi-pencil"></i></button></td></tr>@empty<tr><td colspan="8" class="text-center text-muted py-4">No materials yet.</td></tr>@endforelse</tbody>
+ <tbody>@forelse($materials as $material)<tr><td><code>@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->internal_code])</code></td><td class="fw-semibold">@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->material_name])</td><td><span class="badge bg-info">{{ $material->category_name ?: ucfirst($material->material_type) }}</span></td><td>{{ $material->subcategory_name ?: '-' }}</td><td>{{ $material->color ?: '-' }} / {{ $material->size ?: '-' }}</td><td>{{ $material->unit }}</td><td>{{ $material->vendor_count }}</td><td class="text-end"><button class="btn btn-sm btn-warning" onclick='editMaterial(@json($material))'><i class="bi bi-pencil"></i></button></td></tr>@empty<tr><td colspan="8" class="text-center text-muted py-4">No materials yet.</td></tr>@endforelse</tbody>
 </table></div><div class="card-footer">{{ $materials->links() }}</div></div>
-<div class="card shadow-sm border-0"><div class="card-header fw-bold">Material–supplier mappings</div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Material</th><th>Supplier</th><th>Supplier item code</th><th>Unit price</th><th>Lead time</th><th>Default</th><th></th></tr></thead><tbody>
+<div class="card shadow-sm border-0" id="materialMappings"><div class="card-header fw-bold">Material–supplier mappings</div>
+<div class="card-body"><form method="GET" action="{{ route('admin.master-data.materials') }}#materialMappings" class="row g-2 align-items-end">
+ @foreach(['category_id', 'subcategory_id', 'page'] as $key)@if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
+ @endforeach
+ <div class="col-md-4"><label for="mappingCategoryFilter" class="form-label">Category</label><select id="mappingCategoryFilter" name="mapping_category_id" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('mapping_category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select></div>
+ <div class="col-md-4"><label for="mappingSubcategoryFilter" class="form-label">Subcategory</label><select id="mappingSubcategoryFilter" name="mapping_subcategory_id" class="form-select"><option value="">All subcategories</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}" @selected((string) request('mapping_subcategory_id') === (string) $subcategory->id)>{{ $subcategory->name }}</option>@endforeach</select></div>
+ <div class="col-md-auto d-flex gap-2"><button class="btn btn-dark">Filter</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials', request()->only(['category_id', 'subcategory_id', 'page'])) }}#materialMappings">Reset</a></div>
+</form></div>
+<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Material</th><th>Supplier</th><th>Supplier item code</th><th>Unit price</th><th>Lead time</th><th>Default</th><th></th></tr></thead><tbody>
  @forelse($vendorMappings as $mapping)<tr><td>{{ $mapping->internal_code }} — {{ $mapping->material_name }}</td><td>{{ $mapping->supplier_code }} — {{ $mapping->supplier_name }}</td><td>{{ $mapping->vendor_item_code ?: '-' }}</td><td>{{ number_format($mapping->unit_price, 4) }}</td><td>{{ $mapping->lead_time_days }} days</td><td>{{ $mapping->is_default_vendor ? 'Yes' : 'No' }}</td><td><form method="POST" action="{{ route('admin.master-data.material-vendors.destroy', $mapping->id) }}" onsubmit="return confirm('Delete this mapping?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form></td></tr>@empty<tr><td colspan="7" class="text-center text-muted py-3">No mappings yet.</td></tr>@endforelse
-</tbody></table></div></div>
+</tbody></table></div><div class="card-footer">{{ $vendorMappings->links() }}</div></div>
 
-<div class="modal fade" id="materialModal"><div class="modal-dialog"><form id="materialForm" method="POST" action="{{ route('admin.master-data.materials.store') }}" class="modal-content">@csrf<div id="materialMethod"></div>
+<div class="modal fade" id="materialModal"><div class="modal-dialog modal-lg modal-dialog-scrollable"><form id="materialForm" method="POST" enctype="multipart/form-data" action="{{ route('admin.master-data.materials.store') }}" class="modal-content">@csrf<div id="materialMethod"></div>
  <div class="modal-header"><h5 class="modal-title" id="materialModalTitle">Add material</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3">
   <div class="col-md-6"><label class="form-label">Internal code *</label><input id="materialCode" name="internal_code" class="form-control" required></div>
   <div class="col-md-6"><label class="form-label">Old code</label><input id="materialOldCode" name="old_code" class="form-control"></div>
   <div class="col-md-6"><label class="form-label">Category *</label><select id="materialCategory" name="category_id" class="form-select" required onchange="filterSubcategories()"><option value="">Select category</option>@foreach($categories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach</select></div>
   <div class="col-md-6"><label class="form-label">Subcategory</label><select id="materialSubcategory" name="subcategory_id" class="form-select"><option value="">No subcategory</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}">{{ $subcategory->name }}</option>@endforeach</select></div>
+  @include('admin.master-data.material-images')
   <div class="col-md-6"><label class="form-label">Name *</label><input id="materialName" name="material_name" class="form-control" required></div>
   <div class="col-md-4"><label class="form-label">Color</label><input id="materialColor" name="color" class="form-control"></div><div class="col-md-4"><label class="form-label">Size</label><input id="materialSize" name="size" class="form-control"></div><div class="col-md-4"><label class="form-label">Unit *</label><input id="materialUnit" name="unit" value="M" class="form-control" required></div>
  </div></div><div class="modal-footer"><button class="btn btn-primary">Save material</button></div>
@@ -49,12 +62,20 @@
 @push('scripts')
 <script>
 function filterSubcategories(selected=''){const category=document.getElementById('materialCategory').value,select=document.getElementById('materialSubcategory');[...select.options].forEach((o,i)=>{if(i)o.hidden=o.dataset.category!==category});if(selected&&[...select.options].some(o=>o.value==selected&&!o.hidden))select.value=selected;else if(select.selectedOptions[0]?.hidden)select.value=''}
-function newMaterial(){const f=document.getElementById('materialForm');f.reset();f.action=@json(route('admin.master-data.materials.store'));document.getElementById('materialMethod').innerHTML='';document.getElementById('materialModalTitle').textContent='Add material';document.getElementById('materialUnit').value='M';filterSubcategories();bootstrap.Modal.getOrCreateInstance(document.getElementById('materialModal')).show()}
-function editMaterial(m){const f=document.getElementById('materialForm');f.action=@json(url('admin/master-data/materials'))+'/'+m.id;document.getElementById('materialMethod').innerHTML='<input type="hidden" name="_method" value="PATCH">';document.getElementById('materialModalTitle').textContent='Edit material';for(const [id,key] of Object.entries({materialCode:'internal_code',materialOldCode:'old_code',materialName:'material_name',materialColor:'color',materialSize:'size',materialUnit:'unit',materialCategory:'category_id'}))document.getElementById(id).value=m[key]||'';filterSubcategories(m.subcategory_id||'');bootstrap.Modal.getOrCreateInstance(document.getElementById('materialModal')).show()}
+function newMaterial(){const f=document.getElementById('materialForm');f.reset();f.action=@json(route('admin.master-data.materials.store'));document.getElementById('materialMethod').innerHTML='';document.getElementById('materialModalTitle').textContent='Add material';document.getElementById('materialUnit').value='M';filterSubcategories();resetMaterialImage();bootstrap.Modal.getOrCreateInstance(document.getElementById('materialModal')).show()}
+function editMaterial(m){const f=document.getElementById('materialForm');f.action=@json(url('admin/master-data/materials'))+'/'+m.id;document.getElementById('materialMethod').innerHTML='<input type="hidden" name="_method" value="PATCH">';document.getElementById('materialModalTitle').textContent='Edit material';for(const [id,key] of Object.entries({materialCode:'internal_code',materialOldCode:'old_code',materialName:'material_name',materialColor:'color',materialSize:'size',materialUnit:'unit',materialCategory:'category_id'}))document.getElementById(id).value=m[key]||'';filterSubcategories(m.subcategory_id||'');resetMaterialImage(m.image_path ? @json(url('admin/master-data/materials'))+'/'+m.id+'/image' : null);bootstrap.Modal.getOrCreateInstance(document.getElementById('materialModal')).show()}
 
 function filterMaterialSubcategories(reset=false){const category=document.getElementById('materialCategoryFilter')?.value||'',select=document.getElementById('materialSubcategoryFilter');if(!select)return;[...select.options].forEach((option,index)=>{if(index)option.hidden=!!category&&option.dataset.category!==category});if(reset&&select.selectedOptions[0]?.hidden)select.value=''}
 document.getElementById('materialCategoryFilter')?.addEventListener('change',()=>filterMaterialSubcategories(true));
 filterMaterialSubcategories();
+function filterMappingSubcategories(){
+ const category=document.getElementById('mappingCategoryFilter').value;
+ const select=document.getElementById('mappingSubcategoryFilter');
+ [...select.options].forEach((option,index)=>{if(index){option.hidden=!!category&&option.dataset.category!==category;option.disabled=option.hidden;}});
+ if(select.selectedOptions[0]?.hidden)select.value='';
+}
+document.getElementById('mappingCategoryFilter').addEventListener('change',filterMappingSubcategories);
+filterMappingSubcategories();
 
 function taxonomyName(item){return (item.querySelector('input[name="name"]')?.value||item.dataset.name||'').trim().toLocaleLowerCase()}
 function sortTaxonomy(listId,itemSelector){const list=document.getElementById(listId);if(!list)return;[...list.querySelectorAll(itemSelector)].sort((a,b)=>taxonomyName(a).localeCompare(taxonomyName(b),undefined,{sensitivity:'base'})).forEach(item=>list.appendChild(item))}

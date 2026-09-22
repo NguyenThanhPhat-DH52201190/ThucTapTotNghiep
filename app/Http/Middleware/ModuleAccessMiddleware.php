@@ -25,6 +25,7 @@ class ModuleAccessMiddleware
             'bom' => ['ie'],
             'shopfloor' => ['prod'],
             'inventory' => ['warehouse'],
+            'stock-records' => ['warehouse', 'ppic'],
             'finance' => ['accountant'],
             'revenue' => ['prod'],
         ];

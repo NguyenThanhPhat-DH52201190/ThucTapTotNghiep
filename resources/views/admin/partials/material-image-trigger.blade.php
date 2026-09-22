@@ -1,0 +1,1 @@
+@include('admin.partials.image-trigger', ['imageUrl' => !empty($row->material_image_path) ? route('admin.master-data.material-image', $row->image_material_id, false) : null, 'imageLabel' => $imageLabel])

@@ -21,6 +21,7 @@ class InventoryLedgerService
                 ->where('material_color', $data['color'] ?? null)
                 ->where('material_size', $data['size'] ?? null)
                 ->where('lot_roll_no', $data['lot_roll_no'] ?? null)
+                ->where('lot_no', $data['lot_no'] ?? null)->where('roll_no', $data['roll_no'] ?? null)
                 ->where('location', $data['location'] ?? null)
                 ->lockForUpdate()->first();
 
@@ -36,7 +37,7 @@ class InventoryLedgerService
                 DB::table('inventory_balances')->insert([
                     'material_id' => $data['material_id'], 'warehouse_id' => $data['warehouse_id'] ?? null,
                     'location_id' => $data['location_id'] ?? null, 'material_color' => $data['color'] ?? null,
-                    'material_size' => $data['size'] ?? null, 'lot_roll_no' => $data['lot_roll_no'] ?? null,
+                    'material_size' => $data['size'] ?? null, 'lot_roll_no' => $data['lot_roll_no'] ?? null, 'lot_no' => $data['lot_no'] ?? null, 'roll_no' => $data['roll_no'] ?? null,
                     'location' => $data['location'] ?? null, 'balance_qty' => $data['quantity'],
                     'unit_cost' => $data['unit_cost'] ?? 0,
                     'created_at' => now(), 'updated_at' => now(),
@@ -49,7 +50,7 @@ class InventoryLedgerService
                 'transaction_date' => $data['transaction_date'] ?? now()->toDateString(),
                 'material_id' => $data['material_id'], 'material_code' => $data['material_code'],
                 'material_color' => $data['color'] ?? null, 'material_size' => $data['size'] ?? null,
-                'lot_roll_no' => $data['lot_roll_no'] ?? null, 'location' => $data['location'] ?? null,
+                'lot_roll_no' => $data['lot_roll_no'] ?? null, 'lot_no' => $data['lot_no'] ?? null, 'roll_no' => $data['roll_no'] ?? null, 'location' => $data['location'] ?? null,
                 'location_id' => $data['location_id'] ?? null,
                 'quantity' => $data['quantity'], 'unit' => $data['unit'],
                 'to_warehouse_id' => $data['warehouse_id'] ?? null, 'unit_cost' => $data['unit_cost'] ?? 0,
@@ -94,7 +95,7 @@ class InventoryLedgerService
                 'reference_doc' => $data['issue_code'], 'transaction_date' => $data['issue_date'],
                 'material_id' => $balance->material_id, 'material_code' => $data['material_code'],
                 'material_color' => $balance->material_color, 'material_size' => $balance->material_size,
-                'lot_roll_no' => $balance->lot_roll_no, 'location' => $balance->location,
+                'lot_roll_no' => $balance->lot_roll_no, 'lot_no' => $balance->lot_no, 'roll_no' => $balance->roll_no, 'location' => $balance->location,
                 'location_id' => $balance->location_id,
                 'quantity' => -$data['quantity'], 'unit' => $data['unit'],
                 'from_warehouse_id' => $data['warehouse_id'] ?? null, 'unit_cost' => $balance->unit_cost,
@@ -136,7 +137,7 @@ class InventoryLedgerService
                 DB::table('inventory_transactions')->insert([
                     'transaction_type' => 'RESERVE', 'reference_type' => 'REQUISITION_ITEM', 'reference_id' => $data['requisition_item_id'],
                     'transaction_date' => now()->toDateString(), 'material_id' => $balance->material_id, 'material_code' => $material->internal_code,
-                    'material_color' => $balance->material_color, 'material_size' => $balance->material_size, 'lot_roll_no' => $balance->lot_roll_no,
+                    'material_color' => $balance->material_color, 'material_size' => $balance->material_size, 'lot_roll_no' => $balance->lot_roll_no, 'lot_no' => $balance->lot_no, 'roll_no' => $balance->roll_no,
                     'location' => $balance->location, 'location_id' => $balance->location_id, 'quantity' => 0, 'unit' => $material->unit,
                     'unit_cost' => $balance->unit_cost, 'total_cost' => 0, 'notes' => 'Reserved quantity: ' . $qty,
                     'created_by' => $data['user_id'] ?? null, 'created_at' => now(), 'updated_at' => now(),
@@ -167,7 +168,7 @@ class InventoryLedgerService
                 DB::table('inventory_transactions')->insert([
                     'transaction_type' => 'UNRESERVE', 'reference_type' => 'REQUISITION_ITEM', 'reference_id' => $reservation->requisition_item_id,
                     'transaction_date' => now()->toDateString(), 'material_id' => $balance->material_id, 'material_code' => $material->internal_code,
-                    'material_color' => $balance->material_color, 'material_size' => $balance->material_size, 'lot_roll_no' => $balance->lot_roll_no,
+                    'material_color' => $balance->material_color, 'material_size' => $balance->material_size, 'lot_roll_no' => $balance->lot_roll_no, 'lot_no' => $balance->lot_no, 'roll_no' => $balance->roll_no,
                     'location' => $balance->location, 'location_id' => $balance->location_id, 'quantity' => 0, 'unit' => $material->unit,
                     'unit_cost' => $balance->unit_cost, 'total_cost' => 0, 'notes' => 'Released reserved quantity: ' . $qty,
                     'created_by' => $userId, 'created_at' => now(), 'updated_at' => now(),
@@ -190,7 +191,7 @@ class InventoryLedgerService
                 'transaction_type' => 'ADJUSTMENT', 'reference_type' => 'ADJUSTMENT', 'reference_id' => $balance->id,
                 'transaction_date' => now()->toDateString(), 'material_id' => $balance->material_id,
                 'material_code' => $material->internal_code, 'material_color' => $balance->material_color,
-                'material_size' => $balance->material_size, 'lot_roll_no' => $balance->lot_roll_no,
+                'material_size' => $balance->material_size, 'lot_roll_no' => $balance->lot_roll_no, 'lot_no' => $balance->lot_no, 'roll_no' => $balance->roll_no,
                 'location' => $balance->location, 'location_id' => $balance->location_id,
                 'quantity' => $difference, 'unit' => $material->unit,
                 'unit_cost' => $balance->unit_cost, 'total_cost' => $difference * $balance->unit_cost,

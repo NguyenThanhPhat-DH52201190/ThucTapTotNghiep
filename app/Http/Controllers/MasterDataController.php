@@ -90,14 +90,18 @@ class MasterDataController extends Controller
             ->select('materials.*', 'material_categories.name as category_name', 'material_subcategories.name as subcategory_name', DB::raw('COUNT(material_vendors.id) as vendor_count'))
             ->when($request->filled('category_id'), fn ($query) => $query->where('materials.category_id', $request->integer('category_id')))
             ->when($request->filled('subcategory_id'), fn ($query) => $query->where('materials.subcategory_id', $request->integer('subcategory_id')))
-            ->groupBy('materials.id', 'materials.internal_code', 'materials.old_code', 'materials.material_name', 'materials.color', 'materials.size', 'materials.unit', 'materials.material_type', 'materials.category_id', 'materials.subcategory_id', 'materials.created_at', 'materials.updated_at', 'material_categories.name', 'material_subcategories.name')
+            ->groupBy('materials.id', 'materials.internal_code', 'materials.old_code', 'materials.material_name', 'materials.color', 'materials.size', 'materials.unit', 'materials.material_type', 'materials.category_id', 'materials.subcategory_id', 'materials.created_at', 'materials.updated_at', 'materials.image_path', 'material_categories.name', 'material_subcategories.name')
             ->orderBy('material_categories.name')
             ->orderBy('material_subcategories.name')
             ->orderBy('materials.internal_code')
             ->paginate(20)->withQueryString();
         $suppliers = DB::table('suppliers')->where('status', 'active')->orderBy('name')->get();
         $vendorMappings = DB::table('material_vendors')->join('materials', 'material_vendors.material_id', '=', 'materials.id')->join('suppliers', 'material_vendors.vendor_id', '=', 'suppliers.id')
-            ->select('material_vendors.*', 'materials.internal_code', 'materials.material_name', 'suppliers.code as supplier_code', 'suppliers.name as supplier_name')->orderByDesc('material_vendors.is_default_vendor')->orderBy('materials.internal_code')->get();
+            ->select('material_vendors.*', 'materials.internal_code', 'materials.material_name', 'suppliers.code as supplier_code', 'suppliers.name as supplier_name')
+            ->when($request->filled('mapping_category_id'), fn ($query) => $query->where('materials.category_id', $request->integer('mapping_category_id')))
+            ->when($request->filled('mapping_subcategory_id'), fn ($query) => $query->where('materials.subcategory_id', $request->integer('mapping_subcategory_id')))
+            ->orderByDesc('material_vendors.is_default_vendor')->orderBy('materials.internal_code')->orderBy('material_vendors.id')
+            ->paginate(20, ['*'], 'mapping_page')->withQueryString()->fragment('materialMappings');
         $categories = DB::table('material_categories')->orderBy('name')->get();
         $subcategories = DB::table('material_subcategories')->orderBy('name')->get();
         return view('admin.master-data.materials', compact('materials', 'suppliers', 'vendorMappings', 'categories', 'subcategories'));
@@ -110,6 +114,9 @@ class MasterDataController extends Controller
 
     private function materialData(Request $request, ?int $id = null): array
     {
+        $request->validate([
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+        ]);
         $data = $request->validate($this->materialRules($id));
         $data['material_type'] = DB::table('material_categories')->where('id', $data['category_id'])->value('slug');
         return $data;
@@ -118,15 +125,16 @@ class MasterDataController extends Controller
     public function storeMaterial(Request $request)
     {
         $data = $this->materialData($request);
-        DB::table('materials')->insert($data + ['created_at' => now(), 'updated_at' => now()]);
+        $this->saveMaterialImage($request, null, fn ($imagePath) => DB::table('materials')->insert($data + ['image_path' => $imagePath, 'created_at' => now(), 'updated_at' => now()]));
         return back()->with('success', 'Material added.');
     }
 
     public function updateMaterial(Request $request, int $id)
     {
+        abort_unless(DB::table('materials')->where('id', $id)->exists(), 404);
         $data = $this->materialData($request, $id);
-        DB::transaction(function () use ($id, $data) {
-            DB::table('materials')->where('id', $id)->update($data + ['updated_at' => now()]);
+        $this->saveMaterialImage($request, $id, function ($imagePath) use ($id, $data) {
+            DB::table('materials')->where('id', $id)->update($data + ['image_path' => $imagePath, 'updated_at' => now()]);
             DB::table('bom_items')->where('material_id', $id)->update([
                 'material_code' => $data['internal_code'], 'material_name' => $data['material_name'],
                 'material_type' => $data['material_type'], 'colour' => $data['color'] ?? null,
@@ -136,6 +144,47 @@ class MasterDataController extends Controller
         return back()->with('success', 'Material updated.');
     }
 
+    private function saveMaterialImage(Request $request, ?int $id, callable $save): void
+    {
+        $newPath = null;
+        $oldPath = null;
+        try {
+            DB::transaction(function () use ($request, $id, $save, &$newPath, &$oldPath) {
+                if ($id) {
+                    $material = DB::table('materials')->where('id', $id)->lockForUpdate()->first();
+                    abort_unless($material, 404);
+                    $oldPath = $material->image_path;
+                }
+                if ($request->hasFile('image')) {
+                    $path = $request->file('image')->store('material-images/materials', 'local');
+                    if (!$path) throw new \RuntimeException('Unable to save material image.');
+                    $newPath = $path;
+                }
+                $save($newPath ?? $oldPath);
+            });
+        } catch (\Throwable $e) {
+            $this->deleteMaterialImage($newPath);
+            throw $e;
+        }
+        if ($newPath) $this->deleteMaterialImage($oldPath);
+    }
+    private function deleteMaterialImage(?string $path): void
+    {
+        if (!$path) return;
+        try {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($path);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Unable to remove material image', ['path' => $path]);
+        }
+    }
+
+    public function materialImage(int $id)
+    {
+        $path = DB::table('materials')->where('id', $id)->value('image_path');
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        abort_unless($path && $disk->exists($path), 404);
+        return $disk->response($path, null, ['Cache-Control' => 'private, no-cache', 'X-Content-Type-Options' => 'nosniff']);
+    }
     public function storeMaterialCategory(Request $request)
     {
         $data = $request->validate(['name' => 'required|string|max:100|unique:material_categories,name']);
@@ -162,7 +211,9 @@ class MasterDataController extends Controller
         if (DB::table('materials')->where('category_id', $id)->exists() || DB::table('material_subcategories')->where('category_id', $id)->exists()) {
             return back()->with('error', 'Cannot delete a category that contains materials or subcategories.');
         }
+        $path = DB::table('material_categories')->where('id', $id)->value('image_path');
         DB::table('material_categories')->where('id', $id)->delete();
+        $this->deleteMaterialImage($path);
         return back()->with('success', 'Category deleted.');
     }
 
@@ -185,7 +236,9 @@ class MasterDataController extends Controller
         if (DB::table('materials')->where('subcategory_id', $id)->exists()) {
             return back()->with('error', 'Cannot delete a subcategory that is assigned to materials.');
         }
+        $path = DB::table('material_subcategories')->where('id', $id)->value('image_path');
         DB::table('material_subcategories')->where('id', $id)->delete();
+        $this->deleteMaterialImage($path);
         return back()->with('success', 'Subcategory deleted.');
     }
 

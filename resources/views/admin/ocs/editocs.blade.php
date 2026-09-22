@@ -21,9 +21,10 @@
             <h5 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Order: {{ $order->CS }}</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.ocs.update', $order->id) }}">
+            <form method="POST" action="{{ route('admin.ocs.update', $order->id) }}" enctype="multipart/form-data">
                 @csrf @method('PUT')
                 <div class="row g-3">
+                    @include('admin.ocs.partials.image-field')
                     <div class="col-md-4">
                         <label class="form-label">CS <span class="text-danger">*</span></label>
                         <input type="text" name="CS" class="form-control" value="{{ old('CS', $order->CS) }}" required>

@@ -22,6 +22,7 @@ class WorkflowExecutionTest extends TestCase
         parent::setUp();
         $this->createLegacySchema();
         $this->createWorkflowSchema();
+        (require database_path('migrations/2026_09_22_000006_add_lot_and_roll_numbers.php'))->up();
     }
 
     public function test_release_requisition_reserves_stock_and_issue_cannot_exceed_reservation(): void
@@ -52,6 +53,41 @@ class WorkflowExecutionTest extends TestCase
             $this->assertStringContainsString('reserved', $exception->getMessage());
         }
         $this->assertSame(70.0, (float) DB::table('inventory_balances')->where('id', $balanceId)->value('balance_qty'));
+    }
+
+    public function test_receipt_splits_lots_rolls_maps_master_color_and_rejects_total_overreceipt(): void
+    {
+        $materialId = DB::table('materials')->insertGetId(['internal_code' => 'FAB-SPLIT', 'material_name' => 'Fabric', 'color' => 'RED', 'unit' => 'M']);
+        $warehouseId = DB::table('warehouses')->insertGetId(['name' => 'Raw', 'type' => 'raw_material']);
+        $locationId = DB::table('locations')->insertGetId(['warehouse_id' => $warehouseId, 'code' => 'A']);
+        $poId = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-SPLIT', 'status' => 'confirmed']);
+        $itemId = DB::table('po_items')->insertGetId(['po_id' => $poId, 'material_id' => $materialId, 'material_code' => 'FAB-SPLIT', 'material_name' => 'Fabric', 'color' => 'OLD', 'unit' => 'M', 'quantity' => 100, 'unit_price' => 2]);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]));
+        $line = ['po_item_id' => $itemId, 'material_color' => 'FORGED', 'material_size' => 'M', 'lot_no' => 'LOT-1'];
+        $meta = ['received_date' => '2026-09-20', 'warehouse_id' => $warehouseId, 'location_id' => $locationId];
+        $url = route('admin.procurement.receipts.store', $poId);
+        $this->post($url, $meta + ['items' => [$line + ['roll_no' => 'R1', 'quantity' => 60], $line + ['roll_no' => 'R2', 'quantity' => 50]]])->assertSessionHas('error');
+        $this->assertDatabaseCount('po_receipts', 0);
+        $this->assertDatabaseCount('inventory_transactions', 0);
+        $this->assertDatabaseHas('po_items', ['id' => $itemId, 'received_qty' => 0]);
+
+        $this->post($url, $meta + ['items' => [$line + ['roll_no' => 'R1', 'quantity' => 30], $line + ['roll_no' => 'R2', 'quantity' => 50]]])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertDatabaseCount('po_receipt_items', 2);
+        $this->assertDatabaseCount('inventory_balances', 2);
+        $this->assertDatabaseHas('inventory_balances', ['material_id' => $materialId, 'lot_no' => 'LOT-1', 'roll_no' => 'R1', 'material_color' => 'RED', 'balance_qty' => 30]);
+        $this->assertDatabaseHas('inventory_transactions', ['lot_no' => 'LOT-1', 'roll_no' => 'R2', 'quantity' => 50, 'transaction_date' => '2026-09-20']);
+        $this->assertDatabaseHas('purchase_orders', ['id' => $poId, 'status' => 'partial']);
+        $this->assertDatabaseHas('po_items', ['id' => $itemId, 'received_qty' => 80]);
+
+        $this->post($url, $meta + ['items' => [$line + ['roll_no' => 'R1', 'quantity' => 20]]])->assertSessionHas('success');
+        $this->assertDatabaseCount('inventory_balances', 2);
+        $this->assertDatabaseHas('inventory_balances', ['roll_no' => 'R1', 'balance_qty' => 50]);
+        $this->assertDatabaseHas('purchase_orders', ['id' => $poId, 'status' => 'received']);
+        $this->assertDatabaseHas('po_items', ['id' => $itemId, 'received_qty' => 100]);
+
+        $otherPo = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-OTHER', 'status' => 'confirmed']);
+        $this->post(route('admin.procurement.receipts.store', $otherPo), $meta + ['items' => [$line + ['roll_no' => 'R3', 'quantity' => 1]]])->assertSessionHas('error');
+        $this->assertDatabaseCount('po_receipts', 2);
     }
 
     public function test_mps_schedule_rejects_capacity_above_line_limit(): void

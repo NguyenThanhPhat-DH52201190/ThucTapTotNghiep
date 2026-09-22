@@ -207,6 +207,11 @@
                 Finance & Costing
             </a>
             @endif
+            @if(in_array($role, ['admin', 'ppic', 'warehouse']))
+            <a href="{{ route('admin.stock-records.index') }}" class="d-flex align-items-center gap-2 mt-1 {{ request()->routeIs('admin.stock-records.*') ? 'active' : '' }}">
+                <i class="bi bi-journal-text"></i> Stock Records
+            </a>
+            @endif
         </div>
 
         <!-- MAIN -->

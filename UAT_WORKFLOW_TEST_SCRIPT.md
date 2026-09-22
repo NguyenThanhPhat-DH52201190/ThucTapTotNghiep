@@ -180,3 +180,24 @@ Chỉ nghiệm thu khi WF-00 đến WF-08 PASS và đồng thời:
 | Test ID | Bước | Dữ liệu | Thực tế | Kỳ vọng | Ảnh/URL | Mức độ |
 |---|---:|---|---|---|---|---|
 | WF-xx |  |  |  |  |  | Critical / High / Medium / Low |
+
+## WF-10 — Stock Records: tồn đầu, lịch sử và ưu tiên sử dụng
+
+Dùng mã mới `UAT-STOCK-01`, đơn vị M, màu RED, size M. Tạo Inventory 1.000 M và hai OCS Pending có BOM dùng mã này: `UAT-STOCK-CS-A` cần 400 M, `UAT-STOCK-CS-B` cần 700 M (yield 1, waste 0, tổng size bằng Qty). Giữ Pending ở bước cân đối để chưa có reservation.
+
+| Bước | Thao tác | Kỳ vọng | Kết quả |
+|---:|---|---|---|
+| 1 | Mở **Stock Records**, bấm **Add new codes from Inventory**, tìm UAT-STOCK-01. | Tồn đầu và On hand đều 1.000 M; mã được tạo đúng một lần. | ☐ |
+| 2 | Bấm nhập lại từ Inventory. | Không tạo trùng, không reset tồn đầu. | ☐ |
+| 3 | Mở **History & planning**, đặt CS-A trước CS-B rồi Save. | A được cân đối đủ 400; B thiếu 100; projected cuối -100. Inventory thực tế vẫn 1.000. | ☐ |
+| 4 | Dùng mũi tên đưa CS-B lên trước, bấm **Save priorities & recalculate**. | B đủ 700; A thiếu 100. Tồn thực tế và lịch sử nhập/xuất không đổi. | ☐ |
+| 5 | Tìm CS/BOM trong ô **Find CS / BOM**, sau đó xóa tìm kiếm. | Lọc được dòng tương ứng; số liệu vẫn tính đủ toàn bộ đơn. Mũi tên chỉ bật khi không lọc. | ☐ |
+| 6 | Đổi priority của mã vật tư ở danh sách rồi tải lại. | Thứ tự hiển thị được lưu; không ảnh hưởng thứ tự giao dịch kho. | ☐ |
+| 7 | Confirm CS-B, chạy queue để tạo requisition, xuất thực tế 200 M qua Inventory. | On hand còn 800; CS-B Already issued 200, Remaining 500. Không trừ 200 lần thứ hai khỏi tồn dự kiến. | ☐ |
+| 8 | Đưa CS-A lên trước khi CS-B còn reservation 500 M. | A chỉ dùng được 300 M tự do, thiếu 100; B vẫn có 500 M đã giữ. Đổi ưu tiên không chuyển reservation giữa các đơn. | ☐ |
+| 9 | Xem **Stock history** và chọn **All inventory history**. | Hiện chứng từ, ngày, người ghi, CS của phiếu xuất; số dư cuối khớp Inventory. Tồn đầu snapshot không thay đổi. | ☐ |
+| 10 | Mở cùng kế hoạch ở hai tab. Lưu tab 1, sau đó lưu tab 2. | Tab 2 bị yêu cầu tải lại, không ghi đè ưu tiên đã đổi. | ☐ |
+| 11 | Dùng vật tư chỉ có tồn RED nhưng BOM cần BLUE hoặc size khác. | Báo thiếu đúng màu/size dù tổng tồn của mã còn dương. | ☐ |
+| 12 | Đăng nhập Admin, PPIC, Warehouse và Production. | Ba vai trò đầu mở được Stock Records; Production không được truy cập. | ☐ |
+
+Stock Records chỉ mô phỏng cân đối. Muốn thay đổi số lượng thực tế phải nhập/xuất/điều chỉnh qua Inventory. Lịch sử giao dịch không được kéo đổi thứ tự. Khi deploy: `php artisan migrate`, sau đó `php artisan stock-records:sync` hoặc dùng nút nhập mã mới trên giao diện.

@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Order Cutsheet')
 @section('content')
+@include('admin.partials.image-popover')
 @php
     $canManage = auth()->user()->role === 'admin';
 @endphp
@@ -129,7 +130,15 @@
                 <tbody>
                     @forelse($orders as $item)
                         <tr>
-                            <td class="fw-semibold">{{ $item->CS }}</td>
+                            <td class="fw-semibold">
+                                @if(!empty($item->image_path))
+                                    <button type="button" class="order-image-trigger border-0 bg-transparent p-0 fw-semibold text-start"
+                                            data-image-url="{{ route('admin.ocs.image', $item->id, false) }}"
+                                            aria-label="View image for {{ $item->CS }}">{{ $item->CS }}</button>
+                                @else
+                                    {{ $item->CS }}
+                                @endif
+                            </td>
                             <td>
                                 <form method="POST" action="{{ route('admin.ocs.status', $item->id) }}" class="d-inline">
                                     @csrf @method('PATCH')
@@ -181,21 +190,19 @@
                             <td><small>{{ $item->expected_ship_date ?? '-' }}</small></td>
                             @if($canManage)
                                 <td>
-                                    @if(in_array($item->status, ['confirmed', 'in_production', 'completed']))
-                                        <span class="badge bg-secondary">Locked</span>
-                                    @else
                                     <div class="d-flex gap-1">
                                         <a href="{{ route('admin.ocs.edit', $item->id) }}" class="btn btn-sm btn-warning" title="Edit">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
+                                        @if(!in_array($item->status, ['confirmed', 'in_production', 'completed', 'released', 'closed']))
                                         <form method="POST" action="{{ route('admin.ocs.destroy', $item->id) }}" onsubmit="return confirm('Delete this order?')">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-danger" title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
-                                    @endif
                                 </td>
                             @endif
                         </tr>

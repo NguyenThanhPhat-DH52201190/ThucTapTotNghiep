@@ -10,3 +10,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('mrp:run')->dailyAt('00:00')->withoutOverlapping();
 Schedule::command('outbox:dispatch')->everyMinute()->withoutOverlapping();
+
+Artisan::command('stock-records:sync', function () {
+    $count = app(\App\Services\StockRecordService::class)->importInventory();
+    $this->info("Added $count stock records; existing opening snapshots preserved.");
+})->purpose('Initialize opening stock records for new inventory material codes');

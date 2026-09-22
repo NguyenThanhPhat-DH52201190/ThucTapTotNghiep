@@ -21,9 +21,10 @@
             <h5 class="mb-0 fw-bold"><i class="bi bi-plus-lg me-2"></i>Add Order Cutsheet</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.ocs.store') }}">
+            <form method="POST" action="{{ route('admin.ocs.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="row g-3">
+                    @include('admin.ocs.partials.image-field')
                     <!-- Core fields -->
                     <div class="col-md-4">
                         <label class="form-label">CS <span class="text-danger">*</span></label>

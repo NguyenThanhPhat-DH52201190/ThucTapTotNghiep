@@ -13,7 +13,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('admin.bom.update', $bom->id) }}" id="bomForm">
+    <form method="POST" action="{{ route('admin.bom.update', $bom->id) }}" id="bomForm" enctype="multipart/form-data">
         @csrf @method('PUT')
 
         <div class="card shadow-sm border-0 mb-4">
@@ -25,6 +25,7 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
+                    @include('admin.partials.image-field', ['imageUrl' => !empty($bom->image_path) ? route('admin.bom.image', $bom->id, false) : null])
                     <div class="col-md-4">
                         <label class="form-label">Style No <span class="text-danger">*</span></label>
                         <input type="text" name="style_no" class="form-control" value="{{ old('style_no', $bom->style_no) }}" required>

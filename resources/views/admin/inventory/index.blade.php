@@ -18,6 +18,7 @@
         <div class="card-body d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold"><i class="bi bi-boxes me-2"></i>Inventory Items</h5>
             <div class="d-flex gap-2">
+                <a href="{{ route('admin.stock-records.index') }}" class="btn btn-outline-dark btn-sm"><i class="bi bi-journal-text"></i> Stock Records</a>
                 @if($canManage)<button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#openingModal"><i class="bi bi-plus-lg"></i> Add Inventory</button>@endif
                 <a href="{{ route('admin.inventory.warehouses') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-building"></i> Warehouses</a>
                 <a href="{{ route('admin.inventory.requisitions') }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-box-arrow-up-right"></i> Requisitions &amp; Issue</a>
@@ -72,12 +73,12 @@
                             <td><small>{{ $item->material_name }}</small></td>
                             <td><span class="badge bg-info">{{ $item->material_type }}</span></td>
                             <td><small>{{ $item->warehouse_code ?: '-' }} / {{ $item->location_code ?: ($item->location_bin ?: '-') }}</small></td>
-                            <td class="text-end">{{ number_format($item->current_qty, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->reserved_qty, 2) }}</td>
+                            <td class="text-end">{{ number_format($item->current_qty, 0) }}</td>
+                            <td class="text-end">{{ number_format($item->reserved_qty, 0) }}</td>
                             <td class="text-end fw-bold {{ $item->available_qty <= $item->reorder_point && $item->reorder_point > 0 ? 'text-danger' : 'text-success' }}">
-                                {{ number_format($item->available_qty, 2) }}
+                                {{ number_format($item->available_qty, 0) }}
                             </td>
-                            <td class="text-end">{{ number_format($item->min_stock_level, 2) }}</td>
+                            <td class="text-end">{{ number_format($item->min_stock_level, 0) }}</td>
                             <td class="text-end">{{ number_format($item->reorder_point, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_cost, 4) }}</td>
                             <td class="text-end fw-bold">{{ number_format($item->current_qty * $item->unit_cost, 4) }} đ</td>

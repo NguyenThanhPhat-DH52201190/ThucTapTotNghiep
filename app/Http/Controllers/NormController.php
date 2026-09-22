@@ -33,25 +33,34 @@ class NormController extends Controller
             ->orderBy('ocs.CS')->orderBy('norm.id');
     }
 
+    private function ordersWithImages()
+    {
+        return DB::table('ocs')
+            ->leftJoin('bom_headers', 'bom_headers.id', '=', 'ocs.bom_header_id')
+            ->leftJoin('bom_headers as template', 'template.id', '=', 'bom_headers.template_id')
+            ->whereNotNull('ocs.bom_header_id')
+            ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version')
+            ->selectRaw('CASE WHEN bom_headers.image_path IS NOT NULL THEN bom_headers.id WHEN template.image_path IS NOT NULL THEN template.id ELSE NULL END as bom_image_id');
+    }
+
     public function materials(Request $request, OrderMaterialRequirementService $service)
     {
-        $orders = DB::table('ocs')
-            ->leftJoin('bom_headers', 'bom_headers.id', '=', 'ocs.bom_header_id')
-            ->whereNotNull('ocs.bom_header_id')
+        $orders = $this->ordersWithImages()
             ->when($request->filled('cs'), fn ($q) => $q->where('ocs.CS', 'like', '%' . trim($request->cs) . '%'))
-            ->select('ocs.id', 'ocs.CS', 'ocs.SNo', 'ocs.Sname', 'ocs.Customer', 'ocs.Color', 'ocs.Qty',
-                'ocs.status', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version')
             ->orderBy('ocs.CS')->paginate(30)->withQueryString();
         return view('admin.norm.index', compact('orders'));
     }
 
     public function materialDetail(int $id, OrderMaterialRequirementService $service)
     {
-        $order = DB::table('ocs')->whereNotNull('bom_header_id')->find($id);
+        $order = $this->ordersWithImages()->where('ocs.id', $id)->first();
         if (!$order) abort(404);
         $service->sync($id);
         $request = request()->merge(['cutsheet_id' => $id]);
-        $rows = $this->query($request)->paginate(50)->withQueryString();
+        $rows = $this->query($request)
+            ->leftJoin('materials as material', 'material.id', '=', 'norm.material_id')
+            ->addSelect('material.id as image_material_id', 'material.image_path as material_image_path')
+            ->paginate(50)->withQueryString();
         return view('admin.norm.materials', compact('rows', 'order'));
     }
 

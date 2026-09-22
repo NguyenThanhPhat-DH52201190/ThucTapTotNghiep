@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -12,6 +13,33 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class BOMController extends Controller
 {
+    private function storeImage(Request $request): ?string
+    {
+        if (!$request->hasFile('image')) return null;
+        $path = $request->file('image')->store('bom-images', 'local');
+        if (!$path) throw new \RuntimeException('Unable to store the BOM image.');
+        return $path;
+    }
+
+    private function deleteImage(?string $path): void
+    {
+        if (!$path) return;
+        try {
+            Storage::disk('local')->delete($path);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to remove BOM image', ['path' => $path, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function image(string $id)
+    {
+        $path = DB::table('bom_headers')->where('id', $id)->value('image_path');
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+        return Storage::disk('local')->response($path, null, [
+            'Cache-Control' => 'private, no-cache', 'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     private function customers()
     {
         return DB::table('customer_info')->select('id', 'name', 'brand')->orderBy('name')->get();
@@ -180,6 +208,7 @@ class BOMController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
             'style_no' => 'required',
             'style_name' => 'nullable',
             'customer_id' => 'nullable|exists:customer_info,id',
@@ -204,8 +233,11 @@ class BOMController extends Controller
         $itemSizeMappings = $this->validatedItemSizeMappings($request);
         $itemMaterials = $this->validatedItemMaterials($request);
 
+        $imagePath = null;
+        $committed = false;
         try {
             DB::beginTransaction();
+            $imagePath = $this->storeImage($request);
 
             // Calculate totals
             $totalFabric = 0;
@@ -226,6 +258,7 @@ class BOMController extends Controller
             $styleId = $this->resolveStyleId($request->style_no, $request->style_name);
             $customer = $this->resolveCustomer($request->integer('customer_id') ?: null, $request->customer);
             $headerId = DB::table('bom_headers')->insertGetId([
+                'image_path' => $imagePath,
                 'style_id' => $styleId,
                 'customer_id' => $customer['customer_id'],
                 'style_no' => $request->style_no,
@@ -272,12 +305,14 @@ class BOMController extends Controller
             }
 
             DB::commit();
+            $committed = true;
             app(\App\Services\AuditTrailService::class)->record('bom_created', 'bom_header', (int) $headerId, $request->user()?->id, [], ['style_no' => $request->style_no, 'version' => $request->version ?? 'V1', 'item_count' => count($request->items)]);
 
             return redirect()->route('admin.bom.index')
                 ->with('success', 'BOM created successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
+            if (!$committed) $this->deleteImage($imagePath);
             Log::error('BOM create failed: ' . $e->getMessage());
             return back()->with('error', 'Failed to create BOM: ' . $e->getMessage())
                 ->withInput();
@@ -424,6 +459,7 @@ class BOMController extends Controller
         $beforeItemCount = DB::table('bom_items')->where('bom_header_id', $id)->count();
 
         $validated = $request->validate([
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
             'style_no' => 'required',
             'style_name' => 'nullable',
             'customer_id' => 'nullable|exists:customer_info,id',
@@ -449,8 +485,11 @@ class BOMController extends Controller
         $itemSizeSelections = $this->validatedItemSizeMappings($request);
         $itemMaterials = $this->validatedItemMaterials($request);
 
+        $imagePath = null;
+        $committed = false;
         try {
             DB::beginTransaction();
+            $imagePath = $this->storeImage($request);
 
             $totalFabric = 0;
             $totalTrim = 0;
@@ -472,6 +511,7 @@ class BOMController extends Controller
             $styleId = $this->resolveStyleId($request->style_no, $request->style_name);
             $customer = $this->resolveCustomer($request->integer('customer_id') ?: null, $request->customer);
             DB::table('bom_headers')->where('id', $id)->update([
+                'image_path' => $imagePath ?? $bom->image_path,
                 'style_id' => $styleId,
                 'customer_id' => $customer['customer_id'],
                 'style_no' => $request->style_no,
@@ -520,6 +560,8 @@ class BOMController extends Controller
             }
 
             DB::commit();
+            $committed = true;
+            if ($imagePath) $this->deleteImage($bom->image_path);
             app(\App\Services\AuditTrailService::class)->record('bom_updated', 'bom_header', (int) $id, $request->user()?->id,
                 ['style_no' => $bom->style_no, 'version' => $bom->version, 'status' => $bom->status, 'item_count' => $beforeItemCount],
                 ['style_no' => $request->style_no, 'version' => $request->version ?? 'V1', 'status' => $request->status ?? 'draft', 'item_count' => count($request->items)], $request->change_reason);
@@ -529,6 +571,7 @@ class BOMController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('BOM update failed: ' . $e->getMessage());
+            if (!$committed) $this->deleteImage($imagePath);
             return back()->with('error', 'Failed to update BOM: ' . $e->getMessage())
                 ->withInput();
         }
@@ -536,9 +579,11 @@ class BOMController extends Controller
 
     public function destroy($id)
     {
+        $imagePath = DB::table('bom_headers')->where('id', $id)->value('image_path');
         $itemIds = DB::table('bom_items')->where('bom_header_id', $id)->pluck('id');
         DB::table('bom_item_customer_sizes')->whereIn('bom_item_id', $itemIds)->delete();
         DB::table('bom_headers')->where('id', $id)->delete();
+        $this->deleteImage($imagePath);
         return redirect()->route('admin.bom.index')
             ->with('success', 'BOM deleted successfully!');
     }

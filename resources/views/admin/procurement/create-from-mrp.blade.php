@@ -18,6 +18,11 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-4">
+                        <label for="poNumber" class="form-label">PO Number <span class="text-danger">*</span></label>
+                        <input id="poNumber" type="text" name="po_number" class="form-control @error('po_number') is-invalid @enderror" value="{{ old('po_number') }}" maxlength="50" required>
+                        @error('po_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label">Supplier <span class="text-danger">*</span></label>
                         <select name="supplier_id" id="supplierId" class="form-select" required>
                             <option value="">-- Select --</option>

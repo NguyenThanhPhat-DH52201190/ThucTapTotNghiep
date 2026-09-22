@@ -209,6 +209,9 @@ class ProcurementController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'po_number' => 'required|string|max:50|unique:purchase_orders,po_number',
+        ]);
         $this->validatePo($request);
 
         // Check supplier is active
@@ -220,7 +223,7 @@ class ProcurementController extends Controller
         try {
             DB::beginTransaction();
 
-            $poNumber = 'PO-' . now()->format('YmdHisv') . '-' . Str::upper(Str::random(6));
+            $poNumber = $request->input('po_number');
 
             $totalAmount = 0;
             $poItems = [];
@@ -283,13 +286,13 @@ class ProcurementController extends Controller
         $po = DB::table('purchase_orders')
             ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
             ->select('purchase_orders.*', 'suppliers.name as supplier_name', 'suppliers.code as supplier_code',
-                     'suppliers.contact_person', 'suppliers.phone', 'suppliers.email')
+                     'suppliers.contact_person', 'suppliers.phone', 'suppliers.email', 'suppliers.payment_terms as supplier_payment_terms')
             ->where('purchase_orders.id', $id)
             ->first();
         if (!$po) abort(404);
 
         $items = DB::table('po_items')->leftJoin('materials', 'po_items.material_id', '=', 'materials.id')
-            ->where('po_items.po_id', $id)->select('po_items.*', 'materials.size as default_material_size')->get();
+            ->where('po_items.po_id', $id)->select('po_items.*', 'materials.size as default_material_size', 'materials.color as default_material_color')->get();
         $receipts = DB::table('po_receipts')->where('po_id', $id)->orderBy('received_date', 'desc')->get();
         $warehouses = DB::table('warehouses')->where('is_active', 1)->orderBy('name')->get();
         $locations = DB::table('locations')->where('is_active', 1)->orderBy('location_code')->get();
@@ -486,8 +489,11 @@ class ProcurementController extends Controller
             'received_date' => 'required|date', 'reference_number' => 'nullable|string|max:191', 'notes' => 'nullable|string',
             'warehouse_id' => 'required|exists:warehouses,id', 'location_id' => 'required|exists:locations,id',
             'items' => 'required|array|min:1', 'items.*.po_item_id' => 'required|exists:po_items,id',
-            'items.*.quantity' => 'required|numeric|gt:0', 'items.*.lot_roll_no' => 'required|string|max:100',
-            'items.*.material_color' => 'required|string|max:100', 'items.*.material_size' => 'required|string|max:100',
+            'items.*.quantity' => 'required|numeric|decimal:0,4|gt:0',
+            'items.*.lot_no' => 'required_without:items.*.lot_roll_no|nullable|string|max:40',
+            'items.*.roll_no' => 'required_without:items.*.lot_roll_no|nullable|string|max:40',
+            'items.*.lot_roll_no' => 'nullable|string|max:100',
+            'items.*.material_size' => 'required|string|max:100',
         ]);
         try {
             DB::transaction(function () use ($id, $data) {
@@ -498,8 +504,7 @@ class ProcurementController extends Controller
                 if (!empty($data['location_id']) && !DB::table('locations')->where('id', $data['location_id'])->where('warehouse_id', $data['warehouse_id'])->exists()) {
                     throw new \RuntimeException('The selected location does not belong to the selected warehouse.');
                 }
-                $quantities = collect($data['items'])->keyBy('po_item_id')->map(fn ($item) => (float) $item['quantity'])->all();
-                $this->receiveToInventory($id, $quantities, $data);
+                $this->receiveToInventory($id, $data);
             });
             $this->syncMaterialReadiness(DB::table('mrp_suggestions')->join('po_items', 'po_items.mrp_suggestion_id', '=', 'mrp_suggestions.id')
                 ->where('po_items.po_id', $id)->pluck('mrp_suggestions.cutsheet_id')->all());
@@ -507,111 +512,68 @@ class ProcurementController extends Controller
             return back()->with('success', 'Goods receipt posted to inventory.');
         } catch (\Throwable $e) {
             Log::warning('PO receipt rejected', ['po_id' => $id, 'message' => $e->getMessage()]);
-            return back()->with('error', $e->getMessage());
+            return back()->withInput()->with('error', $e->getMessage());
         }
     }
 
     /**
      * Receive items to inventory without overriding PO status
      */
-    private function receiveToInventory($poId, ?array $quantities = null, array $meta = [])
+    private function receiveToInventory($poId, array $meta)
     {
-        return DB::transaction(function () use ($poId, $quantities, $meta) {
         $po = DB::table('purchase_orders')->where('id', $poId)->lockForUpdate()->first();
-        $items = DB::table('po_items')->where('po_id', $poId)->lockForUpdate()->get();
-        $receiptEntries = collect($meta['items'] ?? [])->keyBy('po_item_id');
-
-        // Check warehouse exists
-        $warehouse = !empty($meta['warehouse_id']) ? DB::table('warehouses')->find($meta['warehouse_id']) : DB::table('warehouses')->where('type', 'raw_material')->first();
-        if (!$warehouse) {
-            Log::warning('Cannot receive PO to inventory: no raw_material warehouse found');
-            return;
+        $items = DB::table('po_items')->where('po_id', $poId)->lockForUpdate()->get()->keyBy('id');
+        $entries = collect($meta['items']);
+        foreach ($entries->groupBy('po_item_id') as $itemId => $rows) {
+            $item = $items->get($itemId);
+            if (!$item) throw new \RuntimeException('A receipt line does not belong to this PO.');
+            if (round($rows->sum('quantity'), 4) > round($item->quantity - $item->received_qty, 4)) {
+                throw new \RuntimeException("Total received quantity exceeds remaining quantity for {$item->material_code}.");
+            }
         }
-
         $receiptNo = 'RCP-' . now()->format('YmdHisv') . '-' . Str::upper(Str::random(6));
         $receiptId = DB::table('po_receipts')->insertGetId([
-            'receipt_number' => $receiptNo,
-            'po_id' => $poId,
-            'received_date' => $meta['received_date'] ?? now()->format('Y-m-d'),
-            'reference_number' => $meta['reference_number'] ?? null,
-            'notes' => $meta['notes'] ?? 'Auto-received on PO status update',
-            'created_by' => request()->user()->id,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'receipt_number' => $receiptNo, 'po_id' => $poId, 'received_date' => $meta['received_date'],
+            'reference_number' => $meta['reference_number'] ?? null, 'notes' => $meta['notes'] ?? null,
+            'created_by' => request()->user()->id, 'created_at' => now(), 'updated_at' => now(),
         ]);
-
-        foreach ($items as $item) {
-            $remaining = $item->quantity - $item->received_qty;
-            if ($remaining <= 0) continue;
-
-            $receiveQty = $quantities === null ? $remaining : ($quantities[$item->id] ?? 0);
-            $receiptEntry = $receiptEntries->get($item->id);
-            if ($receiveQty <= 0) continue;
-            if ($receiveQty > $remaining) throw new \RuntimeException("Received quantity exceeds remaining quantity for {$item->material_code}.");
-            if ($item->color && strcasecmp(trim($item->color), trim($receiptEntry['material_color'] ?? '')) !== 0) {
-                throw new \RuntimeException("Received color must match the PO color for {$item->material_code}.");
-            }
-
+        foreach ($entries as $entry) {
+            $item = $items[$entry['po_item_id']];
+            $material = $item->material_id ? DB::table('materials')->find($item->material_id)
+                : DB::table('materials')->where('internal_code', $item->material_code)->first();
+            if (!$material) throw new \RuntimeException("Material {$item->material_code} was not found in Material Master.");
+            $qty = (float) $entry['quantity'];
+            $lot = isset($entry['lot_no']) ? trim($entry['lot_no']) : null;
+            $roll = isset($entry['roll_no']) ? trim($entry['roll_no']) : null;
+            $label = $lot !== null && $roll !== null ? $lot . ' / ' . $roll : ($entry['lot_roll_no'] ?? null);
+            $color = $material->color;
+            $size = trim($entry['material_size']);
             DB::table('po_receipt_items')->insert([
-                'po_receipt_id' => $receiptId,
-                'po_item_id' => $item->id,
-                'material_code' => $item->material_code,
-                'material_color' => trim($receiptEntry['material_color']),
-                'material_size' => trim($receiptEntry['material_size']),
-                'quantity_received' => $receiveQty,
-                'batch_no' => $receiptEntry['lot_roll_no'] ?? null,
-                'warehouse_id' => $warehouse->id,
-                'location_id' => $meta['location_id'] ?? null,
-                'material_id' => $item->material_id,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'po_receipt_id' => $receiptId, 'po_item_id' => $item->id, 'material_id' => $material->id,
+                'material_code' => $material->internal_code, 'material_color' => $color, 'material_size' => $size,
+                'quantity_received' => $qty, 'batch_no' => $label, 'lot_no' => $lot, 'roll_no' => $roll,
+                'warehouse_id' => $meta['warehouse_id'], 'location_id' => $meta['location_id'],
+                'created_at' => now(), 'updated_at' => now(),
             ]);
-
-            DB::table('po_items')->where('id', $item->id)->update([
-                'received_qty' => $item->received_qty + $receiveQty,
-                'status' => ($item->received_qty + $receiveQty >= $item->quantity) ? 'received' : 'partial',
-                'updated_at' => now(),
-            ]);
-
-            $materialId = $item->material_id;
-            if (!$materialId) {
-                $materialId = DB::table('materials')->where('internal_code', $item->material_code)->value('id')
-                    ?? DB::table('materials')->insertGetId([
-                        'internal_code' => $item->material_code, 'material_name' => $item->material_name,
-                        'unit' => $item->unit, 'created_at' => now(), 'updated_at' => now(),
-                    ]);
-                DB::table('po_items')->where('id', $item->id)->update(['material_id' => $materialId]);
-                DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)->where('po_item_id', $item->id)
-                    ->update(['material_id' => $materialId]);
-            }
-
             app(InventoryLedgerService::class)->receive([
                 'reference_type' => 'PO_RECEIPT', 'reference_id' => $receiptId, 'reference_doc' => $receiptNo,
-                'material_id' => $materialId, 'material_code' => $item->material_code, 'color' => trim($receiptEntry['material_color']),
-                'size' => trim($receiptEntry['material_size']),
-                'quantity' => $receiveQty, 'unit' => $item->unit, 'warehouse_id' => $warehouse->id,
-                'location_id' => $meta['location_id'] ?? null,
-                'lot_roll_no' => $receiptEntry['lot_roll_no'] ?? null,
+                'transaction_date' => $meta['received_date'],
+                'material_id' => $material->id, 'material_code' => $material->internal_code, 'color' => $color, 'size' => $size,
+                'quantity' => $qty, 'unit' => $item->unit, 'warehouse_id' => $meta['warehouse_id'],
+                'location_id' => $meta['location_id'], 'lot_roll_no' => $label, 'lot_no' => $lot, 'roll_no' => $roll,
                 'unit_cost' => $item->unit_price, 'notes' => "Received from PO #{$po->po_number}",
-                'user_id' => request()->user()?->id,
+                'user_id' => request()->user()->id,
             ]);
-            if ($item->mrp_suggestion_id && $item->received_qty + $receiveQty >= $item->quantity) {
+            $item->received_qty = round($item->received_qty + $qty, 4);
+            DB::table('po_items')->where('id', $item->id)->update([
+                'material_id' => $material->id, 'received_qty' => $item->received_qty,
+                'status' => $item->received_qty >= $item->quantity ? 'received' : 'partial', 'updated_at' => now(),
+            ]);
+            if ($item->mrp_suggestion_id && $item->received_qty >= $item->quantity) {
                 DB::table('mrp_suggestions')->where('id', $item->mrp_suggestion_id)->update(['status' => 'received', 'updated_at' => now()]);
             }
         }
-
-        $updatedStatus = DB::table('po_items')->where('po_id', $poId)
-            ->where('status', '!=', 'received')->exists() ? 'partial' : 'received';
-
-        // Only update PO status if different from what caller already set
-        $currentPoStatus = DB::table('purchase_orders')->where('id', $poId)->value('status');
-        if ($currentPoStatus !== $updatedStatus) {
-            DB::table('purchase_orders')->where('id', $poId)->update([
-                'status' => $updatedStatus,
-                'updated_at' => now(),
-            ]);
-        }
-        });
+        $status = DB::table('po_items')->where('po_id', $poId)->where('status', '!=', 'received')->exists() ? 'partial' : 'received';
+        DB::table('purchase_orders')->where('id', $poId)->update(['status' => $status, 'updated_at' => now()]);
     }
-
 }

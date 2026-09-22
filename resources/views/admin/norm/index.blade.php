@@ -8,14 +8,16 @@
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white"><h5 class="mb-1 fw-bold"><i class="bi bi-rulers me-2"></i>NORM Materials</h5><small class="text-muted">Select an Order Cut Sheet to view its material requirements.</small></div>
-        <div class="card-body"><form method="GET" class="row g-2 align-items-end">
+        <div class="card-body"><form method="GET" class="row g-2 align-items-end norm-filters">
             <div class="col-md-4"><label class="form-label">CS</label><input name="cs" value="{{ request('cs') }}" class="form-control" placeholder="Enter CS code"></div>
-            <div class="col-auto"><button class="btn btn-dark"><i class="bi bi-search me-1"></i>Search</button></div>
-            <div class="col-auto"><a href="{{ route('admin.norm.materials') }}" class="btn btn-outline-secondary">Reset</a></div>
+            <div class="col-auto norm-filter-action"><button class="btn btn-dark"><i class="bi bi-search me-1"></i>Search</button></div>
+            <div class="col-auto norm-filter-action"><a href="{{ route('admin.norm.materials') }}" class="btn btn-outline-secondary">Reset</a></div>
         </form></div>
     </div>
 
-    <div class="card shadow-sm border-0"><div class="table-responsive"><table class="table table-bordered table-hover align-middle mb-0">
+    <div class="card shadow-sm border-0">
+        <div class="norm-scroll-hint d-none px-3 py-2 small text-muted border-bottom"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Swipe to view more columns</div>
+        <div class="table-responsive"><table class="table table-bordered table-hover align-middle mb-0">
         <thead class="table-light"><tr><th>CS</th><th>PO (ONum)</th><th>Style</th><th>Style Name</th><th>Customer</th><th>Color</th><th class="text-end">Qty</th><th>BOM</th><th>Status</th><th>Action</th></tr></thead>
         <tbody>@forelse($orders as $order)<tr>
             <td class="fw-bold">@include('admin.partials.image-trigger', ['imageUrl' => !empty($order->image_path) ? route('admin.ocs.image', $order->id, false) : null, 'imageLabel' => $order->CS])</td><td>{{ $order->ONum ?? '-' }}</td><td>{{ $order->SNo }}</td><td>{{ $order->Sname }}</td><td>{{ $order->Customer }}</td><td>{{ $order->Color }}</td><td class="text-end fw-semibold">{{ number_format($order->Qty, 0) }}</td>

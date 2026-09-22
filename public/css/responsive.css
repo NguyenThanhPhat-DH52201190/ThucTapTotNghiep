@@ -68,10 +68,21 @@
     .app-content .btn, .topbar .btn, .sidebar .btn-close { min-height: 40px; }
     .app-content .form-control, .app-content .form-select { font-size: 16px; }
     .app-content .table { font-size: .875rem; }
-    .table-responsive .table { min-width: 560px; }
-    .table-responsive .table > :not(caption) > * > * { padding: .6rem .5rem; }
-    .table-responsive td:first-child { min-width: 7rem; }
+    /* Let columns keep their natural width instead of squeezing codes and names
+       into tall, uneven rows. The surrounding region handles horizontal scroll. */
+    .table-responsive .table { width: max-content; min-width: 100%; }
+    .table-responsive .table > :not(caption) > * > * {
+        padding: .75rem; white-space: nowrap; vertical-align: middle;
+    }
+    .table-responsive .order-image-trigger { white-space: nowrap; }
+    .table-responsive td:first-child { min-width: 5.5rem; }
+    .table-responsive td[colspan] { white-space: normal; }
     .table-responsive td .d-flex { flex-wrap: nowrap !important; }
+    .norm-filters .norm-filter-action { width: 50%; }
+    .norm-filters .norm-filter-action .btn {
+        width: 100%; display: flex; align-items: center; justify-content: center;
+    }
+    .norm-scroll-hint { display: block !important; }
     .modal .modal-dialog { margin: .5rem; max-width: calc(100% - 1rem) !important; }
     .modal .modal-content { max-height: calc(100dvh - 1rem); }
     .modal .modal-body, .modal .modal-header, .modal .modal-footer { padding: .875rem; }

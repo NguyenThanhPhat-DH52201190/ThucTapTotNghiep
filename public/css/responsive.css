@@ -51,10 +51,35 @@
 }
 @media (max-width: 575.98px) {
     .app-content { padding: .75rem !important; }
-    .topbar { padding-inline: .75rem !important; }
-    .topbar-account { width: 100%; justify-content: flex-end; gap: .5rem !important; font-size: .875rem; }
-    .topbar-account .account-identity { flex-direction: column-reverse; gap: .2rem !important; min-width: 0; max-width: calc(100% - 85px); }
-    .topbar-account .account-name { text-align: center; line-height: 1.2; }
+    .topbar {
+        padding: .625rem .75rem !important;
+        flex-wrap: nowrap; gap: .5rem; min-height: 64px;
+    }
+    .topbar-heading { flex: 1 1 0; }
+    .topbar-heading > .btn {
+        width: 40px; height: 40px; padding: 0; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .topbar-heading h6 {
+        font-size: .875rem; line-height: 1.35;
+        display: -webkit-box; -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .topbar-account {
+        width: auto; flex: 0 0 auto; flex-wrap: nowrap;
+        justify-content: flex-end; gap: .5rem !important; font-size: .75rem;
+    }
+    .topbar-account .account-identity {
+        flex-direction: column-reverse; gap: .2rem !important;
+        min-width: 0; max-width: 72px;
+    }
+    .topbar-account .account-name {
+        max-width: 100%; text-align: center; line-height: 1.2;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .topbar-account .badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .topbar-account form { flex-shrink: 0; }
+    .topbar-account .btn { padding-inline: .5rem; font-size: .75rem; }
     .app-content h1 { font-size: 1.5rem; }
     .app-content h2 { font-size: 1.35rem; }
     .app-content h3, .app-content h4 { font-size: 1.2rem; }

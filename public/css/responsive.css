@@ -1,0 +1,86 @@
+/* Shared application layout. PDF documents retain their own print styles. */
+.app-shell { min-height: 100vh; min-height: 100dvh; }
+.app-main { min-width: 0; width: 100%; }
+.app-content { min-width: 0; overflow-wrap: break-word; }
+.app-shell .sidebar { flex: 0 0 240px; --bs-offcanvas-width: min(300px, 88vw); background: #1e293b !important; }
+.sidebar .offcanvas-body { background: #1e293b; }
+.sidebar a { overflow-wrap: anywhere; }
+.topbar { min-height: 60px; height: auto; padding-block: .65rem; gap: .75rem; flex-wrap: wrap; }
+.topbar-heading { min-width: 0; flex: 1 1 180px; }
+.topbar-heading h6 { overflow-wrap: anywhere; }
+.topbar-account { min-width: 0; flex-wrap: wrap; }
+.account-name { overflow-wrap: anywhere; }
+.app-content .card, .app-content .card-body, .app-content .row > * { min-width: 0; }
+.app-content .card-header.d-flex, .app-content .card-body.d-flex,
+.app-content .card-footer.d-flex { flex-wrap: wrap; gap: .75rem; }
+.app-content .card-header > .d-flex, .app-content .card-body > .d-flex,
+.app-content .card-footer > .d-flex { flex-wrap: wrap; }
+.app-content img { max-width: 100%; }
+.app-content pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.table-responsive { max-width: 100%; overscroll-behavior-x: contain; }
+.table-responsive:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
+.table-responsive th { white-space: nowrap; }
+.table-responsive td { overflow-wrap: normal; }
+.table-responsive .form-control:not([type="checkbox"]):not([type="hidden"]),
+.table-responsive .form-select { min-width: 100px; }
+.table-responsive input[type="date"] { min-width: 145px; }
+.table-responsive textarea, .table-responsive .material-description-input { min-width: 190px; }
+.modal-content, .modal-body { min-width: 0; }
+.modal-title { overflow-wrap: anywhere; }
+.modal .modal-body { overflow-y: auto; overscroll-behavior-y: contain; }
+.modal .modal-content { max-height: calc(100dvh - 3.5rem); }
+.modal-header, .modal-footer { flex-shrink: 0; }
+.pagination { flex-wrap: wrap; gap: .2rem; }
+@media (min-width: 992px) {
+    .app-shell .sidebar { position: sticky; top: 0; height: 100vh; height: 100dvh; min-height: 0; overflow-y: auto; align-self: flex-start; }
+    .sidebar.offcanvas-lg .offcanvas-body { display: block; overflow: visible; }
+}
+@media (max-width: 991.98px) {
+    .app-shell .sidebar { min-height: 0; }
+    .sidebar .offcanvas-body { overflow-y: auto; }
+    .app-content { padding: 1rem !important; }
+    .topbar { padding-inline: 1rem !important; }
+}
+@media (max-width: 1199.98px) {
+    /* Pinned columns must not cover the entire narrow viewport. */
+    .app-content .masterplan-table .sticky-col,
+    .app-content .masterplan-table .sticky-action { position: static !important; left: auto !important; right: auto !important; }
+    .app-content .masterplan-scrollbar-proxy { display: none !important; }
+    .app-content .masterplan-scroll { scrollbar-width: auto; max-height: 70vh; max-height: 70dvh; }
+    .app-content .masterplan-scroll::-webkit-scrollbar { height: 10px; }
+}
+@media (max-width: 575.98px) {
+    .app-content { padding: .75rem !important; }
+    .topbar { padding-inline: .75rem !important; }
+    .topbar-account { width: 100%; justify-content: flex-end; gap: .5rem !important; font-size: .875rem; }
+    .topbar-account .account-name { margin-right: auto; }
+    .app-content h1 { font-size: 1.5rem; }
+    .app-content h2 { font-size: 1.35rem; }
+    .app-content h3, .app-content h4 { font-size: 1.2rem; }
+    .app-content .card-body.p-4, .app-content .card-header.p-4 { padding: 1rem !important; }
+    .app-content .d-flex.gap-2, .app-content .d-flex.gap-3 { flex-wrap: wrap; }
+    .app-content .d-flex.justify-content-between { flex-wrap: wrap; gap: .75rem; }
+    .app-content .input-group { flex-wrap: nowrap; }
+    .app-content .row > .col-6, .app-content .row > .col-4,
+    .app-content .row > .col-3 { width: 100%; }
+    .app-content .row > .col-auto:has(> .form-control),
+    .app-content .row > .col-auto:has(> .form-select) { width: 100%; }
+    .app-content .btn, .topbar .btn, .sidebar .btn-close { min-height: 40px; }
+    .app-content .form-control, .app-content .form-select { font-size: 16px; }
+    .app-content .table { font-size: .875rem; }
+    .table-responsive .table { min-width: 560px; }
+    .table-responsive .table > :not(caption) > * > * { padding: .6rem .5rem; }
+    .table-responsive td:first-child { min-width: 7rem; }
+    .table-responsive td .d-flex { flex-wrap: nowrap !important; }
+    .modal .modal-dialog { margin: .5rem; max-width: calc(100% - 1rem) !important; }
+    .modal .modal-content { max-height: calc(100dvh - 1rem); }
+    .modal .modal-body, .modal .modal-header, .modal .modal-footer { padding: .875rem; }
+    .modal-footer .btn { flex: 1 1 auto; }
+    .module-back-bar .btn { white-space: normal; text-align: left; }
+    .auth-layout .card-body { padding: 1.25rem !important; }
+    .auth-layout .badge { white-space: normal; line-height: 1.4; }
+    .auth-layout .form-control { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sidebar, .offcanvas-backdrop { transition: none !important; }
+}

@@ -48,6 +48,8 @@
             margin-bottom: 1rem;
         }
     </style>
+    <link href="{{ asset('css/responsive.css') }}?v={{ filemtime(public_path('css/responsive.css')) }}" rel="stylesheet">
+    <script src="{{ asset('js/responsive.js') }}?v={{ filemtime(public_path('js/responsive.js')) }}" defer></script>
 </head>
 
 <body>
@@ -56,15 +58,20 @@
     $role = auth()->user()->role;
     @endphp
 
-    <div class="d-flex">
+    <div class="d-flex app-shell">
 
         <!-- SIDEBAR -->
-        <div class="sidebar p-3">
-            <h5 class="text-white mb-4 text-center"> GSV</h5>
+        <nav class="sidebar offcanvas-lg offcanvas-start" id="appSidebar" tabindex="-1" aria-labelledby="sidebarTitle">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title text-white" id="sidebarTitle">GSV</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="Close navigation"></button>
+            </div>
+            <div class="offcanvas-body d-block p-3">
+            <h5 class="text-white mb-4 text-center d-none d-lg-block" aria-hidden="true">GSV</h5>
 
             @if($role === 'admin')
             <a class="d-flex justify-content-between align-items-center text-white fw-semibold mb-2 px-3 py-2 rounded"
-                data-bs-toggle="collapse" href="#adminMenu" role="button">
+                data-bs-toggle="collapse" href="#adminMenu" role="button" aria-expanded="true" aria-controls="adminMenu">
 
                 <!-- LEFT -->
                 <span class="d-flex align-items-center gap-2">
@@ -76,7 +83,7 @@
                 <i class="bi bi-chevron-down small"></i>
             </a>
 
-            <div class="collapse ps-4" id="adminMenu">
+            <div class="collapse show ps-3" id="adminMenu">
                 <a href="{{ route('admin.ocs.index') }}"
                 class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-speedometer2"></i>
@@ -212,17 +219,21 @@
                 <i class="bi bi-journal-text"></i> Stock Records
             </a>
             @endif
-        </div>
+            </div>
+        </nav>
 
         <!-- MAIN -->
-        <div class="flex-grow-1">
+        <div class="flex-grow-1 app-main">
 
             <!-- TOPBAR -->
             <div class="topbar d-flex justify-content-between align-items-center px-4">
-                <h6 class="mb-0 fw-bold text-dark">@yield('title', 'Dashboard')</h6>
+                <div class="topbar-heading d-flex align-items-center gap-2">
+                    <button class="btn btn-dark d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="Open navigation"><i class="bi bi-list" aria-hidden="true"></i></button>
+                    <h6 class="mb-0 fw-bold text-dark">@yield('title', 'Dashboard')</h6>
+                </div>
 
-                <div class="d-flex align-items-center gap-3">
-                    <span>{{ auth()->user()->name }}</span>
+                <div class="topbar-account d-flex align-items-center gap-3">
+                    <span class="account-name">{{ auth()->user()->name }}</span>
                     <span class="badge bg-dark text-uppercase">{{ $role }}</span>
 
                     <form method="POST" action="{{ route('logout') }}">
@@ -233,7 +244,7 @@
             </div>
 
             <!-- CONTENT -->
-            <div class="p-4">
+            <main class="p-4 app-content" id="mainContent">
                 @php
                     $moduleBack = null;
 
@@ -275,7 +286,7 @@
                     </div>
                 @endif
                 @yield('content')
-            </div>
+            </main>
 
         </div>
     </div>

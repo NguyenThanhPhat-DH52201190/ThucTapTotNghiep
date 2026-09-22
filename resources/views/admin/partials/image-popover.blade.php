@@ -7,8 +7,9 @@
     const popup = document.createElement('div');
     popup.id = 'orderImagePopover';
     popup.className = 'bg-white border rounded shadow p-3';
-    popup.setAttribute('role', 'tooltip');
-    popup.style.cssText = 'position:fixed;z-index:1080;width:280px;max-width:calc(100vw - 24px);';
+    popup.setAttribute('role', 'region');
+    popup.setAttribute('aria-label', 'Image preview');
+    popup.style.cssText = 'position:fixed;z-index:1080;width:560px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overflow-wrap:anywhere;';
     popup.hidden = true;
     const title = document.createElement('div');
     title.className = 'fw-semibold mb-2';
@@ -54,22 +55,32 @@
                 panel.append(heading);
             }
             const picture = document.createElement('img');
-            picture.style.cssText = 'width:100%;height:200px;max-height:40vh;object-fit:contain;';
+            picture.style.cssText = 'width:100%;height:400px;max-height:65vh;object-fit:contain;cursor:zoom-in;';
             picture.alt = (label || 'Image') + ': ' + title.textContent;
             picture.hidden = true;
+            const link = document.createElement('a');
+            if (url) link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.setAttribute('aria-label', 'Open original image in a new tab: ' + title.textContent);
+            link.title = 'Open original image in a new tab';
+            link.hidden = true;
+            link.append(picture);
             const message = document.createElement('div');
             message.className = 'text-muted small';
             message.setAttribute('aria-live', 'polite');
             message.textContent = url ? 'Loading image…' : 'No image uploaded.';
-            panel.append(picture, message);
+            panel.append(link, message);
             gallery.append(panel);
             picture.addEventListener('load', () => {
                 picture.hidden = false;
+                link.hidden = false;
                 message.hidden = true;
                 position();
             });
             picture.addEventListener('error', () => {
                 picture.hidden = true;
+                link.hidden = true;
                 message.hidden = false;
                 message.textContent = 'Image is unavailable.';
                 position();
@@ -88,11 +99,15 @@
     });
     popup.addEventListener('mouseenter', () => clearTimeout(closeTimer));
     popup.addEventListener('mouseleave', scheduleClose);
+    popup.addEventListener('focusin', () => clearTimeout(closeTimer));
+    popup.addEventListener('focusout', scheduleClose);
     document.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
     document.addEventListener('click', event => {
         if (!popup.contains(event.target) && !event.target.closest('.order-image-trigger')) close();
     });
-    document.addEventListener('scroll', close, true);
+    document.addEventListener('scroll', event => {
+        if (!popup.contains(event.target)) close();
+    }, true);
     window.addEventListener('resize', close);
 })();
 

@@ -41,8 +41,9 @@
         const openAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
         const availableHeight = Math.max(100, openAbove ? spaceAbove : spaceBelow);
 
-        panel.style.left = `${rect.left}px`;
-        panel.style.width = `${Math.max(rect.width, 320)}px`;
+        const width = Math.min(Math.max(rect.width, 320), window.innerWidth - margin * 2);
+        panel.style.left = `${Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin))}px`;
+        panel.style.width = `${width}px`;
         panel.style.maxHeight = `${Math.min(preferredHeight, availableHeight)}px`;
         panel.style.top = openAbove ? 'auto' : `${rect.bottom + 2}px`;
         panel.style.bottom = openAbove ? `${window.innerHeight - rect.top + 2}px` : 'auto';

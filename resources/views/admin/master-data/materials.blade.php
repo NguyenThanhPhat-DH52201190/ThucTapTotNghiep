@@ -21,7 +21,7 @@
  <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-dark">Filter</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials') }}">Reset</a></div>
 </form>
 <div class="card shadow-sm border-0 mb-4">
- <div class="card-header bg-white"><form method="GET" action="{{ route('admin.master-data.materials.copy') }}" id="copySelectedMaterials" class="d-flex align-items-center gap-2 flex-wrap"><button id="copySelectedButton" class="btn btn-outline-primary" disabled><i class="bi bi-copy me-1"></i>Copy selected (<span id="selectedMaterialCount">0</span>)</button><small class="text-muted">Select materials on this page, or use Copy on a row.</small></form></div>
+ <div class="card-header bg-white"><form method="GET" action="{{ route('admin.master-data.materials.copy') }}" id="copySelectedMaterials" class="d-flex align-items-center gap-2 flex-wrap"><button id="copySelectedButton" class="btn btn-outline-primary" disabled><i class="bi bi-copy me-1"></i>Copy selected (<span id="selectedMaterialCount">0</span>)</button><small class="text-muted"></small></form></div>
  <div class="table-responsive"><table class="table table-hover align-middle mb-0">
  <thead class="table-light"><tr><th><input type="checkbox" id="selectPageMaterials" class="form-check-input" aria-label="Select all materials on this page"></th><th>Code</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Color / Size</th><th>Unit</th><th>Suppliers</th><th class="text-end">Action</th></tr></thead>
  <tbody>@forelse($materials as $material)<tr>

@@ -233,8 +233,10 @@
                 </div>
 
                 <div class="topbar-account d-flex align-items-center gap-3">
+                    <div class="account-identity d-flex align-items-center gap-3">
                     <span class="account-name">{{ auth()->user()->name }}</span>
                     <span class="badge bg-dark text-uppercase">{{ $role }}</span>
+                    </div>
 
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

@@ -2,6 +2,7 @@
 @section('title', 'Material Master')
 @section('content')
 @include('admin.partials.image-popover')
+@if(session('success'))<div class="alert alert-success" role="status">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 <style>
 #taxonomyModal .modal-dialog{max-width:min(1200px,calc(100vw - 2rem))}
@@ -19,9 +20,14 @@
  <div class="col-12 col-md-4"><label class="form-label">Subcategory</label><select id="materialSubcategoryFilter" name="subcategory_id" class="form-select"><option value="">All subcategories</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}" @selected((string) request('subcategory_id') === (string) $subcategory->id)>{{ $subcategory->name }}</option>@endforeach</select></div>
  <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-dark">Filter</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials') }}">Reset</a></div>
 </form>
-<div class="card shadow-sm border-0 mb-4"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
- <thead class="table-light"><tr><th>Code</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Color / Size</th><th>Unit</th><th>Suppliers</th><th class="text-end">Action</th></tr></thead>
- <tbody>@forelse($materials as $material)<tr><td><code>@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->internal_code])</code></td><td class="fw-semibold">@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->material_name])</td><td><span class="badge bg-info">{{ $material->category_name ?: ucfirst($material->material_type) }}</span></td><td>{{ $material->subcategory_name ?: '-' }}</td><td>{{ $material->color ?: '-' }} / {{ $material->size ?: '-' }}</td><td>{{ $material->unit }}</td><td>{{ $material->vendor_count }}</td><td class="text-end"><button class="btn btn-sm btn-warning" onclick='editMaterial(@json($material))'><i class="bi bi-pencil"></i></button></td></tr>@empty<tr><td colspan="8" class="text-center text-muted py-4">No materials yet.</td></tr>@endforelse</tbody>
+<div class="card shadow-sm border-0 mb-4">
+ <div class="card-header bg-white"><form method="GET" action="{{ route('admin.master-data.materials.copy') }}" id="copySelectedMaterials" class="d-flex align-items-center gap-2 flex-wrap"><button id="copySelectedButton" class="btn btn-outline-primary" disabled><i class="bi bi-copy me-1"></i>Copy selected (<span id="selectedMaterialCount">0</span>)</button><small class="text-muted">Select materials on this page, or use Copy on a row.</small></form></div>
+ <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+ <thead class="table-light"><tr><th><input type="checkbox" id="selectPageMaterials" class="form-check-input" aria-label="Select all materials on this page"></th><th>Code</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Color / Size</th><th>Unit</th><th>Suppliers</th><th class="text-end">Action</th></tr></thead>
+ <tbody>@forelse($materials as $material)<tr>
+ <td><input type="checkbox" name="ids[]" value="{{ $material->id }}" form="copySelectedMaterials" class="form-check-input material-copy-selection" aria-label="Select {{ $material->internal_code }}"></td>
+ <td><code>@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->internal_code])</code></td><td class="fw-semibold">@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->material_name])</td><td><span class="badge bg-info">{{ $material->category_name ?: ucfirst($material->material_type) }}</span></td><td>{{ $material->subcategory_name ?: '-' }}</td><td>{{ $material->color ?: '-' }} / {{ $material->size ?: '-' }}</td><td>{{ $material->unit }}</td><td>{{ $material->vendor_count }}</td>
+ <td class="text-end text-nowrap"><a href="{{ route('admin.master-data.materials.copy', ['ids' => [$material->id]]) }}" class="btn btn-sm btn-outline-primary" aria-label="Copy {{ $material->internal_code }}"><i class="bi bi-copy me-1"></i>Copy</a> <button class="btn btn-sm btn-warning" onclick='editMaterial(@json($material))'><i class="bi bi-pencil"></i></button></td></tr>@empty<tr><td colspan="9" class="text-center text-muted py-4">No materials yet.</td></tr>@endforelse</tbody>
 </table></div><div class="card-footer">{{ $materials->links() }}</div></div>
 <div class="card shadow-sm border-0" id="materialMappings"><div class="card-header fw-bold">Material–supplier mappings</div>
 <div class="card-body"><form method="GET" action="{{ route('admin.master-data.materials') }}#materialMappings" class="row g-2 align-items-end">
@@ -61,6 +67,18 @@
 @endsection
 @push('scripts')
 <script>
+const materialSelections = [...document.querySelectorAll('.material-copy-selection')];
+const selectPageMaterials = document.getElementById('selectPageMaterials');
+function updateMaterialSelection() {
+    const count = materialSelections.filter(input => input.checked).length;
+    document.getElementById('selectedMaterialCount').textContent = count;
+    document.getElementById('copySelectedButton').disabled = count === 0;
+    selectPageMaterials.checked = count > 0 && count === materialSelections.length;
+    selectPageMaterials.indeterminate = count > 0 && count < materialSelections.length;
+}
+selectPageMaterials.addEventListener('change', () => { materialSelections.forEach(input => input.checked = selectPageMaterials.checked); updateMaterialSelection(); });
+materialSelections.forEach(input => input.addEventListener('change', updateMaterialSelection));
+updateMaterialSelection();
 function filterSubcategories(selected=''){const category=document.getElementById('materialCategory').value,select=document.getElementById('materialSubcategory');[...select.options].forEach((o,i)=>{if(i)o.hidden=o.dataset.category!==category});if(selected&&[...select.options].some(o=>o.value==selected&&!o.hidden))select.value=selected;else if(select.selectedOptions[0]?.hidden)select.value=''}
 function newMaterial(){const f=document.getElementById('materialForm');f.reset();f.action=@json(route('admin.master-data.materials.store'));document.getElementById('materialMethod').innerHTML='';document.getElementById('materialModalTitle').textContent='Add material';document.getElementById('materialUnit').value='M';filterSubcategories();resetMaterialImage();bootstrap.Modal.getOrCreateInstance(document.getElementById('materialModal')).show()}
 function editMaterial(m){const f=document.getElementById('materialForm');f.action=@json(url('admin/master-data/materials'))+'/'+m.id;document.getElementById('materialMethod').innerHTML='<input type="hidden" name="_method" value="PATCH">';document.getElementById('materialModalTitle').textContent='Edit material';for(const [id,key] of Object.entries({materialCode:'internal_code',materialOldCode:'old_code',materialName:'material_name',materialColor:'color',materialSize:'size',materialUnit:'unit',materialCategory:'category_id'}))document.getElementById(id).value=m[key]||'';filterSubcategories(m.subcategory_id||'');resetMaterialImage(m.image_path ? @json(url('admin/master-data/materials'))+'/'+m.id+'/image' : null);bootstrap.Modal.getOrCreateInstance(document.getElementById('materialModal')).show()}

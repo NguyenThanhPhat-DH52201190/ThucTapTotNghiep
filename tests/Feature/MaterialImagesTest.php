@@ -54,6 +54,56 @@ class MaterialImagesTest extends TestCase
         return ['internal_code' => 'FAB-01', 'material_name' => 'Fabric', 'unit' => 'M', 'category_id' => 1, 'subcategory_id' => 1];
     }
 
+    public function test_bulk_copy_creates_variants_with_independent_images_and_keeps_source(): void
+    {
+        $this->post(route('admin.master-data.materials.store'), $this->payload() + ['image' => $this->imageFile()])->assertSessionHasNoErrors();
+        $source = DB::table('materials')->first();
+        $this->get(route('admin.master-data.materials.copy', ['ids' => [$source->id]]))
+            ->assertOk()->assertSee('Save all materials')->assertSee('materialCopyData');
+        $first = array_merge($this->payload(), ['source_id' => $source->id, 'internal_code' => 'ZIP-40', 'old_code' => '', 'size' => '800 MM', 'copy_image' => 1]);
+        $second = array_merge($first, ['internal_code' => 'ZIP-41', 'size' => '850 MM']);
+        $this->post(route('admin.master-data.materials.copy.store'), ['rows' => [$first, $second]])
+            ->assertSessionHasNoErrors()->assertRedirect(route('admin.master-data.materials'));
+        $this->assertDatabaseCount('materials', 3);
+        $this->assertDatabaseCount('material_vendors', 0);
+        $this->assertDatabaseHas('materials', ['internal_code' => 'ZIP-41', 'size' => '850 MM', 'material_type' => 'fabric']);
+        $paths = DB::table('materials')->pluck('image_path');
+        $this->assertCount(3, $paths->unique());
+        foreach ($paths as $path) Storage::disk('local')->assertExists($path);
+        $this->patch(route('admin.master-data.materials.update', $source->id), $this->payload() + ['image' => $this->imageFile()])->assertSessionHasNoErrors();
+        Storage::disk('local')->assertMissing($source->image_path);
+        foreach ($paths->filter(fn ($path) => $path !== $source->image_path) as $path) Storage::disk('local')->assertExists($path);
+    }
+
+    public function test_bulk_copy_rejects_duplicate_codes_wrong_taxonomy_and_unauthorized_users(): void
+    {
+        $this->post(route('admin.master-data.materials.store'), $this->payload())->assertSessionHasNoErrors();
+        $sourceId = DB::table('materials')->value('id');
+        $row = array_merge($this->payload(), ['source_id' => $sourceId, 'internal_code' => 'NEW-01', 'copy_image' => 0]);
+        $this->post(route('admin.master-data.materials.copy.store'), ['rows' => [$row, $row]])->assertSessionHasErrors('rows.0.internal_code');
+        $duplicate = array_merge($row, ['internal_code' => 'FAB-01']);
+        $this->post(route('admin.master-data.materials.copy.store'), ['rows' => [$row, $duplicate]])->assertSessionHasErrors('rows.1.internal_code');
+        DB::table('material_categories')->insert(['id' => 2, 'name' => 'Zipper', 'slug' => 'zipper']);
+        $wrongCategory = array_merge($row, ['category_id' => 2]);
+        $this->post(route('admin.master-data.materials.copy.store'), ['rows' => [$wrongCategory]])->assertSessionHasErrors('rows.0.subcategory_id');
+        $this->assertDatabaseCount('materials', 1);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PROD]));
+        $this->post(route('admin.master-data.materials.copy.store'), ['rows' => [$row]])->assertForbidden();
+        $this->get(route('admin.master-data.materials.copy', ['ids' => [$sourceId]]))->assertForbidden();
+    }
+
+    public function test_bulk_copy_rolls_back_rows_and_files_when_a_later_image_is_missing(): void
+    {
+        $this->post(route('admin.master-data.materials.store'), $this->payload() + ['image' => $this->imageFile()])->assertSessionHasNoErrors();
+        $source = DB::table('materials')->first();
+        $missing = DB::table('materials')->insertGetId(array_merge($this->payload(), ['internal_code' => 'MISSING', 'image_path' => 'missing.png']));
+        $first = array_merge($this->payload(), ['source_id' => $source->id, 'internal_code' => 'COPY-1', 'copy_image' => 1]);
+        $second = array_merge($first, ['source_id' => $missing, 'internal_code' => 'COPY-2']);
+        $this->post(route('admin.master-data.materials.copy.store'), ['rows' => [$first, $second]])->assertSessionHasErrors('rows.1.copy_image');
+        $this->assertDatabaseCount('materials', 2);
+        $this->assertSame([$source->image_path], Storage::disk('local')->allFiles());
+    }
+
     private function imageFile(): UploadedFile
     {
         return UploadedFile::fake()->createWithContent('sample.png', base64_decode(

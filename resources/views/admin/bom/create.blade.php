@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Create BOM')
 @section('content')
+@include('admin.partials.customer-style-selector')
 
 <div class="container-fluid px-0">
     @if($errors->any())
@@ -23,17 +24,11 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @include('admin.partials.image-field', ['imageUrl' => null])
-                    <div class="col-md-4">
+                                        <div class="col-md-4">
                         <label class="form-label">Style No <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="text" name="style_no" id="style_no" class="form-control" list="styleList" required
-                                   value="{{ old('style_no') }}" placeholder="Type or select style">
-                            <datalist id="styleList">
-                                @foreach($styles as $s)
-                                    <option value="{{ $s->SNo }}" data-name="{{ $s->Sname }}" data-customer="{{ $s->Customer }}">
-                                @endforeach
-                            </datalist>
+                            <select name="style_no" id="style_no" class="form-select" data-customer-style data-current="{{ old('style_no', $bom->style_no ?? '') }}" required><option value="">-- Select Style --</option></select>
+                            
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -222,17 +217,7 @@ function renumberItems() {
 
 // Auto-fill style info when selecting from datalist
 document.addEventListener('DOMContentLoaded', function() {
-    const styleInput = document.getElementById('style_no');
-    styleInput.addEventListener('change', function() {
-        const datalist = document.getElementById('styleList');
-        const options = datalist.options;
-        for (let opt of options) {
-            if (opt.value === this.value) {
-                document.getElementById('style_name').value = opt.dataset.name || '';
-                break;
-            }
-        }
-    });
+
     document.getElementById('customer_id').addEventListener('change', refreshProductSizes);
     document.addEventListener('change', function(event) {
         if (!event.target.classList.contains('product-size-select')) return;

@@ -104,6 +104,34 @@ class MaterialImagesTest extends TestCase
         $this->assertSame([$source->image_path], Storage::disk('local')->allFiles());
     }
 
+    public function test_copy_multiple_sources_preserves_drafts_after_validation_and_saves_together(): void
+    {
+        $this->post(route('admin.master-data.materials.store'), $this->payload())->assertSessionHasNoErrors();
+        $firstId = DB::table('materials')->value('id');
+        DB::table('material_categories')->insert(['id' => 2, 'name' => 'Zipper', 'slug' => 'zipper']);
+        DB::table('material_subcategories')->insert(['id' => 2, 'category_id' => 2, 'name' => 'Plastic']);
+        $secondId = DB::table('materials')->insertGetId([
+            'internal_code' => 'ZIP-01', 'material_name' => 'Plastic zipper', 'unit' => 'PCS',
+            'category_id' => 2, 'subcategory_id' => 2, 'material_type' => 'zipper', 'size' => '650 MM',
+        ]);
+        $preview = route('admin.master-data.materials.copy', ['ids' => [$firstId, $secondId]]);
+        $this->get($preview)->assertOk()->assertViewHas('rows', fn ($rows) => count($rows) === 2);
+        $rows = [
+            array_merge($this->payload(), ['source_id' => $firstId, 'internal_code' => '', 'size' => '150 CM', 'copy_image' => 0]),
+            ['source_id' => $secondId, 'internal_code' => 'ZIP-02', 'material_name' => 'Plastic zipper',
+                'unit' => 'PCS', 'category_id' => 2, 'subcategory_id' => 2, 'size' => '700 MM', 'copy_image' => 0],
+        ];
+        $this->from($preview)->post(route('admin.master-data.materials.copy.store'), ['rows' => $rows])
+            ->assertRedirect($preview)->assertSessionHasErrors('rows.0.internal_code')
+            ->assertSessionHasInput('rows.1.size', '700 MM');
+        $this->assertDatabaseCount('materials', 2);
+        $rows[0]['internal_code'] = 'FAB-02';
+        $this->post(route('admin.master-data.materials.copy.store'), ['rows' => $rows])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('materials', 4);
+        $this->assertDatabaseHas('materials', ['internal_code' => 'ZIP-02', 'size' => '700 MM', 'material_type' => 'zipper', 'image_path' => null]);
+        $this->assertDatabaseHas('materials', ['internal_code' => 'ZIP-01', 'size' => '650 MM']);
+    }
+
     private function imageFile(): UploadedFile
     {
         return UploadedFile::fake()->createWithContent('sample.png', base64_decode(
@@ -145,10 +173,15 @@ class MaterialImagesTest extends TestCase
 
     public function test_norm_links_the_material_image_from_code_and_name(): void
     {
+        Schema::table('bom_items', function (Blueprint $table) {
+            $table->decimal('consumption_rate', 18, 4)->default(0);
+            $table->decimal('waste_percent', 8, 2)->default(0);
+        });
         Schema::table('bom_headers', function (Blueprint $table) {
             $table->unsignedBigInteger('template_id')->nullable(); $table->string('image_path')->nullable();
         });
         Schema::create('order_material_requirements', function (Blueprint $table) {
+            $table->unsignedBigInteger('bom_item_id')->nullable();
             $table->id(); $table->unsignedBigInteger('cutsheet_id'); $table->unsignedBigInteger('bom_header_id'); $table->unsignedBigInteger('material_id')->nullable();
             foreach (['material_code', 'material_name', 'material_type', 'material_color', 'material_size', 'unit', 'stock_status'] as $field) $table->string($field)->default('');
             foreach (['product_qty', 'consumption_rate', 'waste_percent', 'required_qty', 'available_qty', 'shortage_qty'] as $field) $table->decimal($field)->default(0);

@@ -40,7 +40,8 @@ class OrderMaterialRequirementService
                 $matching = $matching->filter(fn ($balance) => strcasecmp(trim((string) $balance->material_size), trim((string) $item->size)) === 0);
             }
 
-            $required = $productQty * (float) $item->consumption_rate * (1 + ((float) $item->waste_percent / 100));
+            $rates = app(NormRateService::class)->forItem($cutsheetId, $item);
+            $required = $productQty * $rates['yield'] * (1 + $rates['waste'] / 100);
             $onHand = (float) $matching->sum('balance_qty');
             $reserved = (float) $matching->sum('reserved_qty');
             $available = max(0, $onHand - $reserved);
@@ -53,8 +54,8 @@ class OrderMaterialRequirementService
                     'material_code' => $item->material_code, 'material_name' => $item->material_name,
                     'material_type' => $item->material_type, 'material_color' => $materialColor,
                     'material_size' => $item->size, 'unit' => $item->unit,
-                    'product_qty' => round($productQty, 4), 'consumption_rate' => $item->consumption_rate,
-                    'waste_percent' => $item->waste_percent, 'required_qty' => round($required, 4),
+                    'product_qty' => round($productQty, 4), 'consumption_rate' => $rates['yield'],
+                    'waste_percent' => $rates['waste'], 'required_qty' => round($required, 4),
                     'on_hand_qty' => round($onHand, 4), 'reserved_qty' => round($reserved, 4),
                     'available_qty' => round($available, 4), 'shortage_qty' => round($shortage, 4),
                     'stock_status' => $shortage > 0 ? 'shortage' : 'sufficient',

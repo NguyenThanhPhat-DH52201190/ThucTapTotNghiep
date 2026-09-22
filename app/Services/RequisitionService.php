@@ -47,7 +47,8 @@ class RequisitionService
                     ? (float) $order->Qty
                     : (float) DB::table('order_sizes')->where('cutsheet_id', $order->id)
                         ->whereIn('size_name', $mappedSizeNames)->sum('quantity');
-                $qty = $applicableQty * $item->consumption_rate * (1 + ($item->waste_percent / 100));
+                $rates = app(NormRateService::class)->forItem($cutsheetId, $item);
+                $qty = $applicableQty * $rates['yield'] * (1 + $rates['waste'] / 100);
                 $materialColor = DB::table('bom_colorways')->where('bom_item_id', $item->id)
                     ->where('garment_color', $order->Color)->value('material_color') ?? $item->colour;
                 $requisitionItemId = DB::table('requisition_items')->insertGetId([

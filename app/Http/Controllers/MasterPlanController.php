@@ -73,6 +73,8 @@ class MasterPlanController extends Controller
             })
             ->select(
                 'mtp.*',
+                'ocs.id as image_ocs_id',
+                DB::raw(\App\Services\CustomerStyleService::imageSql('ocs', 'SNo').' as ocs_image_path'),
                 'ocs.SNo as Style',
                 'ocs.ONum as PO',
                 'ocs.Qty as Order_Qty',

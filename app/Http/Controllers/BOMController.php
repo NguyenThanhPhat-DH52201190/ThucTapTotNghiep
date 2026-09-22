@@ -33,7 +33,7 @@ class BOMController extends Controller
 
     public function image(string $id)
     {
-        $path = DB::table('bom_headers')->where('id', $id)->value('image_path');
+        $path = app(\App\Services\CustomerStyleService::class)->imagePath('bom_headers', (int) $id);
         abort_unless($path && Storage::disk('local')->exists($path), 404);
         return Storage::disk('local')->response($path, null, [
             'Cache-Control' => 'private, no-cache', 'X-Content-Type-Options' => 'nosniff',
@@ -168,6 +168,7 @@ class BOMController extends Controller
             ->when($request->filled('status'), function ($q) use ($request) {
                 $q->where('status', $request->status);
             })
+            ->select('bom_headers.*')->selectRaw(\App\Services\CustomerStyleService::imageSql('bom_headers', 'style_no').' as image_path')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
     }
@@ -207,6 +208,7 @@ class BOMController extends Controller
 
     public function store(Request $request)
     {
+        app(\App\Services\CustomerStyleService::class)->apply($request);
         $validated = $request->validate([
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
             'style_no' => 'required',
@@ -338,6 +340,7 @@ class BOMController extends Controller
 
     public function clone(Request $request, $id)
     {
+        app(\App\Services\CustomerStyleService::class)->apply($request);
         $data = $request->validate([
             'style_no' => 'required|string|max:191', 'style_name' => 'nullable|string|max:191',
             'customer_id' => 'nullable|exists:customer_info,id', 'customer' => 'nullable|string|max:191', 'version' => 'nullable|string|max:50',
@@ -458,6 +461,7 @@ class BOMController extends Controller
         if (!$bom) abort(404);
         $beforeItemCount = DB::table('bom_items')->where('bom_header_id', $id)->count();
 
+        app(\App\Services\CustomerStyleService::class)->apply($request);
         $validated = $request->validate([
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
             'style_no' => 'required',
@@ -526,16 +530,18 @@ class BOMController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Delete old items, re-insert
-            $oldItemIds = DB::table('bom_items')->where('bom_header_id', $id)->pluck('id');
+            // Keep the identity of unchanged material rows so CU-specific NORM
+            // confirmations survive edits to planned yield/waste.
+            $oldItems = DB::table('bom_items')->where('bom_header_id', $id)->lockForUpdate()->get()->keyBy('id');
+            $oldItemIds = $oldItems->keys();
+            $keptItemIds = [];
             DB::table('bom_item_customer_sizes')->whereIn('bom_item_id', $oldItemIds)->delete();
-            DB::table('bom_items')->where('bom_header_id', $id)->delete();
 
             foreach ($request->items as $i => $item) {
                 $material = $itemMaterials[$i];
                 $unitCost = $unitCosts[$item['material_code']] ?? 0;
                 $totalCost = ($item['consumption_rate'] ?? 0) * $unitCost;
-                $bomItemId = DB::table('bom_items')->insertGetId([
+                $itemValues = [
                     'bom_header_id' => $id,
                     'material_id' => $material->id,
                     'material_code' => $material->internal_code,
@@ -555,9 +561,20 @@ class BOMController extends Controller
                     'sort_order' => $i + 1,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
+                $previous = $oldItems->get($item['id'] ?? null);
+                if ($previous && (int) $previous->material_id === (int) $material->id && !in_array($previous->id, $keptItemIds)) {
+                    $bomItemId = $previous->id;
+                    unset($itemValues['created_at']);
+                    DB::table('bom_items')->where('id', $bomItemId)->update($itemValues);
+                } else {
+                    $bomItemId = DB::table('bom_items')->insertGetId($itemValues);
+                }
+                $keptItemIds[] = $bomItemId;
                 $this->saveItemSizeMappings($bomItemId, $itemSizeSelections[$i] ?? []);
             }
+
+            DB::table('bom_items')->where('bom_header_id', $id)->whereNotIn('id', $keptItemIds)->delete();
 
             DB::commit();
             $committed = true;

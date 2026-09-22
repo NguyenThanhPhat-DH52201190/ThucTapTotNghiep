@@ -23,6 +23,7 @@ trait CreatesLegacySchema
         }
 
 
+        (require database_path('migrations/2026_09_22_000009_create_customer_styles.php'))->up();
         $this->createUsersTable();
         $this->createColorsTable();
         $this->createBomHeadersTable();
@@ -30,6 +31,7 @@ trait CreatesLegacySchema
         $this->createOrderSizesTable();
         $this->createHolidaysTable();
         $this->createMtpTable();
+        (require database_path('migrations/2026_09_22_000008_create_norm_confirmations.php'))->up();
     }
 
     protected function createUserRecord(array $attributes = []): User

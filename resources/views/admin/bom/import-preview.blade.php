@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Import BOM Preview')
 @section('content')
+@include('admin.partials.customer-style-selector')
 
 <div class="container-fluid px-0">
     <form method="POST" action="{{ route('admin.bom.store') }}" id="importForm">
@@ -16,12 +17,8 @@
                     <div class="col-md-4">
                         <label class="form-label">Style No <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="text" name="style_no" id="style_no" class="form-control" list="styleList" required placeholder="Type or select style">
-                            <datalist id="styleList">
-                                @foreach($styles as $s)
-                                    <option value="{{ $s->SNo }}" data-name="{{ $s->Sname }}" data-customer="{{ $s->Customer }}">
-                                @endforeach
-                            </datalist>
+                            <select name="style_no" id="style_no" class="form-select" data-customer-style data-current="{{ old('style_no', $bom->style_no ?? '') }}" required><option value="">-- Select Style --</option></select>
+                            
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -133,16 +130,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const styleInput = document.getElementById('style_no');
-    styleInput.addEventListener('change', function() {
-        const datalist = document.getElementById('styleList');
-        for (let opt of datalist.options) {
-            if (opt.value === this.value) {
-                document.getElementById('style_name').value = opt.dataset.name || '';
-                break;
-            }
-        }
-    });
+
 });
 </script>
 

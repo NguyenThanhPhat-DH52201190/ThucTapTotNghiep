@@ -75,6 +75,23 @@ class BomImageTest extends TestCase
         ));
     }
 
+    public function test_bom_yield_edit_preserves_norm_confirmation_identity(): void
+    {
+        $this->post(route('admin.bom.store'), $this->payload())->assertSessionHas('success');
+        $bom = DB::table('bom_headers')->first();
+        $item = DB::table('bom_items')->first();
+        DB::table('norm_confirmations')->insert(['cutsheet_id' => 1, 'bom_item_id' => $item->id,
+            'yield_confirmed' => 2.5, 'waste_confirmed' => 1, 'bom_yield_at_confirmation' => 1, 'bom_waste_at_confirmation' => 0]);
+        $payload = $this->payload();
+        $payload['items'][0]['id'] = $item->id;
+        $payload['items'][0]['consumption_rate'] = 3;
+        $this->put(route('admin.bom.update', $bom->id), $payload)->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertDatabaseCount('bom_items', 1);
+        $this->assertDatabaseHas('bom_items', ['id' => $item->id, 'consumption_rate' => 3]);
+        $rates = app(\App\Services\NormRateService::class)->forItem(1, DB::table('bom_items')->first());
+        $this->assertSame(['yield' => 2.5, 'waste' => 1.0], $rates);
+    }
+
     public function test_bom_image_upload_display_preserve_replace_and_delete(): void
     {
         $this->get(route('admin.bom.create'))->assertOk()->assertSee('multipart/form-data')->assertSee('name="image"', false);

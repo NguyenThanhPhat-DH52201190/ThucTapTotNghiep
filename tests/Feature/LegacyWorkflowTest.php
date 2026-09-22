@@ -19,6 +19,7 @@ class LegacyWorkflowTest extends TestCase
     {
         parent::setUp();
         $this->createLegacySchema();
+        (require database_path('migrations/2026_09_22_000001_add_image_path_to_ocs_table.php'))->up();
     }
 
     public function test_public_auth_pages_are_accessible(): void

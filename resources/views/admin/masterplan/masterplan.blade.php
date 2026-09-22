@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Master Plan')
 @section('content')
+@include('admin.partials.image-popover')
 
 @php
 $canManage = auth()->user()->role === 'admin';
@@ -445,7 +446,7 @@ $hideMidCols = $isAccountant;
 
         @foreach($lineItems as $index => $item)
         <tr>
-            <td class="col-code sticky-col sticky-1">{{ $item->CU }}</td>
+            <td class="col-code sticky-col sticky-1">@include('admin.partials.image-trigger', ['imageUrl' => !empty($item->ocs_image_path) ? route('masterplan.ocs-image', $item->image_ocs_id, false) : null, 'imageLabel' => $item->CU])</td>
             <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">
                 {{ $item->Line }}
             </td>

@@ -36,7 +36,11 @@ class WorkflowExecutionTest extends TestCase
         $balanceId = DB::table('inventory_balances')->insertGetId(['material_id' => $materialId, 'material_color' => 'Green', 'lot_roll_no' => 'ROLL-1', 'balance_qty' => 100, 'reserved_qty' => 0, 'unit_cost' => 8, 'created_at' => now(), 'updated_at' => now()]);
 
         $service = app(RequisitionService::class);
+        DB::table('bom_items')->where('id', $itemId)->update(['consumption_rate' => 0.8]);
+        DB::table('norm_confirmations')->insert(['cutsheet_id' => $cutsheetId, 'bom_item_id' => $itemId,
+            'yield_confirmed' => 0.5, 'waste_confirmed' => 0, 'bom_yield_at_confirmation' => 0.8, 'bom_waste_at_confirmation' => 0]);
         $requisitionId = $service->createForCutsheet($cutsheetId);
+        DB::table('norm_confirmations')->where('cutsheet_id', $cutsheetId)->update(['yield_confirmed' => 0.9]);
         $this->assertSame($requisitionId, $service->createForCutsheet($cutsheetId));
         $requisitionItem = DB::table('requisition_items')->where('requisition_id', $requisitionId)->first();
         $this->assertSame(50.0, (float) $requisitionItem->requested_qty);

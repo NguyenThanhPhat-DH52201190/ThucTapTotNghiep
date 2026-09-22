@@ -69,6 +69,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie,warehouse')
         ->name('masterplan.export');
 
+    Route::get('/master-plan/ocs/{id}/image', [OCSController::class, 'image'])
+        ->middleware('role:admin,ie,warehouse,ppic,prod,accountant')
+        ->name('masterplan.ocs-image');
+
+    Route::get('/customer-styles/{style}/image', [\App\Http\Controllers\CustomerStyleController::class, 'image'])->middleware('role:admin,ie')->name('customer-styles.image');
+
     Route::get('/bom', [BOMController::class, 'index'])
         ->middleware('role:admin,ie')
         ->name('bom.view');
@@ -131,6 +137,9 @@ Route::middleware('auth')->group(function () {
         // Trang dashboard admin riêng (nếu cần)
         Route::get('/dashboard', [AuthController::class, 'adminDashboard'])->name('dashboard');
         Route::get('audit-trails', [AuditTrailController::class, 'index'])->name('audit-trails.index');
+        Route::get('master-data/customers/{customer}/styles', [\App\Http\Controllers\CustomerStyleController::class, 'index'])->name('customer-styles.index');
+        Route::post('master-data/customers/{customer}/styles', [\App\Http\Controllers\CustomerStyleController::class, 'save'])->name('customer-styles.store');
+        Route::put('master-data/customers/{customer}/styles/{style}', [\App\Http\Controllers\CustomerStyleController::class, 'save'])->name('customer-styles.update');
         Route::get('master-data/customers', [MasterDataController::class, 'customers'])->name('master-data.customers');
         Route::post('master-data/customers', [MasterDataController::class, 'storeCustomer'])->name('master-data.customers.store');
         Route::patch('master-data/customers/{id}', [MasterDataController::class, 'updateCustomer'])->name('master-data.customers.update');
@@ -168,6 +177,7 @@ Route::middleware('auth')->group(function () {
         Route::get('norm/materials', [NormController::class, 'materials'])->name('norm.materials');
         Route::get('norm/materials/export', [NormController::class, 'exportMaterials'])->name('norm.materials.export');
         Route::get('norm/materials/{id}', [NormController::class, 'materialDetail'])->name('norm.materials.show');
+        Route::put('norm/materials/{id}/confirmed', [NormController::class, 'updateConfirmed'])->name('norm.materials.confirmed');
 
         Route::get('revenue/export', [RevenueController::class, 'export'])->name('revenue.export');
 

@@ -33,6 +33,9 @@ class MasterDataController extends Controller
 
     public function destroyCustomer(int $id)
     {
+        if (DB::table('customer_styles')->where('customer_id', $id)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['customer' => 'This customer has registered styles and cannot be deleted.']);
+        }
         DB::table('customer_info')->where('id', $id)->delete();
         return back()->with('success', 'Customer deleted. Existing OCS records keep their customer name.');
     }

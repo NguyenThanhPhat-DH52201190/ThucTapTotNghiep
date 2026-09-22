@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'BOM Detail - ' . $bom->style_no)
 @section('content')
+@include('admin.partials.customer-style-selector')
 
 @php $canManage = auth()->user()->role === 'admin'; @endphp
 
@@ -185,7 +186,7 @@
 <div class="modal fade" id="cloneBomModal" tabindex="-1"><div class="modal-dialog"><form method="POST" action="{{ route('admin.bom.clone', $bom->id) }}" class="modal-content">@csrf
     <div class="modal-header"><h5 class="modal-title">Clone BOM</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body row g-3">
-        <div class="col-12"><label class="form-label">New Style No</label><input name="style_no" class="form-control" required></div>
+        <div class="col-12"><label class="form-label">New Style No</label><select name="style_no" id="style_no" class="form-select" data-customer-style data-current="{{ old('style_no', $bom->style_no ?? '') }}" required><option value="">-- Select Style --</option></select></div>
         <div class="col-12"><label class="form-label">Style Name</label><input name="style_name" class="form-control" value="{{ $bom->style_name }}"></div>
         <div class="col-md-7"><label class="form-label">Customer Master</label><select name="customer_id" class="form-select"><option value="">-- Select customer --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" @selected((string) $bom->customer_id === (string) $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' — ' . $customer->brand : '' }}</option>@endforeach</select></div>
         <div class="col-md-5"><label class="form-label">Version</label><input name="version" class="form-control" value="V1"></div>

@@ -24,7 +24,7 @@
             <form method="POST" action="{{ route('admin.ocs.update', $order->id) }}" enctype="multipart/form-data">
                 @csrf @method('PUT')
                 <div class="row g-3">
-                    @include('admin.ocs.partials.image-field')
+                    @include('admin.partials.customer-style-selector')
                     <div class="col-md-4">
                         <label class="form-label">CS <span class="text-danger">*</span></label>
                         <input type="text" name="CS" class="form-control" value="{{ old('CS', $order->CS) }}" required>
@@ -42,7 +42,7 @@
                         <select name="bom_header_id" id="bomHeader" class="form-select">
                             <option value="">-- Select BOM --</option>
                             @foreach($boms as $bom)
-                                <option value="{{ $bom->id }}" data-style-no="{{ $bom->style_no }}" data-style-name="{{ $bom->style_name }}" {{ old('bom_header_id', $order->selected_template_id) == $bom->id ? 'selected' : '' }}>
+                                <option value="{{ $bom->id }}" data-customer="{{ $bom->customer_id }}" data-style-no="{{ $bom->style_no }}" data-style-name="{{ $bom->style_name }}" {{ old('bom_header_id', $order->selected_template_id) == $bom->id ? 'selected' : '' }}>
                                     {{ $bom->style_no }} - {{ $bom->style_name }} (v{{ $bom->version }})
                                 </option>
                             @endforeach
@@ -50,7 +50,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">SNo (Style) <span class="text-danger">*</span></label>
-                        <input type="text" name="SNo" id="styleNo" class="form-control" value="{{ old('SNo', $order->SNo) }}" required placeholder="Enter style code">
+                        <select name="SNo" id="styleNo" class="form-select" data-customer-style data-current="{{ old('SNo', $order->SNo ?? '') }}" required><option value="">-- Select Style --</option></select>SNo) }}" required placeholder="Enter style code">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">SName <span class="text-danger">*</span></label>
@@ -124,14 +124,7 @@ function renderCustomerSizes(reset=false){const sizes=customerSizeNames(),box=do
 customerMaster?.addEventListener('change',function(){const option=this.options[this.selectedIndex];if(option.dataset.name)document.getElementById('customerName').value=option.dataset.name;renderCustomerSizes(true);});
 renderCustomerSizes(false);
 
-const bomHeader = document.getElementById('bomHeader');
-const styleName = document.getElementById('styleName');
-function syncStyleNameFromBom() {
-    const bom = bomHeader.options[bomHeader.selectedIndex];
-    if (bom?.value && bom.dataset.styleName) styleName.value = bom.dataset.styleName;
-}
-bomHeader.addEventListener('change', syncStyleNameFromBom);
-syncStyleNameFromBom();
+
 
 </script>
 @endpush

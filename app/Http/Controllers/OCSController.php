@@ -62,7 +62,7 @@ class OCSController extends Controller
 
     public function image(string $id)
     {
-        $path = DB::table('ocs')->where('id', $id)->value('image_path');
+        $path = app(\App\Services\CustomerStyleService::class)->imagePath('ocs', (int) $id);
         abort_unless($path && Storage::disk('local')->exists($path), 404);
         return Storage::disk('local')->response($path, null, [
             'Cache-Control' => 'private, no-cache',
@@ -99,7 +99,7 @@ class OCSController extends Controller
         if (!$bom || $bom->status !== 'active' || ($bom->bom_kind ?? 'template') !== 'template') {
             throw \Illuminate\Validation\ValidationException::withMessages(['bom_header_id' => ['Only an active BOM template can be assigned.']]);
         }
-        if ($bom->customer_id && (int) $bom->customer_id !== $request->integer('customer_id')) {
+        if ((int) $bom->customer_id !== $request->integer('customer_id') || $bom->style_no !== $request->SNo) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'bom_header_id' => ['The BOM and OCS must belong to the same customer so product-size rules can be applied correctly.'],
             ]);
@@ -125,6 +125,7 @@ class OCSController extends Controller
             })
             ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version',
                 'bom_headers.bom_kind', 'bom_headers.mapping_status')
+            ->selectRaw(\App\Services\CustomerStyleService::imageSql('ocs', 'SNo').' as image_path')
             ->orderBy('ocs.CS', 'asc')
             ->get();
     }
@@ -189,6 +190,7 @@ class OCSController extends Controller
 
     public function store(Request $request, RequisitionService $requisitions)
     {
+        app(\App\Services\CustomerStyleService::class)->apply($request, true);
         $request->validate($this->orderRules());
         $this->validateSizeTotal($request);
         $this->validateCustomerSizes($request);
@@ -299,6 +301,7 @@ class OCSController extends Controller
                 ->with('error', 'Record not found.');
         }
 
+        app(\App\Services\CustomerStyleService::class)->apply($request, true);
         $request->validate($this->orderRules((int) $id));
         $this->validateSizeTotal($request);
         $this->validateCustomerSizes($request);

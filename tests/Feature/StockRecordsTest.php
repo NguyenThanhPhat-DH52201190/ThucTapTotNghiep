@@ -60,6 +60,47 @@ class StockRecordsTest extends TestCase
         return DB::table('stock_records')->first();
     }
 
+    public function test_norm_confirmed_rates_survive_sync_and_are_scoped_to_each_order(): void
+    {
+        $id = $this->order('CU-NORM', 170, 'pending');
+        $item = DB::table('bom_items')->first();
+        DB::table('bom_items')->where('id', $item->id)->update(['consumption_rate' => 2.59, 'waste_percent' => 2]);
+        $service = app(OrderMaterialRequirementService::class);
+        $this->assertEqualsWithDelta(449.106, $service->sync($id)->first()->required_qty, .0001);
+        $row = ['bom_item_id' => $item->id, 'revision' => 0, 'yield_plan' => 2.59, 'waste_plan' => 2, 'yield_confirmed' => 2.5, 'waste_confirmed' => 1];
+        $this->put(route('admin.norm.materials.confirmed', $id), ['rows' => [$row], 'reason' => 'Measured consumption'])->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(429.25, $service->sync($id)->first()->required_qty, .0001);
+        $this->assertDatabaseHas('bom_items', ['id' => $item->id, 'consumption_rate' => 2.59, 'waste_percent' => 2]);
+        $this->createOcsRecord(['CS' => 'CU-OTHER', 'Qty' => 170, 'bom_header_id' => $item->bom_header_id]);
+        $other = DB::table('ocs')->where('CS', 'CU-OTHER')->value('id');
+        $this->assertEqualsWithDelta(449.106, $service->sync($other)->first()->required_qty, .0001);
+        DB::table('bom_items')->where('id', $item->id)->update(['consumption_rate' => 3]);
+        $this->assertEqualsWithDelta(429.25, $service->sync($id)->first()->required_qty, .0001);
+        $this->assertDatabaseHas('norm_confirmations', ['cutsheet_id' => $id, 'yield_confirmed' => 2.5, 'waste_confirmed' => 1]);
+        $this->assertDatabaseHas('audit_trails', ['event_type' => 'norm_confirmed_updated', 'entity_id' => $id]);
+        $this->assertSame(1000.0, (float) DB::table('inventory_balances')->value('balance_qty'));
+        $this->plan();
+        $this->assertEqualsWithDelta(429.25, DB::table('order_material_requirements')->where('cutsheet_id', $id)->value('required_qty'), .0001);
+        $this->put(route('admin.norm.materials.confirmed', $id), ['rows' => [$row]])->assertSessionHasErrors('rows');
+        $row['revision'] = 1; $row['yield_plan'] = 3; $row['yield_confirmed'] = null; $row['waste_confirmed'] = 0;
+        $this->put(route('admin.norm.materials.confirmed', $id), ['rows' => [$row]])->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(510, $service->sync($id)->first()->required_qty, .0001);
+    }
+
+    public function test_norm_rejects_foreign_rows_invalid_rates_and_unauthorized_updates(): void
+    {
+        $id = $this->order('CU-NORM', 100);
+        $other = $this->order('CU-OTHER', 100);
+        $item = DB::table('bom_items')->orderByDesc('id')->first();
+        $row = ['bom_item_id' => $item->id, 'revision' => 0, 'yield_plan' => 1, 'waste_plan' => 0, 'yield_confirmed' => 2, 'waste_confirmed' => 5];
+        $this->put(route('admin.norm.materials.confirmed', $id), ['rows' => [$row]])->assertSessionHasErrors('rows.0.bom_item_id');
+        $row['yield_confirmed'] = -1;
+        $this->put(route('admin.norm.materials.confirmed', $other), ['rows' => [$row]])->assertSessionHasErrors('rows.0.yield_confirmed');
+        $this->assertDatabaseCount('norm_confirmations', 0);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PROD]));
+        $this->put(route('admin.norm.materials.confirmed', $id), ['rows' => [$row]])->assertForbidden();
+    }
+
     private function plan(): \Illuminate\Support\Collection
     {
         return app(StockRecordService::class)->plan($this->record(), app(OrderMaterialRequirementService::class));

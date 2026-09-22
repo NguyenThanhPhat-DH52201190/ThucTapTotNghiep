@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Edit BOM - ' . $bom->style_no)
 @section('content')
+@include('admin.partials.customer-style-selector')
 
 <div class="container-fluid px-0">
     @if($errors->any())
@@ -25,10 +26,9 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @include('admin.partials.image-field', ['imageUrl' => !empty($bom->image_path) ? route('admin.bom.image', $bom->id, false) : null])
-                    <div class="col-md-4">
+                                        <div class="col-md-4">
                         <label class="form-label">Style No <span class="text-danger">*</span></label>
-                        <input type="text" name="style_no" class="form-control" value="{{ old('style_no', $bom->style_no) }}" required>
+                        <select name="style_no" id="style_no" class="form-select" data-customer-style data-current="{{ old('style_no', $bom->style_no ?? '') }}" required><option value="">-- Select Style --</option></select>style_no) }}" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Style Name</label>
@@ -110,7 +110,7 @@
                                     @endforeach
                                 </select>
                             </td>
-                            <td><input type="text" name="items[{{ $i }}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="{{ $item->material_code }}"></td>
+                            <td><input type="hidden" name="items[{{ $i }}][id]" value="{{ $item->id }}"><input type="text" name="items[{{ $i }}][material_code]" class="form-control form-control-sm material-code-input" required autocomplete="off" value="{{ $item->material_code }}"></td>
                             <td><input type="text" name="items[{{ $i }}][material_name]" class="form-control form-control-sm material-description-input" required readonly value="{{ $item->material_name }}"></td>
                             <td><input type="text" name="items[{{ $i }}][colour]" class="form-control form-control-sm material-colour-input material-master-input" value="{{ $item->colour }}" readonly></td>
                             <td><input type="text" name="items[{{ $i }}][size]" class="form-control form-control-sm material-size-input material-master-input" value="{{ $item->size }}" readonly></td>

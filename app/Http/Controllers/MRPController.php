@@ -165,10 +165,11 @@ class MRPController extends Controller
                     $qty = $orderQty > 0
                         ? (float) ($mtp->Qty_dis ?? 0) * ($applicableOrderQty / $orderQty)
                         : 0;
-                    $required = $qty * $bom->consumption_rate;
+                    $rates = app(\App\Services\NormRateService::class)->forItem((int) $mtp->cutsheet_id, $bom);
+                    $required = $qty * $rates['yield'];
                     // Add waste
-                    if ($bom->waste_percent > 0) {
-                        $required *= (1 + $bom->waste_percent / 100);
+                    if ($rates['waste'] > 0) {
+                        $required *= (1 + $rates['waste'] / 100);
                     }
 
                     $materialColor = DB::table('bom_colorways')->where('bom_item_id', $bom->id)
@@ -196,7 +197,7 @@ class MRPController extends Controller
                         'cu' => $mtp->CU,
                         'bom_item_id' => $bom->id,
                         'colour' => $materialColor,
-                        'consumption_rate' => $bom->consumption_rate,
+                        'consumption_rate' => $rates['yield'],
                         'required_qty' => $required,
                         'planned_cut_start' => $mtp->planned_cut_start,
                     ];

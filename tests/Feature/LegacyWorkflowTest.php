@@ -19,6 +19,7 @@ class LegacyWorkflowTest extends TestCase
     {
         parent::setUp();
         $this->createLegacySchema();
+        \Illuminate\Support\Facades\Schema::table('ocs', fn ($t) => $t->unsignedBigInteger('customer_id')->nullable());
         (require database_path('migrations/2026_09_22_000001_add_image_path_to_ocs_table.php'))->up();
     }
 
@@ -248,6 +249,9 @@ class LegacyWorkflowTest extends TestCase
 
     public function test_ocs_import_parses_numeric_excel_dates_and_upserts_rows(): void
     {
+        \Illuminate\Support\Facades\Schema::create('customer_info', function ($t) { $t->id(); $t->string('name'); });
+        DB::table('customer_info')->insert(['id' => 1, 'name' => 'Imported Customer']);
+        DB::table('customer_styles')->insert(['customer_id' => 1, 'style_no' => 'S-900', 'style_name' => 'Imported Style']);
         $import = new OCSImport();
         $excelDate = Date::dateTimeToExcel(Carbon::parse('2026-04-20'));
 

@@ -19,6 +19,9 @@ class MaterialImagesTest extends TestCase
     {
         parent::setUp();
         $this->createLegacySchema();
+        Schema::table('ocs', fn ($t) => $t->string('image_path')->nullable());
+        \Illuminate\Support\Facades\Schema::table('ocs', fn ($t) => $t->unsignedBigInteger('customer_id')->nullable());
+        \Illuminate\Support\Facades\Schema::table('bom_headers', fn ($t) => $t->unsignedBigInteger('customer_id')->nullable());
         Storage::fake('local');
         foreach (['material_categories', 'material_subcategories'] as $name) {
             Schema::create($name, function (Blueprint $table) use ($name) {

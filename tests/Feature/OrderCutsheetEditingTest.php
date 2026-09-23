@@ -49,13 +49,14 @@ class OrderCutsheetEditingTest extends TestCase
             $table->integer('sort_order')->default(0);
         });
         DB::table('customer_info')->insert(['id' => 1, 'name' => 'Sample Customer']);
+        DB::table('customer_styles')->insert(['customer_id' => 1, 'style_no' => 'S-001', 'style_name' => 'Sample Style']);
         DB::table('customer_sizes')->insert(['customer_id' => 1, 'size_name' => 'M']);
         $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]));
     }
 
     public function test_orders_remain_editable_after_status_changes_and_keep_their_bom(): void
     {
-        $templateId = DB::table('bom_headers')->insertGetId(['style_no' => 'S-001']);
+        $templateId = DB::table('bom_headers')->insertGetId(['style_no' => 'S-001', 'customer_id' => 1]);
         $bomId = DB::table('bom_headers')->insertGetId([
             'style_no' => 'S-001', 'bom_kind' => 'order', 'template_id' => $templateId,
         ]);
@@ -148,7 +149,7 @@ class OrderCutsheetEditingTest extends TestCase
     public function test_image_upload_display_preservation_replacement_and_deletion(): void
     {
         Storage::fake('local');
-        $this->get(route('admin.ocs.create'))->assertOk()->assertSee('multipart/form-data')->assertSee('name="image"', false);
+        $this->get(route('admin.ocs.create'))->assertOk()->assertSee('data-customer-style', false)->assertDontSee('name="image"', false);
         $this->post(route('admin.ocs.store'), $this->imagePayload() + ['image' => $this->uploadedImage()])
             ->assertSessionHasNoErrors()->assertSessionHas('success');
         $order = DB::table('ocs')->where('CS', 'CS-IMAGE')->first();
@@ -156,7 +157,7 @@ class OrderCutsheetEditingTest extends TestCase
         Storage::disk('local')->assertExists($order->image_path);
         $this->get(route('admin.ocs.image', $order->id))->assertOk()->assertHeader('Content-Type', 'image/png');
         $this->get(route('admin.ocs.edit', $order->id))->assertOk()
-            ->assertSee(route('admin.ocs.image', $order->id, false))->assertSee('multipart/form-data');
+            ->assertSee('data-customer-style', false)->assertSee('multipart/form-data');
 
         DB::table('ocs')->where('id', $order->id)->update(['status' => 'confirmed']);
         $this->put(route('admin.ocs.update', $order->id), $this->imagePayload())->assertSessionHas('success');

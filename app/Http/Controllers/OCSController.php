@@ -314,7 +314,7 @@ class OCSController extends Controller
                     'Customer' => $request->Customer, 'customer_id' => $request->customer_id, 'Color' => $request->Color, 'ONum' => $request->ONum, 'CMT' => $request->CMT,
                     'order_type' => $request->order_type, 'material_ownership' => $request->material_ownership, 'unit_price' => $request->unit_price ?? 0,
                     'Qty' => $request->Qty,
-                    'image_path' => $imagePath ?? $currentOrder->image_path,
+                    'image_path' => $imagePath ?? (($currentOrder->SNo === $request->SNo && (int) $currentOrder->customer_id === $request->integer('customer_id')) ? $currentOrder->image_path : null),
                     'expected_ship_date' => $request->expected_ship_date, 'priority' => $request->priority ?? 'medium',
                     'order_notes' => $request->order_notes, 'updated_at' => now(),
                 ]);
@@ -337,7 +337,7 @@ class OCSController extends Controller
                 }
                 return $mappingStatus;
             });
-            if ($imagePath) $this->deleteImage($currentOrder->image_path);
+            if ($imagePath || $currentOrder->SNo !== $request->SNo || (int) $currentOrder->customer_id !== $request->integer('customer_id')) $this->deleteImage($currentOrder->image_path);
             if ($request->filled('bom_header_id')) {
                 return redirect()->route('admin.norm.materials.show', $id)
                     ->with('success', 'OCS and material requirements updated successfully.');

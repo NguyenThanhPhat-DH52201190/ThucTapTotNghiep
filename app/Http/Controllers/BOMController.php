@@ -515,7 +515,7 @@ class BOMController extends Controller
             $styleId = $this->resolveStyleId($request->style_no, $request->style_name);
             $customer = $this->resolveCustomer($request->integer('customer_id') ?: null, $request->customer);
             DB::table('bom_headers')->where('id', $id)->update([
-                'image_path' => $imagePath ?? $bom->image_path,
+                'image_path' => $imagePath ?? (($bom->style_no === $request->style_no && (int) $bom->customer_id === $request->integer('customer_id')) ? $bom->image_path : null),
                 'style_id' => $styleId,
                 'customer_id' => $customer['customer_id'],
                 'style_no' => $request->style_no,
@@ -578,7 +578,7 @@ class BOMController extends Controller
 
             DB::commit();
             $committed = true;
-            if ($imagePath) $this->deleteImage($bom->image_path);
+            if ($imagePath || $bom->style_no !== $request->style_no || (int) $bom->customer_id !== $request->integer('customer_id')) $this->deleteImage($bom->image_path);
             app(\App\Services\AuditTrailService::class)->record('bom_updated', 'bom_header', (int) $id, $request->user()?->id,
                 ['style_no' => $bom->style_no, 'version' => $bom->version, 'status' => $bom->status, 'item_count' => $beforeItemCount],
                 ['style_no' => $request->style_no, 'version' => $request->version ?? 'V1', 'status' => $request->status ?? 'draft', 'item_count' => count($request->items)], $request->change_reason);

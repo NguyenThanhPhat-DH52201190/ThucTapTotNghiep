@@ -11,6 +11,7 @@ class CustomerStyleService
     public function apply(Request $request, bool $ocs = false): void
     {
         $codeKey = $ocs ? 'SNo' : 'style_no';
+        $request->validate(['customer_id' => 'required|integer|exists:customer_info,id', $codeKey => 'required|string|max:191']);
         $style = DB::table('customer_styles')->where('customer_id', $request->integer('customer_id'))
             ->where('style_no', trim((string) $request->input($codeKey)))->first();
         if (!$style) throw ValidationException::withMessages([

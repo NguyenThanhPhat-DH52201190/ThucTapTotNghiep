@@ -18,6 +18,12 @@
                 const style = styles.find(s => s.customer === customer.value && s.code === select.value);
                 if (name) name.value = style?.name || '';
                 preview.replaceChildren();
+                if (customer.value && !styles.some(s => s.customer === customer.value)) {
+                    const hint = document.createElement('div');
+                    hint.className = 'form-text';
+                    hint.textContent = 'Add styles for this customer in Customer Master first.';
+                    preview.append(hint);
+                }
                 if (style?.image) {
                     const link = document.createElement('a');
                     link.href = style.image; link.target = '_blank'; link.rel = 'noopener';
@@ -27,12 +33,14 @@
                     link.append(img); preview.append(link);
                 }
                 if (bom) {
+                    bom.disabled = !customer.value || !select.value;
                     const previous = bom.value;
                     bom.replaceChildren(...allBoms.filter(o => !o.value || (o.dataset.customer === customer.value && o.dataset.styleNo === select.value)).map(o => o.cloneNode(true)));
                     bom.value = Array.from(bom.options).some(o => o.value === previous) ? previous : '';
                 }
             }
             function populate(code = '') {
+                select.disabled = !customer.value;
                 const options = styles.filter(s => s.customer === customer.value);
                 select.replaceChildren(new Option(customer.value ? '-- Select Style --' : '-- Select customer first --', ''));
                 options.forEach(s => select.add(new Option(s.code + ' — ' + s.name, s.code)));

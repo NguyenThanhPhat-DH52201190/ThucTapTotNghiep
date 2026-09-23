@@ -24,20 +24,9 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                                        <div class="col-md-4">
-                        <label class="form-label">Style No <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <select name="style_no" id="style_no" class="form-select" data-customer-style data-current="{{ old('style_no', $bom->style_no ?? '') }}" required><option value="">-- Select Style --</option></select>
-                            
-                        </div>
-                    </div>
                     <div class="col-md-4">
-                        <label class="form-label">Style Name</label>
-                        <input type="text" name="style_name" id="style_name" class="form-control" value="{{ old('style_name') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Customer Master</label>
-                        <select name="customer_id" id="customer_id" class="form-select">
+                        <label class="form-label">Customer Master <span class="text-danger">*</span></label>
+                        <select name="customer_id" id="customer_id" class="form-select" required>
                             <option value="">-- Select customer --</option>
                             @foreach($customers as $customer)
                                 <option value="{{ $customer->id }}" @selected((string) old('customer_id') === (string) $customer->id)>
@@ -46,6 +35,17 @@
                             @endforeach
                         </select>
                         <div class="form-text">Customer is selected from Customer Master.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Style No <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <select name="style_no" id="style_no" class="form-select" data-customer-style data-current="{{ old('style_no', $bom->style_no ?? '') }}" required><option value="">-- Select Style --</option></select>
+
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Style Name</label>
+                        <input type="text" name="style_name" id="style_name" class="form-control" value="{{ old('style_name') }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Version</label>

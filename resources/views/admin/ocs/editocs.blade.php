@@ -26,16 +26,20 @@
                 <div class="row g-3">
                     @include('admin.partials.customer-style-selector')
                     <div class="col-md-4">
-                        <label class="form-label">CS <span class="text-danger">*</span></label>
-                        <input type="text" name="CS" class="form-control" value="{{ old('CS', $order->CS) }}" required>
+                        <label class="form-label">Customer master <span class="text-danger">*</span></label>
+                        <select name="customer_id" id="customerMaster" class="form-select" required><option value="">-- Select customer --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-name="{{ $customer->name }}" data-sizes='@json(($customerSizes[$customer->id] ?? collect())->pluck("size_name")->values())' @selected(old('customer_id', $order->customer_id) == $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' · '.$customer->brand : '' }}</option>@endforeach</select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">CsDate <span class="text-danger">*</span></label>
-                        <input type="date" name="CsDate" class="form-control" value="{{ old('CsDate', $order->CsDate) }}" required>
+                        <label class="form-label">Customer name <span class="text-danger">*</span></label>
+                        <input type="text" id="customerName" name="Customer" class="form-control" value="{{ old('Customer', $order->Customer) }}" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">ONum (PO) <span class="text-danger">*</span></label>
-                        <input type="text" name="ONum" class="form-control" value="{{ old('ONum', $order->ONum) }}" required>
+                        <label class="form-label">SNo (Style) <span class="text-danger">*</span></label>
+                        <select name="SNo" id="styleNo" class="form-select" data-customer-style data-current="{{ old('SNo', $order->SNo ?? '') }}" required><option value="">-- Select Style --</option></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">SName <span class="text-danger">*</span></label>
+                        <input type="text" id="styleName" name="Sname" class="form-control" value="{{ old('Sname', $order->Sname) }}" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">BOM (Bill of Materials)</label>
@@ -49,20 +53,16 @@
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">SNo (Style) <span class="text-danger">*</span></label>
-                        <select name="SNo" id="styleNo" class="form-select" data-customer-style data-current="{{ old('SNo', $order->SNo ?? '') }}" required><option value="">-- Select Style --</option></select>SNo) }}" required placeholder="Enter style code">
+                        <label class="form-label">CS <span class="text-danger">*</span></label>
+                        <input type="text" name="CS" class="form-control" value="{{ old('CS', $order->CS) }}" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">SName <span class="text-danger">*</span></label>
-                        <input type="text" id="styleName" name="Sname" class="form-control" value="{{ old('Sname', $order->Sname) }}" required>
+                        <label class="form-label">CsDate <span class="text-danger">*</span></label>
+                        <input type="date" name="CsDate" class="form-control" value="{{ old('CsDate', $order->CsDate) }}" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Customer master</label>
-                        <select name="customer_id" id="customerMaster" class="form-select"><option value="">-- Select customer --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-name="{{ $customer->name }}" data-sizes='@json(($customerSizes[$customer->id] ?? collect())->pluck("size_name")->values())' @selected(old('customer_id', $order->customer_id) == $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' · '.$customer->brand : '' }}</option>@endforeach</select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Customer name <span class="text-danger">*</span></label>
-                        <input type="text" id="customerName" name="Customer" class="form-control" value="{{ old('Customer', $order->Customer) }}" required>
+                        <label class="form-label">ONum (PO) <span class="text-danger">*</span></label>
+                        <input type="text" name="ONum" class="form-control" value="{{ old('ONum', $order->ONum) }}" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Color <span class="text-danger">*</span></label>

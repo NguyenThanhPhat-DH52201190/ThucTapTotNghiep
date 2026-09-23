@@ -43,13 +43,25 @@ class OCSImport implements ToCollection, WithHeadingRow
                 throw new \RuntimeException("CS {$cs} is confirmed, archived, or locked and cannot be changed by import.");
             }
 
+            $customers = DB::table('customer_info')->where('name', trim((string) $row['customer']))->get();
+            if ($customers->count() !== 1) {
+                throw new \RuntimeException("CS {$cs}: customer must match one Customer Master record.");
+            }
+            $style = DB::table('customer_styles')->where('customer_id', $customers->first()->id)
+                ->where('style_no', trim((string) $row['sno']))->first();
+            if (!$style) throw new \RuntimeException("CS {$cs}: register this style in Customer Master before importing.");
+            if ($existing && $existing->bom_header_id && ($existing->SNo !== $style->style_no || (int) $existing->customer_id !== (int) $style->customer_id)) {
+                throw new \RuntimeException("CS {$cs}: change the customer/style and BOM together in Edit OCS.");
+            }
+
             DB::table('ocs')->updateOrInsert(
                 ['CS' => $cs],
                 [
                     'ONum' => $row['onum'],
-                    'SNo' => $row['sno'],
-                    'Sname' => $row['sname'],
-                    'Customer' => $row['customer'],
+                    'SNo' => $style->style_no,
+                    'Sname' => $style->style_name,
+                    'customer_id' => $style->customer_id,
+                    'Customer' => $customers->first()->name,
                     'CsDate' => $date,
                     'CMT' => $row['cmt'] ?? 0,
                     'Color' => $row['color'] ?? '',

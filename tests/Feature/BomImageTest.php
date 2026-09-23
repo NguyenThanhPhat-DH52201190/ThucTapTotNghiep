@@ -58,13 +58,15 @@ class BomImageTest extends TestCase
             $table->id(); $table->unsignedBigInteger('bom_item_id'); $table->unsignedBigInteger('customer_size_id'); $table->timestamps();
         });
         DB::table('material_categories')->insert(['id' => 1, 'name' => 'Fabric', 'slug' => 'fabric']);
+        DB::table('customer_info')->insert(['id' => 1, 'name' => 'Customer']);
+        DB::table('customer_styles')->insert(['customer_id' => 1, 'style_no' => 'STYLE-IMAGE', 'style_name' => 'Jacket']);
         DB::table('materials')->insert(['category_id' => 1, 'internal_code' => 'FAB-01', 'material_name' => 'Fabric', 'material_type' => 'fabric', 'unit' => 'M']);
         $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]));
     }
 
     private function payload(): array
     {
-        return ['style_no' => 'STYLE-IMAGE', 'style_name' => 'Jacket', 'change_reason' => 'Customer revision',
+        return ['customer_id' => 1, 'style_no' => 'STYLE-IMAGE', 'style_name' => 'Jacket', 'change_reason' => 'Customer revision',
             'items' => [['material_code' => 'FAB-01', 'category_id' => 1, 'consumption_rate' => 1]]];
     }
 
@@ -94,14 +96,14 @@ class BomImageTest extends TestCase
 
     public function test_bom_image_upload_display_preserve_replace_and_delete(): void
     {
-        $this->get(route('admin.bom.create'))->assertOk()->assertSee('multipart/form-data')->assertSee('name="image"', false);
+        $this->get(route('admin.bom.create'))->assertOk()->assertSee('data-customer-style', false)->assertDontSee('name="image"', false);
         $this->post(route('admin.bom.store'), $this->payload() + ['image' => $this->imageFile()])->assertSessionHasNoErrors()->assertSessionHas('success');
         $bom = DB::table('bom_headers')->first();
         $this->assertStringStartsWith('bom-images/', $bom->image_path);
         Storage::disk('local')->assertExists($bom->image_path);
         $this->get(route('admin.bom.image', $bom->id))->assertOk()->assertHeader('Content-Type', 'image/png');
         $this->get(route('admin.bom.index'))->assertOk()->assertSee('data-image-url="' . route('admin.bom.image', $bom->id, false) . '"', false);
-        $this->get(route('admin.bom.edit', $bom->id))->assertOk()->assertSee(route('admin.bom.image', $bom->id, false));
+        $this->get(route('admin.bom.edit', $bom->id))->assertOk()->assertSee('data-customer-style', false);
         $this->put(route('admin.bom.update', $bom->id), $this->payload())->assertSessionHas('success');
         $this->assertDatabaseHas('bom_headers', ['id' => $bom->id, 'image_path' => $bom->image_path]);
         $this->put(route('admin.bom.update', $bom->id), $this->payload() + ['image' => $this->imageFile()])->assertSessionHas('success');

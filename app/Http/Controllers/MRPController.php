@@ -151,29 +151,40 @@ class MRPController extends Controller
                     ->where('bom_header_id', $mtp->bom_header_id)
                     ->get();
 
+                $hasReplacements = Schema::hasTable('norm_material_replacements') && DB::table('norm_material_replacements')->where('cutsheet_id', $mtp->cutsheet_id)->exists();
+                if ($hasReplacements) {
+                    $bomItems = app(\App\Services\OrderMaterialRequirementService::class)->sync((int) $mtp->cutsheet_id);
+                }
                 foreach ($bomItems as $bom) {
                     $orderQty = (float) DB::table('ocs')->where('id', $mtp->cutsheet_id)->value('Qty');
-                    $mappedSizeNames = Schema::hasTable('bom_item_customer_sizes')
-                        ? DB::table('bom_item_customer_sizes')
-                            ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
-                            ->where('bom_item_customer_sizes.bom_item_id', $bom->id)->pluck('customer_sizes.size_name')
-                        : collect();
-                    $applicableOrderQty = $mappedSizeNames->isEmpty()
-                        ? $orderQty
-                        : (float) DB::table('order_sizes')->where('cutsheet_id', $mtp->cutsheet_id)
-                            ->whereIn('size_name', $mappedSizeNames)->sum('quantity');
-                    $qty = $orderQty > 0
-                        ? (float) ($mtp->Qty_dis ?? 0) * ($applicableOrderQty / $orderQty)
-                        : 0;
-                    $rates = app(\App\Services\NormRateService::class)->forItem((int) $mtp->cutsheet_id, $bom);
-                    $required = $qty * $rates['yield'];
-                    // Add waste
-                    if ($rates['waste'] > 0) {
-                        $required *= (1 + $rates['waste'] / 100);
-                    }
+                    if ($hasReplacements) {
+                        $required = $orderQty > 0 ? (float) $bom->required_qty * (float) ($mtp->Qty_dis ?? 0) / $orderQty : 0;
+                        $materialColor = $bom->material_color;
+                        $rates = ['yield' => (float) $bom->consumption_rate, 'waste' => (float) $bom->waste_percent];
+                    } else {
+                        $mappedSizeNames = Schema::hasTable('bom_item_customer_sizes')
+                            ? DB::table('bom_item_customer_sizes')
+                                ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
+                                ->where('bom_item_customer_sizes.bom_item_id', $bom->id)->pluck('customer_sizes.size_name')
+                            : collect();
+                        $applicableOrderQty = $mappedSizeNames->isEmpty()
+                            ? $orderQty
+                            : (float) DB::table('order_sizes')->where('cutsheet_id', $mtp->cutsheet_id)
+                                ->whereIn('size_name', $mappedSizeNames)->sum('quantity');
+                        $qty = $orderQty > 0
+                            ? (float) ($mtp->Qty_dis ?? 0) * ($applicableOrderQty / $orderQty)
+                            : 0;
+                        $rates = app(\App\Services\NormRateService::class)->forItem((int) $mtp->cutsheet_id, $bom);
+                        $required = $qty * $rates['yield'];
+                        // Add waste
+                        if ($rates['waste'] > 0) {
+                            $required *= (1 + $rates['waste'] / 100);
+                        }
 
-                    $materialColor = DB::table('bom_colorways')->where('bom_item_id', $bom->id)
-                        ->where('garment_color', $mtp->garment_color)->value('material_color') ?? $bom->colour;
+                        $materialColor = DB::table('bom_colorways')->where('bom_item_id', $bom->id)
+                            ->where('garment_color', $mtp->garment_color)->value('material_color') ?? $bom->colour;
+                    }
+                    if ($required <= 0) continue;
                     $key = $bom->material_code . '|' . ($materialColor ?? '');
 
                     if (!isset($materialRequirements[$key])) {
@@ -185,7 +196,7 @@ class MRPController extends Controller
                             'unit' => $bom->unit,
                             'gross_requirement' => 0,
                             'lead_time_days' => 0,
-                            'unit_cost' => $bom->unit_cost,
+                            'unit_cost' => !$hasReplacements ? $bom->unit_cost : ($bom->bom_item_id ? (DB::table('bom_items')->where('id', $bom->bom_item_id)->value('unit_cost') ?? 0) : (DB::table('inventory_balances')->where('material_id', $bom->material_id)->avg('unit_cost') ?? 0)),
                             'sources' => [],
                         ];
                     }
@@ -195,7 +206,7 @@ class MRPController extends Controller
                         'mtp_id' => $mtp->id,
                         'cutsheet_id' => $mtp->cutsheet_id,
                         'cu' => $mtp->CU,
-                        'bom_item_id' => $bom->id,
+                        'bom_item_id' => $hasReplacements ? ($bom->bom_item_id ?? DB::table('norm_material_replacements')->where('id', $bom->replacement_id)->value('bom_item_id')) : $bom->id,
                         'colour' => $materialColor,
                         'consumption_rate' => $rates['yield'],
                         'required_qty' => $required,

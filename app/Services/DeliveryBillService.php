@@ -64,7 +64,7 @@ class DeliveryBillService
 
                 $requirements = app(OrderMaterialRequirementService::class);
                 $needs = $requirements->sync($id);
-                $selected = $needs->whereIn('bom_item_id', array_column($data['items'], 'bom_item_id'));
+                $selected = $needs->filter(fn ($need) => collect($data['items'])->contains(fn ($entry) => isset($entry['requirement_id']) ? (int) $need->id === (int) $entry['requirement_id'] : $need->bom_item_id !== null && (int) $need->bom_item_id === (int) ($entry['bom_item_id'] ?? 0)));
                 $materialIds = $selected->pluck('material_id')->filter()->unique()->sort()->values();
                 DB::table('materials')->whereIn('id', $materialIds)->orderBy('id')->lockForUpdate()->get();
                 // Priority editors take the same stock-record locks. Lock balances across all
@@ -91,7 +91,7 @@ class DeliveryBillService
                 $issueId = DB::table('material_issues')->insertGetId(['issue_code' => $data['number'], 'requisition_id' => $req->id, 'issue_date' => $issuedOn, 'receiver_name' => $data['customer'], 'status' => 'issued', 'created_at' => now(), 'updated_at' => now()]);
                 $lines = [];
                 foreach ($data['items'] as $entry) {
-                    $need = $needs->firstWhere('bom_item_id', $entry['bom_item_id']);
+                    $need = isset($entry['requirement_id']) ? $needs->firstWhere('id', $entry['requirement_id']) : $needs->firstWhere('bom_item_id', $entry['bom_item_id']);
                     $balance = DB::table('inventory_balances')->where('id', $entry['balance_id'])->lockForUpdate()->first();
                     if (!$need || !$need->material_id || !$balance || !$this->matches($balance, $need)) $this->fail('Select a matching NORM material, colour, size and inventory lot.');
                     $qty = (float) $entry['quantity'];
@@ -128,6 +128,7 @@ class DeliveryBillService
                     $remaining[$key] = max(0, round($remaining[$key] - $qty, 4));
                     $lines[] = ['code' => $need->material_code, 'description' => $need->material_name, 'colour' => $balance->material_color, 'size' => $balance->material_size,
                         'unit' => $need->unit, 'quantity' => $qty, 'balance_id' => $balance->id, 'bom_item_id' => $need->bom_item_id,
+                        'requirement_id' => $need->id, 'replacement_id' => $need->replacement_id ?? null,
                         'warehouse_id' => $balance->warehouse_id, 'lot_no' => $balance->lot_no, 'roll_no' => $balance->roll_no];
                 }
                 $warnings = []; $snapshots = [];

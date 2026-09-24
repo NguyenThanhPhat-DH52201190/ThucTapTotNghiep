@@ -159,6 +159,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('master-data/material-subcategories/{id}', [MasterDataController::class, 'updateMaterialSubcategory'])->name('master-data.material-subcategories.update');
         Route::delete('master-data/material-subcategories/{id}', [MasterDataController::class, 'destroyMaterialSubcategory'])->name('master-data.material-subcategories.destroy');
         Route::post('master-data/material-vendors', [MasterDataController::class, 'storeMaterialVendor'])->name('master-data.material-vendors.store');
+        Route::patch('master-data/material-vendors/{id}', [MasterDataController::class, 'updateMaterialVendor'])->name('master-data.material-vendors.update');
         Route::delete('master-data/material-vendors/{id}', [MasterDataController::class, 'destroyMaterialVendor'])->name('master-data.material-vendors.destroy');
 
         // MasterPlan
@@ -175,6 +176,8 @@ Route::middleware('auth')->group(function () {
         Route::post('ocs/import', [OCSController::class, 'import'])->name('ocs.import');
 
         Route::get('norm/materials', [NormController::class, 'materials'])->name('norm.materials');
+        Route::get('norm/materials/{id}/replacements', [\App\Http\Controllers\NormMaterialReplacementController::class, 'index'])->name('norm.replacements');
+        Route::post('norm/materials/{id}/replacements', [\App\Http\Controllers\NormMaterialReplacementController::class, 'store'])->name('norm.replacements.store');
         Route::get('norm/materials/{id}/delivery-bills', [\App\Http\Controllers\DeliveryBillController::class, 'index'])->name('norm.delivery-bills');
         Route::post('norm/materials/{id}/delivery-bills', [\App\Http\Controllers\DeliveryBillController::class, 'store'])->name('norm.delivery-bills.store');
         Route::get('norm/materials/{id}/delivery-bills/{bill}/download', [\App\Http\Controllers\DeliveryBillController::class, 'download'])->name('norm.delivery-bills.download');

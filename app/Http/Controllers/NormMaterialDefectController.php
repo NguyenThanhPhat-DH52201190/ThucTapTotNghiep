@@ -12,8 +12,8 @@ class NormMaterialDefectController extends Controller
     private function materials(object $order)
     {
         return DB::table('order_material_requirements as norm')
-            ->join('bom_items', 'bom_items.id', '=', 'norm.bom_item_id')
-            ->where('norm.cutsheet_id', $order->id)->where('bom_items.bom_header_id', $order->bom_header_id)
+            ->leftJoin('bom_items', 'bom_items.id', '=', 'norm.bom_item_id')
+            ->where('norm.cutsheet_id', $order->id)->where(fn ($q) => $q->where('bom_items.bom_header_id', $order->bom_header_id)->orWhereNull('norm.bom_item_id'))
             ->where('norm.bom_header_id', $order->bom_header_id)
             ->select('norm.*')->orderBy('norm.material_code')->get();
     }
@@ -33,7 +33,7 @@ class NormMaterialDefectController extends Controller
     {
         $data = $request->validate([
             'submission_key' => 'required|uuid', 'occurred_on' => 'required|date_format:Y-m-d|before_or_equal:today',
-            'items' => 'required|array|list|min:1|max:20', 'items.*.bom_item_id' => 'required|integer|distinct',
+            'items' => 'required|array|list|min:1|max:20', 'items.*.requirement_id' => 'required_without:items.*.bom_item_id|integer|distinct', 'items.*.bom_item_id' => 'required_without:items.*.requirement_id|integer|distinct',
             'items.*.defect_qty' => 'required|numeric|gt:0|max:99999999|decimal:0,4',
             'items.*.replacement_qty' => 'required|numeric|min:0|max:99999999|decimal:0,4',
             'items.*.disposition' => 'required|in:reuse,return_supplier,scrap',
@@ -47,9 +47,9 @@ class NormMaterialDefectController extends Controller
                 abort_unless($order, 404);
                 // A retry/double click of the same form must not record the loss twice.
                 if (DB::table('norm_material_defects')->where('cutsheet_id', $id)->where('submission_key', $data['submission_key'])->exists()) return;
-                $materials = $this->materials($order)->keyBy('bom_item_id');
+                $materials = $this->materials($order);
                 foreach ($data['items'] as $index => $item) {
-                    $material = $materials->get($item['bom_item_id']);
+                    $material = isset($item['requirement_id']) ? $materials->firstWhere('id', $item['requirement_id']) : $materials->firstWhere('bom_item_id', $item['bom_item_id']);
                     if (!$material) throw ValidationException::withMessages(["items.$index.bom_item_id" => 'Select a material from the current NORM for this CU.']);
                     if ((float) $item['replacement_qty'] > (float) $item['defect_qty']) throw ValidationException::withMessages(["items.$index.replacement_qty" => 'Requested replacement cannot exceed defective quantity.']);
                     $path = null;
@@ -60,7 +60,7 @@ class NormMaterialDefectController extends Controller
                     }
                     DB::table('norm_material_defects')->insert([
                         'cutsheet_id' => $id, 'submission_key' => $data['submission_key'], 'line_no' => $index,
-                        'bom_item_id' => $material->bom_item_id, 'material_id' => $material->material_id,
+                        'bom_item_id' => $material->bom_item_id ?? DB::table('norm_material_replacements')->where('id', $material->replacement_id)->value('bom_item_id'), 'material_id' => $material->material_id,
                         'material_code' => $material->material_code, 'material_name' => $material->material_name,
                         'material_color' => $material->material_color, 'material_size' => $material->material_size, 'unit' => $material->unit,
                         'occurred_on' => $data['occurred_on'], 'defect_qty' => $item['defect_qty'], 'replacement_qty' => $item['replacement_qty'],

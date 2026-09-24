@@ -37,6 +37,7 @@ class StockRecordsTest extends TestCase
         Schema::create('customer_sizes', function (Blueprint $table) { $table->id(); $table->string('size_name'); });
         Schema::create('bom_item_customer_sizes', function (Blueprint $table) { $table->id(); $table->unsignedBigInteger('bom_item_id'); $table->unsignedBigInteger('customer_size_id'); });
         (require database_path('migrations/2026_09_19_000003_create_order_material_requirements_table.php'))->up();
+        (require database_path('migrations/2026_09_24_000004_create_norm_material_replacements.php'))->up();
         (require database_path('migrations/2026_09_22_000005_create_stock_records.php'))->up();
         foreach (['inventory_balances', 'inventory_transactions'] as $tableName) {
             Schema::table($tableName, function (Blueprint $table) { $table->string('lot_no')->nullable(); $table->string('roll_no')->nullable(); });
@@ -99,6 +100,112 @@ class StockRecordsTest extends TestCase
         $this->assertDatabaseCount('norm_confirmations', 0);
         $this->actingAs($this->createUserRecord(['role' => User::ROLE_PROD]));
         $this->put(route('admin.norm.materials.confirmed', $id), ['rows' => [$row]])->assertForbidden();
+    }
+
+    private function replacementPayload(int $id, float $qty = 20): array
+    {
+        $response = $this->get(route('admin.norm.replacements', $id))->assertOk();
+        $source = $response->viewData('sources')->first();
+        return ['submission_key' => (string) \Illuminate\Support\Str::uuid(), 'bom_item_id' => $source->bom_item_id,
+            'fingerprint' => $source->fingerprint, 'material_id' => 2, 'mode' => 'remaining', 'source_qty' => $qty,
+            'yield_confirmed' => 2, 'waste_confirmed' => 5, 'reason' => 'Supplier material damaged'];
+    }
+
+    private function prepareReplacement(): void
+    {
+        (require database_path('migrations/2026_09_24_000001_create_norm_material_defects.php'))->up();
+        DB::table('materials')->insert(['id' => 2, 'internal_code' => 'NEW-02', 'material_name' => 'Replacement fabric', 'color' => 'Blue', 'size' => 'L', 'unit' => 'M']);
+        DB::table('inventory_balances')->insert(['id' => 2, 'material_id' => 2, 'balance_qty' => 200, 'reserved_qty' => 0, 'material_color' => 'Blue', 'material_size' => 'L']);
+    }
+
+    public function test_replacements_preserve_bom_and_issues_and_drive_stock_and_delivery(): void
+    {
+        $this->prepareReplacement();
+        $this->prepareDelivery();
+        $id = $this->order('CU-REPLACE', 100);
+        $bom = DB::table('bom_items')->first();
+        $other = $this->order('CU-OTHER', 100);
+        $this->createOcsRecord(['CS' => 'CU-SHARED', 'Qty' => 100, 'bom_header_id' => $bom->bom_header_id]);
+        $shared = DB::table('ocs')->where('CS', 'CU-SHARED')->value('id');
+        $req = DB::table('material_requisitions')->insertGetId(['requisition_code' => 'OLD', 'cutsheet_id' => $id, 'status' => 'partial']);
+        DB::table('requisition_items')->insert(['requisition_id' => $req, 'material_id' => 1, 'material_color' => 'Red', 'material_size' => 'M', 'requested_qty' => 100, 'issued_qty' => 80]);
+        $payload = $this->replacementPayload($id);
+        $this->post(route('admin.norm.replacements.store', $other), $payload)->assertSessionHasErrors();
+        $this->post(route('admin.norm.replacements.store', $id), $payload)->assertSessionHasNoErrors();
+        $this->post(route('admin.norm.replacements.store', $id), $payload)->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('norm_material_replacements', 1);
+        $this->assertEquals($bom, DB::table('bom_items')->where('id', $bom->id)->first());
+        $service = app(OrderMaterialRequirementService::class);
+        $needs = $service->sync($id);
+        $this->assertEquals(80, $needs->firstWhere('material_id', 1)->required_qty);
+        $replacement = $needs->firstWhere('material_id', 2);
+        $this->assertEquals(42, $replacement->required_qty);
+        $this->assertEquals(100, $service->sync($shared)->first()->required_qty);
+        $this->assertDatabaseHas('requisition_items', ['requisition_id' => $req, 'issued_qty' => 80]);
+        $this->assertDatabaseCount('inventory_transactions', 0);
+        app(StockRecordService::class)->importInventory();
+        $record = DB::table('stock_records')->where('material_id', 2)->first();
+        $plan = app(StockRecordService::class)->plan($record, $service);
+        $this->assertCount(1, $plan);
+        $this->assertEquals(42, $plan->first()->remaining);
+        $data = $this->deliveryPayload($id, 10);
+        $data['items'] = [['requirement_id' => $replacement->id, 'balance_id' => 2, 'quantity' => 10]];
+        $this->post(route('admin.norm.delivery-bills.store', $id), $data)->assertOk();
+        $this->assertDatabaseHas('inventory_balances', ['id' => 2, 'balance_qty' => 190]);
+        $this->assertEquals(32, app(StockRecordService::class)->plan($record, $service)->first()->remaining);
+        $this->assertEquals(1, DB::table('delivery_bills')->count());
+        $this->post(route('admin.norm.replacements.store', $id), array_replace($payload, ['submission_key' => (string) \Illuminate\Support\Str::uuid()]))->assertSessionHasErrors();
+    }
+
+    public function test_defect_replacement_adds_demand_without_reducing_original_and_prevents_double_allocation(): void
+    {
+        $this->prepareReplacement();
+        $id = $this->order('CU-DEFECT', 100);
+        $payload = $this->replacementPayload($id, 5);
+        $defect = DB::table('norm_material_defects')->insertGetId(['cutsheet_id' => $id,
+            'submission_key' => (string) \Illuminate\Support\Str::uuid(), 'line_no' => 0, 'bom_item_id' => $payload['bom_item_id'],
+            'material_id' => 1, 'material_code' => 'FAB-01', 'material_color' => 'Red', 'material_size' => 'M', 'unit' => 'M',
+            'occurred_on' => now()->toDateString(), 'defect_qty' => 5, 'replacement_qty' => 5, 'disposition' => 'scrap', 'reason' => 'Faulty']);
+        $payload['mode'] = 'defect'; $payload['defect_id'] = $defect;
+        $this->post(route('admin.norm.replacements.store', $id), $payload)->assertSessionHasNoErrors();
+        $needs = app(OrderMaterialRequirementService::class)->sync($id);
+        $this->assertEquals(100, $needs->firstWhere('material_id', 1)->required_qty);
+        $this->assertEquals(10.5, $needs->firstWhere('material_id', 2)->required_qty);
+        $payload['submission_key'] = (string) \Illuminate\Support\Str::uuid();
+        $this->post(route('admin.norm.replacements.store', $id), $payload)->assertSessionHasErrors('source_qty');
+        $this->assertDatabaseCount('norm_material_replacements', 1);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PROD]));
+        $this->post(route('admin.norm.replacements.store', $id), $payload)->assertForbidden();
+    }
+
+    public function test_replacement_requirements_feed_new_requisitions_and_mrp(): void
+    {
+        $this->prepareReplacement();
+        $id = $this->order('CU-PLAN', 100, 'pending');
+        DB::table('bom_headers')->update(['status' => 'active']);
+        $payload = $this->replacementPayload($id, 20);
+        $this->post(route('admin.norm.replacements.store', $id), $payload)->assertSessionHasNoErrors();
+        $req = app(\App\Services\RequisitionService::class)->createForCutsheet($id);
+        $this->assertDatabaseHas('requisition_items', ['requisition_id' => $req, 'material_id' => 1, 'requested_qty' => 80]);
+        $this->assertDatabaseHas('requisition_items', ['requisition_id' => $req, 'material_id' => 2, 'requested_qty' => 42]);
+        $this->assertDatabaseHas('inventory_balances', ['id' => 2, 'balance_qty' => 200, 'reserved_qty' => 42]);
+        $this->assertSame($req, app(\App\Services\RequisitionService::class)->createForCutsheet($id));
+        (require database_path('migrations/2026_07_27_000006_create_mrp_tables.php'))->up();
+        Schema::table('mrp_items', function ($t) { $t->unsignedBigInteger('material_id')->nullable(); $t->string('material_color')->nullable(); });
+        Schema::table('bom_items', fn ($t) => $t->decimal('unit_cost', 14, 4)->default(1));
+        Schema::table('mtp', function ($t) { $t->string('mps_status')->default('planned'); $t->date('planned_cut_start')->nullable(); });
+        Schema::create('purchase_orders', function ($t) { $t->id(); $t->string('status'); });
+        Schema::create('po_items', function ($t) { $t->id(); $t->unsignedBigInteger('po_id'); $t->string('material_code'); $t->string('color')->nullable(); $t->decimal('quantity'); $t->decimal('received_qty'); });
+        Schema::create('mrp_suggestions', function ($t) {
+            $t->id(); $t->unsignedBigInteger('mrp_header_id'); $t->unsignedBigInteger('cutsheet_id'); $t->unsignedBigInteger('material_id');
+            $t->string('material_color')->nullable(); $t->decimal('gross_qty', 14, 4); $t->decimal('available_qty', 14, 4); $t->decimal('net_qty', 14, 4); $t->date('required_date'); $t->string('status'); $t->timestamps();
+        });
+        (require database_path('migrations/2026_08_26_000012_create_mrp_lot_allocations.php'))->up();
+        DB::table('mtp')->insert(['CU' => 'CU-PLAN', 'Line' => 'A', 'Qty_dis' => 50]);
+        $this->post(route('admin.mrp.calculate'), ['throw_on_failure' => true])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertDatabaseHas('mrp_items', ['material_code' => 'FAB-01', 'gross_requirement' => 40]);
+        $this->assertDatabaseHas('mrp_items', ['material_code' => 'NEW-02', 'gross_requirement' => 21]);
+        $this->assertEquals(1, DB::table('bom_items')->count());
     }
 
     private function plan(): \Illuminate\Support\Collection

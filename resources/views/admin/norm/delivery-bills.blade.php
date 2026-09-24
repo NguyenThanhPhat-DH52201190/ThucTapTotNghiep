@@ -29,7 +29,7 @@
 {{ $bills->links() }}
 <template id="deliveryRowTemplate"><div class="mb-3 delivery-row">
     <div class="delivery-row-fields">
-        <div class="delivery-material"><label class="form-label">Material *</label><select data-field="bom_item_id" class="form-select" required></select></div>
+        <div class="delivery-material"><label class="form-label">Material *</label><select data-field="requirement_id" class="form-select" required></select></div>
         <div class="delivery-balance"><label class="form-label">Warehouse / Location / Lot / Roll *</label><select data-field="balance_id" class="form-select" required></select></div>
         <div><label class="form-label">Qty *</label><input data-field="quantity" type="number" step="0.0001" min="0.0001" max="99999999" class="form-control" required></div>
         <button type="button" data-remove class="btn btn-outline-danger">Remove</button>
@@ -51,10 +51,10 @@
     }
     function addRow(data = {}) {
         const row = document.getElementById('deliveryRowTemplate').content.firstElementChild.cloneNode(true);
-        const material = row.querySelector('[data-field="bom_item_id"]'), balance = row.querySelector('[data-field="balance_id"]');
+        const material = row.querySelector('[data-field="requirement_id"]'), balance = row.querySelector('[data-field="balance_id"]');
         material.add(new Option('Select material', ''));
         options.forEach(o => material.add(new Option(o.label, o.id)));
-        material.value = data.bom_item_id || '';
+        material.value = data.requirement_id || '';
         function refresh() {
             const selected = options.find(o => String(o.id) === material.value);
             balance.replaceChildren(new Option('Select lot / roll', ''));

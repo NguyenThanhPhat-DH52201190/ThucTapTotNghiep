@@ -33,6 +33,21 @@ class RequisitionService
             ]);
 
             $ledger = app(InventoryLedgerService::class);
+            if (Schema::hasTable('norm_material_replacements') && DB::table('norm_material_replacements')->where('cutsheet_id', $cutsheetId)->exists()) {
+                foreach (app(OrderMaterialRequirementService::class)->sync($cutsheetId) as $need) {
+                    if ((float) $need->required_qty <= 0) continue;
+                    if (!$need->material_id) throw new RuntimeException('Map all NORM materials before confirmation.');
+                    $itemId = DB::table('requisition_items')->insertGetId([
+                        'requisition_id' => $requisitionId, 'material_id' => $need->material_id,
+                        'material_color' => $need->material_color, 'material_size' => $need->material_size,
+                        'requested_qty' => $need->required_qty, 'issued_qty' => 0, 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                    $ledger->reserve(['requisition_item_id' => $itemId, 'material_id' => $need->material_id,
+                        'color' => $need->material_color, 'size' => $need->material_size, 'quantity' => (float) $need->required_qty]);
+                }
+                return $requisitionId;
+            }
+
             foreach ($items as $item) {
                 $materialId = $item->material_id ?: DB::table('materials')->where('internal_code', $item->material_code)->value('id');
                 if (!$materialId) {

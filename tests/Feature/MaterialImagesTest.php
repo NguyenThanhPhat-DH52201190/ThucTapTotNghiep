@@ -52,6 +52,40 @@ class MaterialImagesTest extends TestCase
         $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]));
     }
 
+    public function test_mapping_can_be_edited_without_recreating_it_and_rejects_duplicates(): void
+    {
+        Schema::table('material_vendors', function (Blueprint $table) {
+            $table->string('vendor_item_code')->nullable(); $table->decimal('unit_price', 14, 4)->default(0);
+            $table->unsignedInteger('lead_time_days')->default(0); $table->timestamps();
+            $table->unique(['material_id', 'vendor_id']);
+        });
+        $this->post(route('admin.master-data.materials.store'), $this->payload())->assertSessionHasNoErrors();
+        $material = DB::table('materials')->value('id');
+        DB::table('suppliers')->insert([
+            ['id' => 1, 'code' => 'SUP-1', 'name' => 'First', 'status' => 'active'],
+            ['id' => 2, 'code' => 'SUP-2', 'name' => 'Second', 'status' => 'inactive'],
+        ]);
+        $created = '2026-01-01 00:00:00';
+        $mapping = DB::table('material_vendors')->insertGetId(['material_id' => $material, 'vendor_id' => 1, 'created_at' => $created]);
+        $other = DB::table('material_vendors')->insertGetId(['material_id' => $material, 'vendor_id' => 2, 'is_default_vendor' => true]);
+        $url = route('admin.master-data.material-vendors.update', $mapping);
+        $data = ['material_id' => $material, 'vendor_id' => 1, 'vendor_item_code' => 'CORRECTED', 'unit_price' => '12.3456', 'lead_time_days' => 14, 'is_default_vendor' => 1, 'mapping_edit_id' => $mapping];
+        $this->get(route('admin.master-data.materials'))->assertOk()->assertSee('Edit mapping')->assertSee('editMappingForm');
+        $this->patch($url, $data)->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertDatabaseHas('material_vendors', ['id' => $mapping, 'vendor_item_code' => 'CORRECTED', 'unit_price' => 12.3456, 'created_at' => $created, 'is_default_vendor' => true]);
+        $this->assertDatabaseHas('material_vendors', ['id' => $other, 'is_default_vendor' => false]);
+        $this->assertDatabaseCount('material_vendors', 2);
+        $this->patch($url, array_replace($data, ['vendor_id' => 2]))->assertSessionHasErrors('vendor_id');
+        $this->assertDatabaseHas('material_vendors', ['id' => $mapping, 'vendor_id' => 1]);
+        unset($data['is_default_vendor']);
+        $this->patch($url, $data)->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('material_vendors', ['id' => $mapping, 'is_default_vendor' => false]);
+        $this->patch($url, array_replace($data, ['unit_price' => -1]))->assertSessionHasErrors('unit_price');
+        $this->patch(route('admin.master-data.material-vendors.update', 99999), $data)->assertNotFound();
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PROD]));
+        $this->patch($url, $data)->assertForbidden();
+    }
+
     private function payload(): array
     {
         return ['internal_code' => 'FAB-01', 'material_name' => 'Fabric', 'unit' => 'M', 'category_id' => 1, 'subcategory_id' => 1];
@@ -189,6 +223,7 @@ class MaterialImagesTest extends TestCase
             foreach (['material_code', 'material_name', 'material_type', 'material_color', 'material_size', 'unit', 'stock_status'] as $field) $table->string($field)->default('');
             foreach (['product_qty', 'consumption_rate', 'waste_percent', 'required_qty', 'available_qty', 'shortage_qty'] as $field) $table->decimal($field)->default(0);
         });
+        (require database_path('migrations/2026_09_24_000004_create_norm_material_replacements.php'))->up();
         $this->post(route('admin.master-data.materials.store'), $this->payload() + ['image' => $this->imageFile()])->assertSessionHas('success');
         $materialId = DB::table('materials')->value('id');
         $bomId = DB::table('bom_headers')->insertGetId(['style_no' => 'BOM-01']);

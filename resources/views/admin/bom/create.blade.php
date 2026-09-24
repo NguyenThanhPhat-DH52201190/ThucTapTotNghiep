@@ -211,7 +211,7 @@ function removeItem(id) {
 function renumberItems() {
     const rows = document.querySelectorAll('#itemsBody tr');
     rows.forEach((row, idx) => {
-        row.querySelector('td:first-child').textContent = idx + 1;
+        (row.querySelector('[data-bom-row-number]') || row.querySelector('td:first-child')).textContent = idx + 1;
     });
 }
 
@@ -229,5 +229,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 @include('admin.bom.partials.material-autocomplete')
+@include('admin.bom.partials.copy-items')
 
 @endsection

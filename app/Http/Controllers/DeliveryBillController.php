@@ -22,7 +22,7 @@ class DeliveryBillController extends Controller
             ->whereIn('balance.material_id', $needs->pluck('material_id')->filter())->where('balance.balance_qty', '>', 0)
             ->select('balance.*', 'warehouses.name as warehouse_name')->orderBy('balance.id')->get();
         $options = $needs->map(fn ($need) => [
-            'id' => $need->bom_item_id, 'label' => $need->material_code.' — '.$need->material_name.' / '.$need->material_color.' / '.$need->material_size.' ('.$need->unit.')',
+            'id' => $need->id, 'label' => $need->material_code.' — '.$need->material_name.' / '.$need->material_color.' / '.$need->material_size.' ('.$need->unit.')',
             'remaining' => $remaining[$service->key($need)] ?? 0,
             'balances' => $balances->filter(fn ($balance) => $service->matches($balance, $need))->map(fn ($b) => [
                 'id' => $b->id, 'label' => ($b->warehouse_name ?: 'No warehouse').' / '.($b->location ?: 'No location').' / Lot: '.($b->lot_no ?: $b->lot_roll_no ?: '-').' / Roll: '.($b->roll_no ?: '-').' / On hand: '.$b->balance_qty.' / Reserved: '.$b->reserved_qty,
@@ -39,7 +39,7 @@ class DeliveryBillController extends Controller
             'customer' => 'required|string|max:191', 'address' => 'required|string|max:500',
             'reason' => 'required|string|max:1000', 'shipper' => 'required|string|max:191', 'shipper_address' => 'nullable|string|max:500',
             'priority_reason' => 'nullable|string|max:1000', 'items' => 'required|array|list|min:1|max:100',
-            'items.*.bom_item_id' => 'required|integer', 'items.*.balance_id' => 'required|integer',
+            'items.*.requirement_id' => 'required_without:items.*.bom_item_id|integer', 'items.*.bom_item_id' => 'required_without:items.*.requirement_id|integer', 'items.*.balance_id' => 'required|integer',
             'items.*.quantity' => 'required|numeric|gt:0|max:99999999|decimal:0,4',
         ]);
         try {

@@ -32,8 +32,17 @@ class StockRecordService
     public function activeOrders(int $materialId, bool $lock = false): Collection
     {
         return DB::table('ocs')->whereIn('status', ['pending', 'confirmed', 'in_production', 'released'])
-            ->whereExists(fn ($q) => $q->selectRaw('1')->from('bom_items')
-                ->whereColumn('bom_items.bom_header_id', 'ocs.bom_header_id')->where('bom_items.material_id', $materialId))
+            ->where(function ($query) use ($materialId) {
+                $query->whereExists(fn ($q) => $q->selectRaw('1')->from('bom_items')
+                    ->whereColumn('bom_items.bom_header_id', 'ocs.bom_header_id')->where('bom_items.material_id', $materialId));
+                if (\Illuminate\Support\Facades\Schema::hasTable('norm_material_replacements')) {
+                    $query->orWhereExists(fn ($q) => $q->selectRaw('1')->from('norm_material_replacements as replacement')
+                        ->join('bom_items as source', 'source.id', '=', 'replacement.bom_item_id')
+                        ->whereColumn('replacement.cutsheet_id', 'ocs.id')
+                        ->whereColumn('replacement.bom_header_id', 'ocs.bom_header_id')
+                        ->whereColumn('source.bom_header_id', 'ocs.bom_header_id')->where('replacement.material_id', $materialId));
+                }
+            })
             ->orderByRaw('expected_ship_date IS NULL')->orderBy('expected_ship_date')->orderBy('id')
             ->when($lock, fn ($q) => $q->lockForUpdate())->get();
     }

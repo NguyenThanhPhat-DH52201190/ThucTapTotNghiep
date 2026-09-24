@@ -77,6 +77,31 @@ class BomImageTest extends TestCase
         ));
     }
 
+    public function test_copied_bom_items_save_as_independent_rows_and_preserve_product_sizes(): void
+    {
+        DB::table('customer_sizes')->insert(['id' => 1, 'customer_id' => 1, 'size_name' => 'M', 'sort_order' => 1]);
+        $payload = $this->payload();
+        $payload['items'][0] += ['customer_size_ids' => [1], 'waste_percent' => 2, 'remark' => 'Original'];
+        $payload['items'][1] = array_replace($payload['items'][0], ['consumption_rate' => 1.5, 'remark' => 'Copy']);
+        $this->get(route('admin.bom.create'))->assertOk()->assertSee('bomCopySelected')->assertSee('bom-item-copy.js');
+        $this->post(route('admin.bom.store'), $payload)->assertSessionHasNoErrors()->assertSessionHas('success');
+        $bom = DB::table('bom_headers')->first();
+        $items = DB::table('bom_items')->orderBy('id')->get();
+        $this->assertCount(2, $items);
+        $this->assertDatabaseCount('bom_item_customer_sizes', 2);
+        foreach ($items as $index => $item) $payload['items'][$index]['id'] = $item->id;
+        $payload['items'][2] = $payload['items'][1];
+        unset($payload['items'][2]['id']);
+        $payload['items'][2]['remark'] = 'Second copy';
+        $this->get(route('admin.bom.edit', $bom->id))->assertOk()->assertSee('bomCopySelected');
+        $this->put(route('admin.bom.update', $bom->id), $payload)->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertDatabaseCount('bom_items', 3);
+        $this->assertDatabaseCount('bom_item_customer_sizes', 3);
+        $this->assertDatabaseHas('bom_items', ['id' => $items[0]->id, 'remark' => 'Original']);
+        $this->assertDatabaseHas('bom_items', ['id' => $items[1]->id, 'remark' => 'Copy']);
+        $this->assertDatabaseHas('bom_items', ['remark' => 'Second copy', 'consumption_rate' => 1.5, 'waste_percent' => 2]);
+    }
+
     public function test_bom_yield_edit_preserves_norm_confirmation_identity(): void
     {
         $this->post(route('admin.bom.store'), $this->payload())->assertSessionHas('success');

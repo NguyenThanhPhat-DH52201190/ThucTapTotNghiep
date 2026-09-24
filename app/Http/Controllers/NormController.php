@@ -26,6 +26,7 @@ class NormController extends Controller
             ->leftJoin('norm_confirmations as confirmation', function ($join) {
                 $join->on('confirmation.cutsheet_id', '=', 'norm.cutsheet_id')->on('confirmation.bom_item_id', '=', 'norm.bom_item_id');
             })
+            ->leftJoin('norm_material_replacements as replacement', 'replacement.id', '=', 'norm.replacement_id')
             ->when($request->filled('cutsheet_id'), fn ($q) => $q->where('norm.cutsheet_id', $request->integer('cutsheet_id')))
             ->when($request->filled('cs'), fn ($q) => $q->where('ocs.CS', 'like', '%' . trim($request->cs) . '%'))
             ->when($request->filled('material'), function ($q) use ($request) {
@@ -35,7 +36,7 @@ class NormController extends Controller
             ->select('norm.*', 'ocs.CS', 'ocs.SNo', 'ocs.Sname', 'ocs.Customer', 'ocs.Color as garment_color',
                 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version',
                 'source_item.consumption_rate as yield_plan', 'source_item.waste_percent as waste_plan',
-                'confirmation.yield_confirmed', 'confirmation.waste_confirmed', 'confirmation.revision as confirmation_revision',
+                DB::raw('COALESCE(replacement.yield_confirmed, confirmation.yield_confirmed) as yield_confirmed'), DB::raw('COALESCE(replacement.waste_confirmed, confirmation.waste_confirmed) as waste_confirmed'), 'confirmation.revision as confirmation_revision',
                 'confirmation.bom_yield_at_confirmation', 'confirmation.bom_waste_at_confirmation')
             ->orderBy('ocs.CS')->orderBy('norm.id');
     }

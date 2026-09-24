@@ -23,6 +23,7 @@
 
     <div class="mb-3"><span class="text-muted">BOM:</span> @include('admin.partials.image-trigger', ['imageUrl' => $order->bom_image_id ? route('admin.bom.image', $order->bom_image_id, false) : null, 'imageLabel' => $order->bom_style . ' / ' . $order->bom_version])</div>
     <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+        <a href="{{ route('admin.norm.replacements', $order->id) }}" class="btn btn-outline-primary">Replace material</a>
         <a href="{{ route('admin.norm.defects', $order->id) }}" class="btn btn-outline-danger">Material defects</a>
         <a href="{{ route('admin.norm.delivery-bills', $order->id) }}" class="btn btn-success">Export Excel &amp; Confirm Issue</a>
         @if($editingNorm)
@@ -41,13 +42,13 @@
     <div class="card shadow-sm border-0"><div class="table-responsive"><table class="table table-bordered table-hover align-middle mb-0">
         <thead class="table-light"><tr><th>Material</th><th>Description</th><th>Type</th><th>Colour / Size</th><th>Unit</th><th class="text-end">Yield plan</th><th class="text-end">Yield confirmed</th><th class="text-end">watse confirmed</th><th class="text-end">Required</th><th class="text-end">Available</th><th class="text-end">Shortage</th></tr></thead>
         <tbody>@forelse($rows as $row)<tr>
-            <td><code>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_code])</code></td><td>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_name])</td><td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
+            <td>@if($row->replacement_id)<span class="badge bg-secondary d-block mb-1">Replacement #{{ $row->replacement_id }}</span>@endif<code>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_code])</code></td><td>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_name])</td><td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
             <td>{{ $row->material_color ?: '-' }} / {{ $row->material_size ?: '-' }}</td><td>{{ $row->unit }}</td>
-            <td class="text-end">{{ number_format($row->yield_plan ?? $row->consumption_rate, 4) }}
+            <td class="text-end">{{ $row->replacement_id ? '?' : number_format($row->yield_plan ?? $row->consumption_rate, 4) }}
                 @if(isset($row->confirmation_revision) && ((float) $row->yield_plan !== (float) $row->bom_yield_at_confirmation || (float) $row->waste_plan !== (float) $row->bom_waste_at_confirmation))<div class="small text-warning">BOM changed; review confirmed values</div>@endif
             </td>
             <td class="text-end">
-                @if($editingNorm)
+                @if($editingNorm && !$row->replacement_id)
                     <input type="hidden" form="normConfirmedForm" name="rows[{{ $loop->index }}][bom_item_id]" value="{{ $row->bom_item_id }}">
                     <input type="hidden" form="normConfirmedForm" name="rows[{{ $loop->index }}][revision]" value="{{ $row->confirmation_revision ?? 0 }}">
                     <input type="hidden" form="normConfirmedForm" name="rows[{{ $loop->index }}][yield_plan]" value="{{ $row->yield_plan }}">
@@ -56,7 +57,7 @@
                 @else {{ isset($row->yield_confirmed) ? number_format($row->yield_confirmed, 4) : '—' }} @endif
             </td>
             <td class="text-end">
-                @if($editingNorm)
+                @if($editingNorm && !$row->replacement_id)
                     <input type="number" form="normConfirmedForm" name="rows[{{ $loop->index }}][waste_confirmed]" value="{{ old('rows.'.$loop->index.'.waste_confirmed', $row->waste_confirmed) }}" min="0" max="100" step="0.01" class="form-control text-end" placeholder="{{ number_format($row->waste_plan, 2) }}" aria-label="watse confirmed for {{ $row->material_code }}">
                     <small class="text-muted">BOM: {{ number_format($row->waste_plan, 2) }}%</small>
                 @else {{ number_format($row->waste_percent, 2) }}% @if(!isset($row->waste_confirmed))<small class="text-muted">(BOM)</small>@endif @endif

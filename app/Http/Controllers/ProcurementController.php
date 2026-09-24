@@ -117,6 +117,22 @@ class ProcurementController extends Controller
         return view('admin.procurement.suppliers', compact('suppliers'));
     }
 
+    private function supplierBankData(Request $request): array
+    {
+        $data = $request->validate([
+            'tax_code' => 'nullable|string|max:50',
+            'bank_accounts' => 'nullable|array|max:50',
+            'bank_accounts.*' => 'array:account_number,bank_name',
+            'bank_accounts.*.account_number' => 'nullable|required_with:bank_accounts.*.bank_name|string|max:100',
+            'bank_accounts.*.bank_name' => 'nullable|required_with:bank_accounts.*.account_number|string|max:191',
+        ]);
+        $accounts = collect($data['bank_accounts'] ?? [])
+            ->filter(fn ($account) => !empty($account['account_number']) || !empty($account['bank_name']))
+            ->values()->all();
+
+        return ['tax_code' => $data['tax_code'] ?? null, 'bank_accounts' => json_encode($accounts, JSON_UNESCAPED_UNICODE)];
+    }
+
     public function suppliersStore(Request $request)
     {
         $request->validate([
@@ -127,7 +143,8 @@ class ProcurementController extends Controller
             'lead_time_days' => 'nullable|integer|min:0',
         ]);
 
-        DB::table('suppliers')->insert([
+        $bankData = $this->supplierBankData($request);
+        DB::table('suppliers')->insert($bankData + [
             'code' => $request->code,
             'name' => $request->name,
             'contact_person' => $request->contact_person,
@@ -148,6 +165,7 @@ class ProcurementController extends Controller
     public function supplierUpdate(Request $request, int $id)
     {
         $data = $request->validate(['code' => 'required|string|max:50|unique:suppliers,code,' . $id, 'name' => 'required|string|max:191', 'contact_person' => 'nullable|string|max:191', 'phone' => 'nullable|string|max:50', 'email' => 'nullable|email|max:191', 'address' => 'nullable|string', 'payment_terms' => 'nullable|string|max:100', 'lead_time_days' => 'nullable|integer|min:0', 'status' => 'required|in:active,inactive,blacklisted', 'notes' => 'nullable|string']);
+        $data = array_merge($data, $this->supplierBankData($request));
         DB::table('suppliers')->where('id', $id)->update($data + ['lead_time_days' => $data['lead_time_days'] ?? 0, 'updated_at' => now()]);
         return back()->with('success', 'Supplier updated.');
     }

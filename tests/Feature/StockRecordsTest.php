@@ -228,4 +228,148 @@ class StockRecordsTest extends TestCase
         $this->get(route('admin.stock-records.index'))->assertForbidden();
         $this->post(route('admin.stock-records.sync'))->assertForbidden();
     }
+
+    private function prepareDelivery(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        (require database_path('migrations/2026_09_24_000002_create_delivery_bills.php'))->up();
+        Schema::table('material_issues', function ($t) {
+            $t->string('issue_code')->unique(); $t->date('issue_date'); $t->string('receiver_name')->nullable(); $t->string('status');
+        });
+        Schema::create('issue_items', function ($t) {
+            $t->id(); foreach (['issue_id', 'requisition_item_id', 'material_id'] as $field) $t->unsignedBigInteger($field);
+            foreach (['material_color', 'material_size', 'lot_roll_no', 'location'] as $field) $t->string($field)->nullable();
+            $t->unsignedBigInteger('location_id')->nullable(); $t->decimal('issued_qty', 14, 4); $t->timestamps();
+        });
+    }
+
+    private function deliveryPayload(int $id, float $qty = 100): array
+    {
+        return ['submission_key' => (string) \Illuminate\Support\Str::uuid(), 'number' => 'XK09.2026.032',
+            'customer' => 'Customer', 'address' => 'Delivery address', 'reason' => 'Production', 'shipper' => 'Shipper', 'shipper_address' => 'Shipper address',
+            'items' => [['bom_item_id' => DB::table('bom_items')->where('bom_header_id', DB::table('ocs')->where('id', $id)->value('bom_header_id'))->value('id'), 'balance_id' => 1, 'quantity' => $qty]]];
+    }
+
+    public function test_delivery_priority_override_excel_and_retry_do_not_double_issue(): void
+    {
+        $this->prepareDelivery();
+        $first = $this->order('CU-FIRST', 100);
+        $second = $this->order('CU-SECOND', 100);
+        DB::table('inventory_balances')->update(['balance_qty' => 150]);
+        $record = $this->record();
+        DB::table('stock_record_priorities')->insert([
+            ['stock_record_id' => $record->id, 'cutsheet_id' => $first, 'sort_order' => 1],
+            ['stock_record_id' => $record->id, 'cutsheet_id' => $second, 'sort_order' => 2],
+        ]);
+        $data = $this->deliveryPayload($second);
+        $url = route('admin.norm.delivery-bills.store', $second);
+        $this->get(route('admin.norm.delivery-bills', $second))->assertOk()->assertSee('Export Excel');
+        $this->post($url, $data)->assertSessionHasErrors('priority_reason');
+        $this->assertDatabaseCount('inventory_transactions', 0);
+        $this->assertDatabaseCount('material_issues', 0);
+        $this->assertDatabaseHas('inventory_balances', ['balance_qty' => 150]);
+        $data['priority_reason'] = 'Urgent customer shipment';
+        $this->post($url, $data)->assertOk()->assertDownload();
+        $bill = DB::table('delivery_bills')->first();
+        $this->assertDatabaseHas('inventory_balances', ['balance_qty' => 50]);
+        $this->assertDatabaseHas('inventory_transactions', ['quantity' => -100, 'reference_doc' => $data['number']]);
+        $this->assertEquals(100, DB::table('requisition_items')->sum('issued_qty'));
+        $this->assertStringContainsString('CU-FIRST', $bill->priority_snapshot);
+        $book = \PhpOffice\PhpSpreadsheet\IOFactory::load(\Illuminate\Support\Facades\Storage::disk('local')->path($bill->file_path));
+        $sheet = $book->getSheetByName('DELI');
+        $this->assertSame($data['number'], $sheet->getCell('E2')->getValue());
+        $this->assertSame('FAB-01', $sheet->getCell('B11')->getValue());
+        $this->assertEquals(100, $sheet->getCell('G11')->getValue());
+        $this->assertNull($sheet->getCell('B12')->getValue());
+        $this->assertSame('Accountant', $sheet->getCell('A22')->getValue());
+        $book->disconnectWorksheets();
+        $this->post($url, $data)->assertOk()->assertDownload();
+        $this->get(route('admin.norm.delivery-bills.download', [$second, $bill->id]))->assertOk()->assertDownload();
+        $this->assertDatabaseCount('delivery_bills', 1);
+        $this->assertDatabaseCount('inventory_transactions', 1);
+        $this->get(route('admin.norm.delivery-bills.download', [$first, $bill->id]))->assertNotFound();
+    }
+
+    public function test_delivery_sufficient_stock_long_excel_and_formula_safe_text(): void
+    {
+        $this->prepareDelivery();
+        $this->travelTo(\Carbon\Carbon::parse('2026-09-24 20:00:00', 'UTC'));
+        $this->order('CU-FIRST', 100);
+        $id = $this->order('CU-SECOND', 100);
+        $data = $this->deliveryPayload($id, 1);
+        $data['customer'] = '=1+1';
+        $data['items'] = array_fill(0, 12, $data['items'][0]);
+        $this->post(route('admin.norm.delivery-bills.store', $id), $data)->assertOk()->assertDownload();
+        $bill = DB::table('delivery_bills')->first();
+        $this->assertSame('2026-09-25', $bill->issued_on);
+        $book = \PhpOffice\PhpSpreadsheet\IOFactory::load(\Illuminate\Support\Facades\Storage::disk('local')->path($bill->file_path));
+        $sheet = $book->getSheetByName('DELI');
+        $this->assertSame('s', $sheet->getCell('B6')->getDataType());
+        $this->assertSame('=1+1', $sheet->getCell('B6')->getValue());
+        $this->assertEquals(12, $sheet->getCell('A22')->getValue());
+        $this->assertSame('Accountant', $sheet->getCell('A24')->getValue());
+        $this->assertEquals(988, DB::table('inventory_balances')->value('balance_qty'));
+        $book->disconnectWorksheets();
+    }
+
+    public function test_delivery_failure_and_insufficient_stock_rollback_everything(): void
+    {
+        $this->prepareDelivery();
+        $id = $this->order('CU-FAIL', 100);
+        $data = $this->deliveryPayload($id, 600);
+        $data['items'][] = $data['items'][0];
+        $this->post(route('admin.norm.delivery-bills.store', $id), $data)->assertSessionHasErrors('items');
+        $this->assertDatabaseCount('inventory_transactions', 0);
+        $this->mock(\App\Services\DeliveryBillExcelService::class)->shouldReceive('write')->once()->andThrow(new \RuntimeException('Disk full'));
+        $this->post(route('admin.norm.delivery-bills.store', $id), $this->deliveryPayload($id))->assertSessionHas('error');
+        $this->assertDatabaseCount('material_issues', 0);
+        $this->assertDatabaseCount('inventory_transactions', 0);
+        $this->assertDatabaseCount('delivery_bills', 0);
+        $this->assertEquals(1000, DB::table('inventory_balances')->value('balance_qty'));
+    }
+
+    public function test_delivery_can_exceed_norm_and_existing_requisition_then_issue_again(): void
+    {
+        $this->prepareDelivery();
+        $id = $this->order('CU-EXTRA', 100);
+        $req = DB::table('material_requisitions')->insertGetId(['requisition_code' => 'REQ-EXTRA', 'cutsheet_id' => $id, 'status' => 'pending']);
+        $item = DB::table('requisition_items')->insertGetId(['requisition_id' => $req, 'material_id' => 1, 'material_color' => 'Red', 'material_size' => 'M', 'requested_qty' => 100]);
+        DB::table('inventory_balances')->update(['reserved_qty' => 100]);
+        DB::table('inventory_reservations')->insert(['requisition_item_id' => $item, 'inventory_balance_id' => 1, 'reserved_qty' => 100]);
+        $data = $this->deliveryPayload($id, 120);
+        $url = route('admin.norm.delivery-bills.store', $id);
+        $this->post($url, $data)->assertOk()->assertDownload();
+        $this->assertDatabaseHas('requisition_items', ['id' => $item, 'requested_qty' => 120, 'issued_qty' => 120]);
+        $this->assertDatabaseHas('inventory_balances', ['balance_qty' => 880, 'reserved_qty' => 0]);
+        $this->assertEquals(100, DB::table('order_material_requirements')->where('cutsheet_id', $id)->value('required_qty'));
+        $data = $this->deliveryPayload($id, 5);
+        $data['number'] = 'XK-EXTRA-SECOND';
+        $this->post($url, $data)->assertOk()->assertDownload();
+        $this->assertEquals(125, DB::table('requisition_items')->sum('issued_qty'));
+        $this->assertEquals(875, DB::table('inventory_balances')->value('balance_qty'));
+        $this->post($url, $data)->assertOk()->assertDownload();
+        $this->assertEquals(875, DB::table('inventory_balances')->value('balance_qty'));
+    }
+
+    public function test_delivery_uses_own_reservation_but_cannot_take_another_cus_stock(): void
+    {
+        $this->prepareDelivery();
+        $first = $this->order('CU-FIRST', 100);
+        $id = $this->order('CU-OWN', 100);
+        DB::table('inventory_balances')->update(['balance_qty' => 150, 'reserved_qty' => 150]);
+        foreach ([$first => 90, $id => 60] as $cu => $qty) {
+            $req = DB::table('material_requisitions')->insertGetId(['requisition_code' => 'REQ-'.$cu, 'cutsheet_id' => $cu, 'status' => 'pending']);
+            $item = DB::table('requisition_items')->insertGetId(['requisition_id' => $req, 'material_id' => 1, 'material_color' => 'Red', 'material_size' => 'M', 'requested_qty' => 100]);
+            DB::table('inventory_reservations')->insert(['requisition_item_id' => $item, 'inventory_balance_id' => 1, 'reserved_qty' => $qty]);
+        }
+        $data = $this->deliveryPayload($id, 80);
+        $data['priority_reason'] = 'Urgent';
+        $this->post(route('admin.norm.delivery-bills.store', $id), $data)->assertSessionHasErrors('items');
+        $data['items'][0]['quantity'] = 60;
+        unset($data['priority_reason']);
+        $this->post(route('admin.norm.delivery-bills.store', $id), $data)->assertOk()->assertDownload();
+        $this->assertDatabaseHas('inventory_balances', ['balance_qty' => 90, 'reserved_qty' => 90]);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PPIC]));
+        $this->post(route('admin.norm.delivery-bills.store', $id), $this->deliveryPayload($id, 1))->assertForbidden();
+    }
 }

@@ -22,9 +22,11 @@
     </div>
 
     <div class="mb-3"><span class="text-muted">BOM:</span> @include('admin.partials.image-trigger', ['imageUrl' => $order->bom_image_id ? route('admin.bom.image', $order->bom_image_id, false) : null, 'imageLabel' => $order->bom_style . ' / ' . $order->bom_version])</div>
-    <div class="mb-3">
+    <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+        <a href="{{ route('admin.norm.defects', $order->id) }}" class="btn btn-outline-danger">Material defects</a>
+        <a href="{{ route('admin.norm.delivery-bills', $order->id) }}" class="btn btn-success">Export Excel &amp; Confirm Issue</a>
         @if($editingNorm)
-            <form id="normConfirmedForm" method="POST" action="{{ route('admin.norm.materials.confirmed', ['id' => $order->id, 'page' => request('page', 1)]) }}">
+            <form id="normConfirmedForm" class="w-100" method="POST" action="{{ route('admin.norm.materials.confirmed', ['id' => $order->id, 'page' => request('page', 1)]) }}">
                 @csrf @method('PUT')
                 <p class="small text-muted">Blank confirmed values use BOM values. Save applies to the rows on this page. Required quantities update after saving.</p>
                 <label for="normReason" class="form-label">Change reason</label>

@@ -175,6 +175,12 @@ Route::middleware('auth')->group(function () {
         Route::post('ocs/import', [OCSController::class, 'import'])->name('ocs.import');
 
         Route::get('norm/materials', [NormController::class, 'materials'])->name('norm.materials');
+        Route::get('norm/materials/{id}/delivery-bills', [\App\Http\Controllers\DeliveryBillController::class, 'index'])->name('norm.delivery-bills');
+        Route::post('norm/materials/{id}/delivery-bills', [\App\Http\Controllers\DeliveryBillController::class, 'store'])->name('norm.delivery-bills.store');
+        Route::get('norm/materials/{id}/delivery-bills/{bill}/download', [\App\Http\Controllers\DeliveryBillController::class, 'download'])->name('norm.delivery-bills.download');
+        Route::get('norm/materials/{id}/defects', [\App\Http\Controllers\NormMaterialDefectController::class, 'index'])->name('norm.defects');
+        Route::post('norm/materials/{id}/defects', [\App\Http\Controllers\NormMaterialDefectController::class, 'store'])->name('norm.defects.store');
+        Route::get('norm/materials/{id}/defects/{defect}/image', [\App\Http\Controllers\NormMaterialDefectController::class, 'image'])->name('norm.defects.image');
         Route::get('norm/materials/export', [NormController::class, 'exportMaterials'])->name('norm.materials.export');
         Route::get('norm/materials/{id}', [NormController::class, 'materialDetail'])->name('norm.materials.show');
         Route::put('norm/materials/{id}/confirmed', [NormController::class, 'updateConfirmed'])->name('norm.materials.confirmed');

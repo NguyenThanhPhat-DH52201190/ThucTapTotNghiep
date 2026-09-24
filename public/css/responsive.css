@@ -118,6 +118,25 @@
     .auth-layout .badge { white-space: normal; line-height: 1.4; }
     .auth-layout .form-control { font-size: 16px; }
 }
+/* Keep delivery controls aligned independently of the selected material's note. */
+#deliveryRows .delivery-row-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 5fr) minmax(7rem, 2fr) auto;
+    align-items: end;
+    gap: .5rem;
+}
+#deliveryRows .delivery-row-fields > * { min-width: 0; }
+#deliveryRows .form-select { text-overflow: ellipsis; }
+#deliveryRows .delivery-remaining {
+    display: block;
+    min-height: 1.5em;
+    margin-top: .25rem;
+}
+@media (max-width: 991.98px) {
+    #deliveryRows .delivery-row-fields { grid-template-columns: minmax(0, 1fr) auto; }
+    #deliveryRows .delivery-material, #deliveryRows .delivery-balance { grid-column: 1 / -1; }
+    #deliveryRows .delivery-row { padding-bottom: .75rem; border-bottom: 1px solid #dee2e6; }
+}
 @media (prefers-reduced-motion: reduce) {
     .sidebar, .offcanvas-backdrop { transition: none !important; }
 }

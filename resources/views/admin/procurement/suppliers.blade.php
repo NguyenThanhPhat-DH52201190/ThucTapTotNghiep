@@ -15,6 +15,27 @@
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg"></i> Add</button>
             @endif
         </div>
+        <form method="GET" action="{{ route('admin.procurement.suppliers') }}" class="row g-3 align-items-end px-3 pb-3">
+            <div class="col-12 col-lg-5">
+                <label for="supplierSearch" class="form-label">Search suppliers</label>
+                <input type="search" id="supplierSearch" name="search" value="{{ request('search') }}" class="form-control" placeholder="Code, name, email or contact">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label for="supplierCodeFilter" class="form-label">Code</label>
+                <input id="supplierCodeFilter" name="code" value="{{ request('code') }}" class="form-control" placeholder="Enter supplier code">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label for="supplierCodeSort" class="form-label">Sort by Code</label>
+                <select id="supplierCodeSort" name="sort" class="form-select">
+                    <option value="code_asc" @selected(request('sort', 'code_asc') !== 'code_desc')>Ascending</option>
+                    <option value="code_desc" @selected(request('sort') === 'code_desc')>Descending</option>
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3 d-flex gap-2">
+                <button type="submit" class="btn btn-dark"><i class="bi bi-search me-1"></i>Search</button>
+                <a href="{{ route('admin.procurement.suppliers') }}" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -38,6 +59,9 @@
                 </tbody>
             </table>
         </div>
+        @if($suppliers->hasPages())
+            <div class="card-footer">{{ $suppliers->links() }}</div>
+        @endif
     </div>
 
     <!-- Add Modal -->

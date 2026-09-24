@@ -101,11 +101,18 @@ class ProcurementController extends Controller
     // ============ SUPPLIERS ============
     public function suppliers(Request $request)
     {
+        $direction = $request->input('sort', 'code_asc') === 'code_desc' ? 'desc' : 'asc';
+        $search = trim((string) $request->input('search', ''));
         $suppliers = DB::table('suppliers')
-            ->when($request->filled('search'), fn($q) => $q->where('name', 'like', '%'.$request->search.'%')
-                ->orWhere('code', 'like', '%'.$request->search.'%'))
-            ->orderBy('name')
-            ->paginate(15);
+            ->when($search !== '', fn ($q) => $q->where(fn ($sub) =>
+                $sub->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('contact_person', 'like', '%'.$search.'%')))
+            ->when($request->filled('code'), fn ($q) => $q->where('code', 'like', '%'.trim($request->input('code')).'%'))
+            ->orderBy('code', $direction)
+            ->orderBy('id')
+            ->paginate(15)->withQueryString();
 
         return view('admin.procurement.suppliers', compact('suppliers'));
     }

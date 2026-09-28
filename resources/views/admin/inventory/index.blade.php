@@ -2,6 +2,12 @@
 @section('title', 'Inventory')
 @section('content')
 @php $canManage = auth()->user()->role === 'admin'; @endphp
+<style>
+.inventory-items-table{table-layout:fixed;min-width:1500px}
+.inventory-items-table th,.inventory-items-table td{overflow-wrap:anywhere;vertical-align:middle}
+.inventory-items-table code{white-space:normal;overflow-wrap:anywhere}
+.inventory-items-table .nowrap-cell{white-space:nowrap;overflow-wrap:normal}
+</style>
 
 <div class="container-fluid px-0">
     @if(session('success'))
@@ -55,14 +61,15 @@
             </form>
         </div>
         <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
+            <table class="table table-sm align-middle mb-0 inventory-items-table">
+                <colgroup><col style="width:9%"><col style="width:7%"><col style="width:12%"><col style="width:6%"><col style="width:9%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:5%"><col style="width:6%"><col style="width:8%"><col style="width:10%"><col style="width:9%"></colgroup>
                 <thead class="table-light">
                     <tr>
                         <th>Code</th><th>Old Code</th><th>Name</th><th>Type</th><th>Location</th>
-                        <th class="text-end">Current</th><th class="text-end">Reserved</th>
-                        <th class="text-end">Available</th><th class="text-end">Min Stock</th>
-                        <th class="text-end">Reorder Point</th><th class="text-end">Unit Cost</th>
-                        <th class="text-end">Value</th><th>Actions</th>
+                        <th class="text-end text-nowrap">Current</th><th class="text-end text-nowrap">Reserved</th>
+                        <th class="text-end text-nowrap">Available</th><th class="text-end">Min Stock</th>
+                        <th class="text-end">Reorder Point</th><th class="text-end text-nowrap">Unit Cost</th>
+                        <th class="text-end text-nowrap">Value</th><th class="text-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -73,16 +80,16 @@
                             <td><small>{{ $item->material_name }}</small></td>
                             <td><span class="badge bg-info">{{ $item->material_type }}</span></td>
                             <td><small>{{ $item->warehouse_code ?: '-' }} / {{ $item->location_code ?: ($item->location_bin ?: '-') }}</small></td>
-                            <td class="text-end">{{ number_format($item->current_qty, 0) }}</td>
-                            <td class="text-end">{{ number_format($item->reserved_qty, 0) }}</td>
-                            <td class="text-end fw-bold {{ $item->available_qty <= $item->reorder_point && $item->reorder_point > 0 ? 'text-danger' : 'text-success' }}">
+                            <td class="text-end text-nowrap">{{ number_format($item->current_qty, 0) }}</td>
+                            <td class="text-end text-nowrap">{{ number_format($item->reserved_qty, 0) }}</td>
+                            <td class="text-end text-nowrap fw-bold {{ $item->available_qty <= $item->reorder_point && $item->reorder_point > 0 ? 'text-danger' : 'text-success' }}">
                                 {{ number_format($item->available_qty, 0) }}
                             </td>
                             <td class="text-end">{{ number_format($item->min_stock_level, 0) }}</td>
                             <td class="text-end">{{ number_format($item->reorder_point, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->unit_cost, 4) }}</td>
-                            <td class="text-end fw-bold">$ {{ number_format($item->current_qty * $item->unit_cost, 4) }}</td>
-                            <td>
+                            <td class="text-end text-nowrap">{{ number_format($item->unit_cost, 4) }}</td>
+                            <td class="text-end text-nowrap fw-bold">$ {{ number_format($item->current_qty * $item->unit_cost, 4) }}</td>
+                            <td class="nowrap-cell">
                                 @if($canManage)
                                     <button class="btn btn-sm btn-warning" onclick='editInventory(@json($item))'>
                                         <i class="bi bi-pencil"></i>

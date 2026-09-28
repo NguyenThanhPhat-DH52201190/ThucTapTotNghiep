@@ -48,8 +48,8 @@
         @endif
     </div>
     <div class="card shadow-sm border-0"><div class="table-responsive"><table class="table table-sm table-bordered table-hover align-middle mb-0 norm-materials-table">
-        <colgroup><col style="width:10%"><col style="width:8%"><col style="width:19%"><col style="width:8%"><col style="width:12%"><col style="width:5%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:6%"><col style="width:5%"><col style="width:5%"></colgroup>
-        <thead class="table-light"><tr><th>Material</th><th>Old Code</th><th>Description</th><th>Type</th><th>Colour / Size</th><th>Unit</th><th class="text-end">Yield plan</th><th class="text-end">Yield confirmed</th><th class="text-end">watse confirmed</th><th class="text-end">Required</th><th class="text-end">Available</th><th class="text-end">Shortage</th></tr></thead>
+        <colgroup><col style="width:10%"><col style="width:8%"><col style="width:16%"><col style="width:8%"><col style="width:11%"><col style="width:5%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup>
+        <thead class="table-light"><tr><th>Material</th><th>Old Code</th><th>Description</th><th>Type</th><th>Colour / Size</th><th>Unit</th><th class="text-end">Yield plan</th><th class="text-end">Yield confirmed</th><th class="text-end">watse confirmed</th><th class="text-end text-nowrap">Required</th><th class="text-end text-nowrap">Available</th><th class="text-end text-nowrap">Shortage</th></tr></thead>
         <tbody>@forelse($rows as $row)<tr>
             <td>@if($row->replacement_id)<span class="badge bg-secondary d-block mb-1">Replacement #{{ $row->replacement_id }}</span>@endif<code>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_code])</code></td><td><code>{{ $row->material_old_code ?: '-' }}</code></td><td>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_name])</td><td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
             <td>{{ $row->material_color ?: '-' }} / {{ $row->material_size ?: '-' }}</td><td>{{ $row->unit }}</td>
@@ -71,7 +71,7 @@
                     <small class="text-muted">BOM: {{ number_format($row->waste_plan, 2) }}%</small>
                 @else {{ number_format($row->waste_percent, 2) }}% @if(!isset($row->waste_confirmed))<small class="text-muted">(BOM)</small>@endif @endif
             </td>
-            <td class="text-end fw-bold">{{ number_format($row->required_qty, 0) }}</td><td class="text-end">{{ number_format($row->available_qty, 0) }}</td><td class="text-end fw-bold {{ $row->shortage_qty > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($row->shortage_qty, 0) }}</td>
+            <td class="text-end text-nowrap fw-bold">{{ number_format($row->required_qty, 0) }}</td><td class="text-end text-nowrap">{{ number_format($row->available_qty, 0) }}</td><td class="text-end text-nowrap fw-bold {{ $row->shortage_qty > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($row->shortage_qty, 0) }}</td>
         </tr>@empty<tr><td colspan="12" class="text-center text-muted py-4">No material requirements found.</td></tr>@endforelse</tbody>
     </table></div>@if($rows->hasPages())<div class="card-footer">{{ $rows->links() }}</div>@endif</div>
 </div>

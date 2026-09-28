@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProcurementController extends Controller
 {
@@ -200,12 +201,13 @@ class ProcurementController extends Controller
         }
 
         $items = DB::table('po_items')->where('po_id', $id)->orderBy('id')->get();
+        $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
         $suppliers = DB::table('suppliers')
             ->where(fn ($query) => $query->where('status', 'active')->orWhere('id', $po->supplier_id))
             ->orderBy('name')->get();
         $vendorMaterials = $this->vendorMaterials($suppliers->pluck('id')->all());
 
-        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials', 'po', 'items'));
+        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials', 'po', 'items', 'surcharges'));
     }
 
     public function createFromMrp($mrpId)
@@ -237,7 +239,7 @@ class ProcurementController extends Controller
         $request->validate([
             'po_number' => 'required|string|max:50|unique:purchase_orders,po_number',
         ]);
-        $this->validatePo($request);
+        $data = $this->validatePo($request);
 
         // Check supplier is active
         $supplier = DB::table('suppliers')->find($request->supplier_id);
@@ -273,6 +275,9 @@ class ProcurementController extends Controller
                 ];
             }
 
+            [$poSurcharges, $surchargeTotal] = $this->preparePoSurcharges($data['surcharges'] ?? []);
+            $totalAmount += $surchargeTotal;
+
             $poId = DB::table('purchase_orders')->insertGetId([
                 'po_number' => $poNumber,
                 'supplier_id' => $request->supplier_id,
@@ -291,6 +296,9 @@ class ProcurementController extends Controller
                 $item['po_id'] = $poId;
             }
             DB::table('po_items')->insert($poItems);
+            foreach ($poSurcharges as &$surcharge) $surcharge['po_id'] = $poId;
+            unset($surcharge);
+            if ($poSurcharges) DB::table('po_surcharges')->insert($poSurcharges);
             $suggestionIds = collect($poItems)->pluck('mrp_suggestion_id')->filter()->all();
             if ($suggestionIds) DB::table('mrp_suggestions')->whereIn('id', $suggestionIds)->update(['status' => 'ordered', 'updated_at' => now()]);
             $this->syncMaterialReadiness(DB::table('mrp_suggestions')->whereIn('id', $suggestionIds)->pluck('cutsheet_id')->all());
@@ -318,11 +326,12 @@ class ProcurementController extends Controller
 
         $items = DB::table('po_items')->leftJoin('materials', 'po_items.material_id', '=', 'materials.id')
             ->where('po_items.po_id', $id)->select('po_items.*', 'materials.size as default_material_size', 'materials.color as default_material_color')->get();
+        $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
         $receipts = DB::table('po_receipts')->where('po_id', $id)->orderBy('received_date', 'desc')->get();
         $warehouses = DB::table('warehouses')->where('is_active', 1)->orderBy('name')->get();
         $locations = DB::table('locations')->where('is_active', 1)->orderBy('location_code')->get();
 
-        return view('admin.procurement.show', compact('po', 'items', 'receipts', 'warehouses', 'locations'));
+        return view('admin.procurement.show', compact('po', 'items', 'surcharges', 'receipts', 'warehouses', 'locations'));
     }
 
     public function updateStatus(Request $request, $id)
@@ -384,6 +393,12 @@ class ProcurementController extends Controller
 
                 [$items, $totalAmount] = $this->preparePoItems($data['items'], (int) $id);
                 DB::table('po_items')->insert($items);
+                [$surcharges, $surchargeTotal] = $this->preparePoSurcharges($data['surcharges'] ?? []);
+                foreach ($surcharges as &$surcharge) $surcharge['po_id'] = $id;
+                unset($surcharge);
+                DB::table('po_surcharges')->where('po_id', $id)->delete();
+                if ($surcharges) DB::table('po_surcharges')->insert($surcharges);
+                $totalAmount += $surchargeTotal;
                 DB::table('purchase_orders')->where('id', $id)->update([
                     'supplier_id' => $data['supplier_id'], 'order_date' => $data['order_date'],
                     'expected_delivery' => $data['expected_delivery'] ?? null,
@@ -454,6 +469,11 @@ class ProcurementController extends Controller
             'items.*.expected_date' => 'nullable|date', 'items.*.notes' => 'nullable|string',
             'items.*.mrp_suggestion_id' => 'nullable|exists:mrp_suggestions,id',
             'items.*.material_id' => 'nullable|exists:materials,id',
+            'surcharges' => 'nullable|array',
+            'surcharges.*.description' => 'required|string|max:191',
+            'surcharges.*.quantity' => 'required|numeric|min:0|decimal:0,4',
+            'surcharges.*.unit' => 'required|string|max:20',
+            'surcharges.*.unit_price' => 'required|numeric|min:0|decimal:0,4',
         ]);
         foreach ($data['items'] as $index => $item) {
             $mapped = !empty($item['material_id']) && DB::table('material_vendors')
@@ -488,6 +508,22 @@ class ProcurementController extends Controller
             ];
         }
         return [$items, $totalAmount];
+    }
+
+    private function preparePoSurcharges(array $requestRows): array
+    {
+        $total = 0;
+        $rows = [];
+        foreach ($requestRows as $row) {
+            $lineTotal = (float) $row['quantity'] * (float) $row['unit_price'];
+            $total += $lineTotal;
+            $rows[] = [
+                'description' => trim($row['description']), 'quantity' => $row['quantity'],
+                'unit' => trim($row['unit']), 'unit_price' => $row['unit_price'], 'total_price' => $lineTotal,
+                'created_at' => now(), 'updated_at' => now(),
+            ];
+        }
+        return [$rows, $total];
     }
 
     private function hasReceipts(int $poId): bool
@@ -541,6 +577,80 @@ class ProcurementController extends Controller
         }
     }
 
+    public function importReceiptRows(Request $request, int $id)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+        $po = DB::table('purchase_orders')->where('id', $id)->firstOrFail();
+        if (!in_array($po->status, ['confirmed', 'partial'], true)) {
+            return response()->json(['message' => 'Only confirmed or partially received POs can receive goods.'], 422);
+        }
+
+        try {
+            $sheetRows = IOFactory::load($request->file('file')->getRealPath())->getActiveSheet()->toArray(null, true, true, false);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Could not read this spreadsheet. Save it as XLSX or CSV and try again.'], 422);
+        }
+
+        $normalize = static fn ($value) => preg_replace('/[^a-z0-9]+/', '', strtolower(Str::ascii(trim((string) $value))));
+        $aliases = [
+            'material_code' => ['materialcode', 'itemcode', 'code', 'itemno', 'partno', 'mavattu'],
+            'quantity' => ['quantity', 'qty', 'receiveqty', 'receivedqty', 'actualqty', 'soluong', 'sl'],
+            'material_size' => ['size', 'materialsize', 'sizename', 'kichthuoc'],
+            'lot_no' => ['lot', 'lotno', 'lotnumber', 'batch', 'batchno'],
+            'roll_no' => ['roll', 'rollno', 'rollnumber'],
+            'lot_roll_no' => ['lotroll', 'lotrollno', 'batchroll', 'batchrollno'],
+        ];
+        $headerIndex = null;
+        $columns = [];
+        foreach (array_slice($sheetRows, 0, 10, true) as $rowIndex => $row) {
+            $candidate = [];
+            foreach (array_map($normalize, $row) as $columnIndex => $heading) {
+                foreach ($aliases as $field => $names) {
+                    if (in_array($heading, $names, true)) $candidate[$field] = $columnIndex;
+                }
+            }
+            if (isset($candidate['material_code'], $candidate['quantity'])) {
+                $headerIndex = $rowIndex;
+                $columns = $candidate;
+                break;
+            }
+        }
+        if ($headerIndex === null) {
+            return response()->json(['message' => 'Could not find a header row. Include Material Code (or Code) and Quantity (or Qty).'], 422);
+        }
+
+        $poItems = DB::table('po_items')->leftJoin('materials', 'po_items.material_id', '=', 'materials.id')
+            ->where('po_items.po_id', $id)->select('po_items.id', 'po_items.material_code', 'po_items.quantity', 'po_items.received_qty', 'materials.size as material_size')->orderBy('po_items.id')->get();
+        $itemsByCode = $poItems->groupBy(fn ($item) => strtolower(trim($item->material_code)));
+        $imported = [];
+        $errors = [];
+        foreach (array_slice($sheetRows, $headerIndex + 1, 2000, true) as $rowIndex => $row) {
+            $excelRow = $rowIndex + 1;
+            $code = trim((string) ($row[$columns['material_code']] ?? ''));
+            $rawQty = trim((string) ($row[$columns['quantity']] ?? ''));
+            if ($code === '' && $rawQty === '') continue;
+            $normalizedQty = str_replace([',', ' '], '', $rawQty);
+            if ($code === '') { $errors[] = "Row {$excelRow}: material code is missing."; continue; }
+            if (!is_numeric($normalizedQty) || (float) $normalizedQty <= 0) { $errors[] = "Row {$excelRow}: quantity must be a number greater than zero."; continue; }
+            $matches = $itemsByCode->get(strtolower($code));
+            if (!$matches || $matches->isEmpty()) { $errors[] = "Row {$excelRow}: material code {$code} is not on this PO."; continue; }
+            $item = $matches->first(fn ($candidate) => (float) $candidate->received_qty < (float) $candidate->quantity) ?? $matches->first();
+            $lot = trim((string) ($row[$columns['lot_no'] ?? -1] ?? ''));
+            $roll = trim((string) ($row[$columns['roll_no'] ?? -1] ?? ''));
+            $lotRoll = trim((string) ($row[$columns['lot_roll_no'] ?? -1] ?? ''));
+            if ($lotRoll !== '' && ($lot === '' || $roll === '')) {
+                $parts = preg_split('/\s*[\/-]\s*/', $lotRoll, 2);
+                $lot = $lot ?: ($parts[0] ?? '');
+                $roll = $roll ?: ($parts[1] ?? '');
+            }
+            $imported[] = [
+                'po_item_id' => $item->id, 'material_size' => trim((string) ($row[$columns['material_size'] ?? -1] ?? '')) ?: ($item->material_size ?: '-'),
+                'lot_no' => $lot ?: '-', 'roll_no' => $roll ?: '-', 'quantity' => (float) $normalizedQty,
+            ];
+        }
+        return response()->json(['rows' => $imported, 'errors' => $errors, 'truncated' => count($sheetRows) > $headerIndex + 2001]);
+    }
+
     /**
      * Receive items to inventory without overriding PO status
      */
@@ -552,9 +662,6 @@ class ProcurementController extends Controller
         foreach ($entries->groupBy('po_item_id') as $itemId => $rows) {
             $item = $items->get($itemId);
             if (!$item) throw new \RuntimeException('A receipt line does not belong to this PO.');
-            if (round($rows->sum('quantity'), 4) > round($item->quantity - $item->received_qty, 4)) {
-                throw new \RuntimeException("Total received quantity exceeds remaining quantity for {$item->material_code}.");
-            }
         }
         $receiptNo = 'RCP-' . now()->format('YmdHisv') . '-' . Str::upper(Str::random(6));
         $receiptId = DB::table('po_receipts')->insertGetId([

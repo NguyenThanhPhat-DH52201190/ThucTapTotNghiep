@@ -334,7 +334,7 @@ class MRPController extends Controller
 
             DB::commit();
 
-            $msg = "MRP calculated: $totalMaterials materials, total cost: " . number_format($totalCost, 4) . " đ";
+            $msg = "MRP calculated: $totalMaterials materials, total cost: $ " . number_format($totalCost, 4);
             if (!empty($skippedMtp)) {
                 $msg .= ' | Skipped ' . count($skippedMtp) . ' MTP(s) without BOM: ' . implode(', ', array_slice($skippedMtp, 0, 5));
                 if (count($skippedMtp) > 5) $msg .= '...';

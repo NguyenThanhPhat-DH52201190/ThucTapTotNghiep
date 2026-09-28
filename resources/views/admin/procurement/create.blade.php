@@ -77,6 +77,19 @@
             </div>
         </div>
 
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Surcharges</h6>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addSurchargeRow()"><i class="bi bi-plus-lg"></i> Add Surcharge</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0">
+                    <thead class="table-light"><tr><th>Description</th><th style="width:130px">Quantity</th><th style="width:110px">Unit</th><th style="width:180px">Unit Price (USD)</th><th style="width:180px">Total (USD)</th><th style="width:50px"></th></tr></thead>
+                    <tbody id="surchargeBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="d-flex gap-2">
             <a href="{{ route('admin.procurement.index') }}" class="btn btn-secondary">Cancel</a>
             <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> {{ isset($po) ? 'Update PO' : 'Create PO' }}</button>
@@ -86,6 +99,34 @@
 
 <script>
 let rowCount = 0;
+let surchargeCount = 0;
+function escapeSurchargeValue(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+}
+function addSurchargeRow(data = {}) {
+    const i = surchargeCount++;
+    const description = escapeSurchargeValue(data.description || '');
+    const quantity = escapeSurchargeValue(data.quantity ?? 0);
+    const unit = escapeSurchargeValue(data.unit || 'EA');
+    const unitPrice = escapeSurchargeValue(data.unit_price ?? '');
+    const html = `<tr id="surcharge${i}">
+        <td><input type="text" name="surcharges[${i}][description]" class="form-control form-control-sm surcharge-description" maxlength="191" required value="${description}" placeholder="e.g. Below MOQ weaving surcharge"></td>
+        <td><input type="number" name="surcharges[${i}][quantity]" class="form-control form-control-sm surcharge-qty" min="0" step="0.0001" required value="${quantity}"></td>
+        <td><input type="text" name="surcharges[${i}][unit]" class="form-control form-control-sm" maxlength="20" required value="${unit}"></td>
+        <td><input type="number" name="surcharges[${i}][unit_price]" class="form-control form-control-sm surcharge-price" min="0" step="0.0001" required value="${unitPrice}"></td>
+        <td class="surcharge-total text-end">0.0000 USD</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSurchargeRow(${i})" aria-label="Remove surcharge">×</button></td>
+    </tr>`;
+    document.getElementById('surchargeBody').insertAdjacentHTML('beforeend', html);
+    document.querySelectorAll(`#surcharge${i} input`).forEach(input => input.addEventListener('input', calcTotal));
+    calcTotal();
+}
+
+function removeSurchargeRow(id) {
+    document.getElementById(`surcharge${id}`)?.remove();
+    calcTotal();
+}
+
 function addRow(data = {}) {
     rowCount++;
     const i = rowCount;
@@ -166,6 +207,13 @@ function calcTotal() {
         totalQty += qty;
         totalAmt += total;
     });
+    document.querySelectorAll('#surchargeBody tr').forEach(row => {
+        const qty = parseFloat(row.querySelector('.surcharge-qty')?.value || 0);
+        const price = parseFloat(row.querySelector('.surcharge-price')?.value || 0);
+        const total = qty * price;
+        row.querySelector('.surcharge-total').textContent = total.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' USD';
+        totalAmt += total;
+    });
     document.getElementById('totalQty').textContent = totalQty.toFixed(2);
     document.getElementById('totalAmount').textContent = totalAmt.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' USD';
 }
@@ -189,6 +237,17 @@ function calcTotal() {
 @endphp
 const initialItems = @json($initialPoItems);
 if (initialItems.length) initialItems.forEach(addRow); else addRow();
+@php
+    $initialSurcharges = old('surcharges');
+    if ($initialSurcharges === null) {
+        $initialSurcharges = isset($surcharges) ? $surcharges->map(fn ($row) => [
+            'description' => $row->description, 'quantity' => $row->quantity, 'unit' => $row->unit,
+            'unit_price' => number_format((float) $row->unit_price, 4, '.', ''),
+        ])->values() : [];
+    }
+@endphp
+const initialSurcharges = @json($initialSurcharges);
+initialSurcharges.forEach(addSurchargeRow);
 calcTotal();
 </script>
 @endsection

@@ -35,6 +35,9 @@ td, th { vertical-align:top; overflow-wrap:break-word; }
 <td><div>{{ $item->material_code }}</div><div class="multiline">{{ $item->material_name }}</div>@if($item->master_size)<div>Size: {{ $item->master_size }}</div>@endif @if($item->notes)<div class="multiline">{{ $item->notes }}</div>@endif</td>
 <td class="center multiline">{{ $item->color ?: $item->master_color }}</td><td class="center red">{{ rtrim(rtrim(number_format($item->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $item->unit }}</td><td class="right">{{ number_format($item->unit_price, 4) }}</td><td class="right">{{ number_format($item->total_price, 2) }}</td>
 </tr>@endforeach
+@foreach($surcharges as $surcharge)<tr>
+<td class="red">{{ $surcharge->description }}</td><td></td><td class="center red">{{ rtrim(rtrim(number_format($surcharge->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $surcharge->unit }}</td><td class="right">{{ number_format($surcharge->unit_price, 4) }}</td><td class="right">{{ number_format($surcharge->total_price, 2) }}</td>
+</tr>@endforeach
 @if(!empty($settings['freight_terms']))<tr><td class="red multiline">{{ $settings['freight_terms'] }}</td><td></td><td></td><td></td><td></td><td></td></tr>@endif
 <tr class="total"><td colspan="4"></td><td class="center">Total</td><td class="right">{{ number_format($po->total_amount, 2) }}</td></tr>
 </tbody></table>

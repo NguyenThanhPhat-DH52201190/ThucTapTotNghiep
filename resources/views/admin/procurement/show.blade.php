@@ -93,6 +93,9 @@
                             </td>
                         </tr>
                     @endforeach
+                    @foreach($surcharges as $surcharge)
+                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format($surcharge->total_price, 4) }} USD</td><td>-</td><td>-</td></tr>
+                    @endforeach
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
@@ -136,18 +139,24 @@
 <div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form id="receiveForm" method="POST" action="{{ route('admin.procurement.receipts.store', $po->id) }}" class="modal-content">@csrf
     <div class="modal-header"><h5 class="modal-title">Receive goods</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
+        <div class="border rounded p-3 mb-3 bg-light">
+            <label for="receiptImportFile" class="form-label fw-semibold">Import receipt rows from Excel</label>
+            <div class="d-flex flex-wrap gap-2 align-items-center"><input id="receiptImportFile" type="file" class="form-control" accept=".xlsx,.xls,.csv" style="max-width:420px"><button id="importReceiptFile" type="button" class="btn btn-outline-primary">Import</button></div>
+            <div class="form-text">Column order can vary. Header row must include Material Code (or Code) and Quantity (or Qty). Optional headers: Size, Lot No, Roll No, or Lot/Roll.</div>
+            <div id="receiptImportFeedback" class="small mt-2" role="status"></div>
+        </div>
         <div class="row g-3 mb-3"><div class="col-md-3"><label class="form-label">Receipt date</label><input type="date" name="received_date" class="form-control" value="{{ now()->toDateString() }}" required></div><div class="col-md-4"><label class="form-label">Warehouse</label><select name="warehouse_id" class="form-select" required><option value="">Select warehouse</option>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->code }} — {{ $warehouse->name }}</option>@endforeach</select></div><div class="col-md-5"><label class="form-label">Delivery reference</label><input name="reference_number" class="form-control"></div><div class="col-md-6"><label class="form-label">Location</label><select name="location_id" class="form-select" required><option value="">Select location</option>@foreach($locations as $location)<option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}">{{ $location->location_code }}{{ $location->location_name ? ' — '.$location->location_name : '' }}</option>@endforeach</select><small class="text-muted">Location must belong to the selected warehouse.</small></div></div>
         <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Material</th><th>Remaining</th><th>Color</th><th>Size</th><th>Lot No</th><th>Roll No</th><th>Receive qty</th><th></th></tr></thead><tbody id="receiptRows">
         @foreach($items as $item)
             @if($item->quantity > $item->received_qty)
-            <tr data-po-item="{{ $item->id }}" data-remaining="{{ $item->quantity - $item->received_qty }}">
+            <tr data-po-item="{{ $item->id }}">
                 <td>{{ $item->material_code }} - {{ $item->material_name }}<input type="hidden" data-field="po_item_id" value="{{ $item->id }}"></td>
                 <td>{{ number_format($item->quantity - $item->received_qty, 0) }}</td>
                 <td><input class="form-control" style="min-width:100px" value="{{ $item->default_material_color }}" readonly aria-label="Material color"></td>
                 <td><input data-field="material_size" class="form-control" style="min-width:80px" value="{{ $item->default_material_size }}" required></td>
                 <td><input data-field="lot_no" class="form-control" style="min-width:110px" maxlength="40" placeholder="Lot No" required></td>
                 <td><input data-field="roll_no" class="form-control" style="min-width:110px" maxlength="40" placeholder="Roll No" required></td>
-                <td><input data-field="quantity" type="number" step="0.0001" min="0.0001" max="{{ $item->quantity - $item->received_qty }}" class="form-control" style="min-width:110px" required></td>
+                <td><input data-field="quantity" type="number" step="0.0001" min="0.0001" class="form-control" style="min-width:110px" required></td>
                 <td><div class="d-flex gap-1"><button type="button" class="btn btn-sm btn-outline-primary add-receipt-row">Add</button><button type="button" class="btn btn-sm btn-outline-danger remove-receipt-row" aria-label="Remove receipt row">×</button></div></td>
             </tr>
             @endif
@@ -179,6 +188,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!form) return;
     const rows = document.getElementById('receiptRows');
     const error = document.getElementById('receiptRowError');
+    const importButton = document.getElementById('importReceiptFile');
+    const importFile = document.getElementById('receiptImportFile');
+    const importFeedback = document.getElementById('receiptImportFeedback');
     const previousItems = @json(old('items', []));
     const previousMeta = @json(old());
     if (Object.keys(previousItems).length) {
@@ -227,15 +239,43 @@ document.addEventListener('DOMContentLoaded', function () {
             row.remove(); renumber();
         }
     });
-    form.addEventListener('submit', event => {
-        const totals = {};
-        error.textContent = '';
-        rows.querySelectorAll('tr').forEach(row => {
-            const id = row.dataset.poItem;
-            totals[id] = (totals[id] || 0) + Math.round(Number(row.querySelector('[data-field="quantity"]').value) * 10000);
-            if (totals[id] > Math.round(Number(row.dataset.remaining) * 10000)) error.textContent = 'Total receive quantity for a material exceeds its remaining quantity.';
-        });
-        if (error.textContent) event.preventDefault();
+    importButton.addEventListener('click', async () => {
+        const file = importFile.files[0];
+        if (!file) { importFeedback.className = 'small mt-2 text-danger'; importFeedback.textContent = 'Choose an Excel or CSV file first.'; return; }
+        importButton.disabled = true;
+        importFeedback.className = 'small mt-2 text-muted';
+        importFeedback.textContent = 'Reading file…';
+        const body = new FormData();
+        body.append('file', file);
+        try {
+            const response = await fetch(@json(route('admin.procurement.receipts.import', $po->id)), {
+                method: 'POST', headers: {'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value, 'Accept': 'application/json'}, body
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || Object.values(result.errors || {}).flat().join(' '));
+            const templates = new Map([...rows.children].map(row => [String(row.dataset.poItem), row.cloneNode(true)]));
+            const importedRows = [];
+            result.rows.forEach(entry => {
+                const template = templates.get(String(entry.po_item_id));
+                if (!template) return;
+                const copy = template.cloneNode(true);
+                copy.querySelector('[data-field="material_size"]').value = entry.material_size;
+                copy.querySelector('[data-field="lot_no"]').value = entry.lot_no;
+                copy.querySelector('[data-field="roll_no"]').value = entry.roll_no;
+                copy.querySelector('[data-field="quantity"]').value = entry.quantity;
+                importedRows.push(copy);
+            });
+            rows.replaceChildren(...importedRows);
+            renumber();
+            const notices = [`Imported ${importedRows.length} row(s). Review the rows, then click Post receipt.`];
+            if (result.errors.length) notices.push(...result.errors);
+            if (result.truncated) notices.push('Only the first 2,000 data rows were processed.');
+            importFeedback.className = `small mt-2 ${result.errors.length ? 'text-warning' : 'text-success'}`;
+            importFeedback.replaceChildren(...notices.map(message => { const line = document.createElement('div'); line.textContent = message; return line; }));
+        } catch (failure) {
+            importFeedback.className = 'small mt-2 text-danger';
+            importFeedback.textContent = failure.message || 'Import failed.';
+        } finally { importButton.disabled = false; }
     });
     renumber();
 })();

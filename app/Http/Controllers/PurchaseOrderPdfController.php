@@ -26,6 +26,7 @@ class PurchaseOrderPdfController extends Controller
             ->where('po_items.po_id', $id)
             ->select('po_items.*', 'materials.color as master_color', 'materials.size as master_size')
             ->orderBy('po_items.id')->get();
+        $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
         $options = new Options();
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isRemoteEnabled', false);
@@ -33,7 +34,7 @@ class PurchaseOrderPdfController extends Controller
         $options->set('isJavascriptEnabled', false);
         $pdf = new Dompdf($options);
         $pdf->setPaper('A4', 'portrait');
-        $pdf->loadHtml(view('admin.procurement.pdf', compact('po', 'supplier', 'items', 'settings'))->render(), 'UTF-8');
+        $pdf->loadHtml(view('admin.procurement.pdf', compact('po', 'supplier', 'items', 'surcharges', 'settings'))->render(), 'UTF-8');
         $pdf->render();
         $bytes = $pdf->output();
         // Save only after a successful render so the user can export again with the same details.

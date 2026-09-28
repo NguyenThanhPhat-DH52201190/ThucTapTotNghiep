@@ -250,6 +250,7 @@ Route::middleware('auth')->group(function () {
         Route::post('procurement/from-suggestions', [ProcurementController::class, 'createFromSuggestions'])->name('procurement.from-suggestions');
         Route::patch('procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->name('procurement.status');
         Route::patch('procurement/{id}/eta', [ProcurementController::class, 'updateEta'])->name('procurement.eta.update');
+        Route::post('procurement/{id}/receipts/import', [ProcurementController::class, 'importReceiptRows'])->name('procurement.receipts.import');
         Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->name('procurement.receipts.store');
         Route::resource('procurement', ProcurementController::class)->except(['store']);
 

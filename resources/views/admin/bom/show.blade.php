@@ -62,11 +62,11 @@
                 </div>
                 <div class="col-md-3">
                     <label class="fw-semibold text-muted small">Total Fabric Cost</label>
-                    <p class="mb-0 fw-bold text-primary">{{ number_format($bom->total_fabric_cost, 4) }} đ</p>
+                    <p class="mb-0 fw-bold text-primary">$ {{ number_format($bom->total_fabric_cost, 4) }}</p>
                 </div>
                 <div class="col-md-3">
                     <label class="fw-semibold text-muted small">Total Trim Cost</label>
-                    <p class="mb-0 fw-bold text-success">{{ number_format($bom->total_trim_cost, 4) }} đ</p>
+                    <p class="mb-0 fw-bold text-success">$ {{ number_format($bom->total_trim_cost, 4) }}</p>
                 </div>
                 @if($bom->notes)
                 <div class="col-12">
@@ -116,18 +116,11 @@
                             <td>{{ $item->unit }}</td>
                             <td class="text-end">{{ number_format($item->consumption_rate, 4) }}</td>
                             <td class="text-end">{{ $item->waste_percent ? number_format($item->waste_percent, 1) . '%' : '-' }}</td>
-                            <td class="text-end fw-bold">{{ number_format($item->total_cost, 4) }}</td>
+                            <td class="text-end fw-bold">{{ number_format((float) $item->consumption_rate * (1 + (float) $item->waste_percent / 100), 4) }}</td>
                             <td><small>{{ $item->remark ?? '' }}</small></td>
                         </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="table-light fw-bold">
-                    <tr>
-                        <td colspan="11" class="text-end">TOTAL COST:</td>
-                        <td class="text-end text-primary">{{ number_format($items->sum('total_cost'), 4) }} đ</td>
-                        <td></td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
     </div>

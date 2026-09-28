@@ -9,17 +9,16 @@
 </template>
 <style>
     .bom-top-scroll {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        z-index: 1035;
         height: 16px;
         overflow-x: auto;
         overflow-y: hidden;
         background: #f8fafc;
         border-bottom: 1px solid #dee2e6;
         scrollbar-color: #94a3b8 #e2e8f0;
-    }
-    .bom-top-scroll.is-fixed {
-        position: fixed;
-        top: 0;
-        z-index: 1050;
         box-shadow: 0 .15rem .3rem rgba(15, 23, 42, .18);
     }
     .bom-top-scroll-content { height: 1px; }

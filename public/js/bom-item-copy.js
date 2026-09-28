@@ -13,7 +13,7 @@
     const topScrollContent = document.createElement('div');
     topScrollContent.className = 'bom-top-scroll-content';
     topScroll.append(topScrollContent);
-    wrapper.before(topScroll);
+    document.body.append(topScroll);
     const selectAll = document.getElementById('bomSelectAll');
     const copySelected = document.getElementById('bomCopySelected');
     const copies = document.getElementById('bomCopyCount');
@@ -55,14 +55,19 @@
 
     function updateTopScrollSize() {
         topScrollContent.style.width = `${Math.max(table.scrollWidth, wrapper.clientWidth)}px`;
-        topScroll.hidden = table.scrollWidth <= wrapper.clientWidth;
+        const rect = wrapper.getBoundingClientRect();
+        topScroll.hidden = table.scrollWidth <= wrapper.clientWidth
+            || rect.bottom <= 0
+            || rect.top >= window.innerHeight;
         updateTopScrollPosition();
     }
     function updateTopScrollPosition() {
         const rect = wrapper.getBoundingClientRect();
-        const shouldPin = !topScroll.hidden && rect.top < 0 && rect.bottom > 16;
-        topScroll.classList.toggle('is-fixed', shouldPin);
-        if (shouldPin) {
+        const shouldShow = table.scrollWidth > wrapper.clientWidth
+            && rect.bottom > 0
+            && rect.top < window.innerHeight;
+        topScroll.hidden = !shouldShow;
+        if (shouldShow) {
             topScroll.style.left = `${rect.left}px`;
             topScroll.style.width = `${rect.width}px`;
         } else {

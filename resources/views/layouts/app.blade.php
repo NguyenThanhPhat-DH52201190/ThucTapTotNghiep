@@ -47,6 +47,35 @@
         .module-back-bar {
             margin-bottom: 1rem;
         }
+
+        @unless(request()->routeIs('admin.ocs.*', 'admin.masterplan.*', 'admin.revenue.*', 'admin.finance.revenue', 'revenue.*'))
+        .app-content .table:not(.table-sm) > :not(caption) > * > *,
+        .app-content .table.table-sm > :not(caption) > * > * {
+            padding: .4rem .55rem;
+            line-height: 1.3;
+            vertical-align: middle;
+        }
+
+        .app-content .table {
+            font-size: .9rem;
+        }
+
+        .app-content .table th {
+            font-size: .86rem;
+            white-space: normal;
+        }
+
+        .app-content .table td,
+        .app-content .table th {
+            max-width: 280px;
+            overflow-wrap: anywhere;
+        }
+
+        .app-content .table td .form-control,
+        .app-content .table td .form-select {
+            min-width: 0;
+        }
+        @endunless
     </style>
     <link href="{{ asset('css/responsive.css') }}?v={{ filemtime(public_path('css/responsive.css')) }}" rel="stylesheet">
     <script src="{{ asset('js/responsive.js') }}?v={{ filemtime(public_path('js/responsive.js')) }}" defer></script>

@@ -23,6 +23,7 @@ class NormController extends Controller
             ->join('ocs', 'ocs.id', '=', 'norm.cutsheet_id')
             ->leftJoin('bom_headers', 'bom_headers.id', '=', 'norm.bom_header_id')
             ->leftJoin('bom_items as source_item', 'source_item.id', '=', 'norm.bom_item_id')
+            ->leftJoin('materials as master_material', 'master_material.id', '=', 'norm.material_id')
             ->leftJoin('norm_confirmations as confirmation', function ($join) {
                 $join->on('confirmation.cutsheet_id', '=', 'norm.cutsheet_id')->on('confirmation.bom_item_id', '=', 'norm.bom_item_id');
             })
@@ -34,7 +35,7 @@ class NormController extends Controller
                 $q->where(fn ($sub) => $sub->where('norm.material_code', 'like', $term)->orWhere('norm.material_name', 'like', $term));
             })
             ->select('norm.*', 'ocs.CS', 'ocs.SNo', 'ocs.Sname', 'ocs.Customer', 'ocs.Color as garment_color',
-                'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version',
+                'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version', 'master_material.old_code as material_old_code',
                 'source_item.consumption_rate as yield_plan', 'source_item.waste_percent as waste_plan',
                 DB::raw('COALESCE(replacement.yield_confirmed, confirmation.yield_confirmed) as yield_confirmed'), DB::raw('COALESCE(replacement.waste_confirmed, confirmation.waste_confirmed) as waste_confirmed'), 'confirmation.revision as confirmation_revision',
                 'confirmation.bom_yield_at_confirmation', 'confirmation.bom_waste_at_confirmation')
@@ -124,23 +125,23 @@ class NormController extends Controller
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('NORM Materials');
-        $sheet->fromArray(['CS', 'Style', 'Style Name', 'Customer', 'Garment Color', 'BOM', 'Material Code', 'Description', 'Type', 'Material Color', 'Material Size', 'Unit', 'Product Qty', 'Yield plan', 'Yield confirmed', 'watse confirmed', 'Required', 'On Hand', 'Reserved', 'Available', 'Shortage', 'Status'], null, 'A1');
+        $sheet->fromArray(['CS', 'Style', 'Style Name', 'Customer', 'Garment Color', 'BOM', 'Material Code', 'Old Code', 'Description', 'Type', 'Material Color', 'Material Size', 'Unit', 'Product Qty', 'Yield plan', 'Yield confirmed', 'watse confirmed', 'Required', 'On Hand', 'Reserved', 'Available', 'Shortage', 'Status'], null, 'A1');
         foreach ($rows as $index => $row) {
             $sheet->fromArray([$row->CS, $row->SNo, $row->Sname, $row->Customer, $row->garment_color,
-                trim(($row->bom_style ?? '') . ' ' . ($row->bom_version ?? '')), $row->material_code, $row->material_name,
+                trim(($row->bom_style ?? '') . ' ' . ($row->bom_version ?? '')), $row->material_code, $row->material_old_code, $row->material_name,
                 $row->material_type, $row->material_color, $row->material_size, $row->unit, (float) $row->product_qty,
                 (float) $row->yield_plan, $row->yield_confirmed === null ? null : (float) $row->yield_confirmed,
                 (float) $row->waste_percent, (float) $row->required_qty,
                 (float) $row->on_hand_qty, (float) $row->reserved_qty, (float) $row->available_qty,
                 (float) $row->shortage_qty, ucfirst($row->stock_status)], null, 'A' . ($index + 2));
         }
-        $sheet->getStyle('A1:V1')->getFont()->setBold(true);
-        foreach (range('A', 'V') as $column) $sheet->getColumnDimension($column)->setAutoSize(true);
+        $sheet->getStyle('A1:W1')->getFont()->setBold(true);
+        foreach (range('A', 'W') as $column) $sheet->getColumnDimension($column)->setAutoSize(true);
         $lastRow = max(2, $rows->count() + 1);
-        $sheet->getStyle("M2:M{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->getStyle("N2:O{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.0000');
-        $sheet->getStyle("P2:P{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00');
-        $sheet->getStyle("Q2:U{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle("N2:N{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle("O2:P{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.0000');
+        $sheet->getStyle("Q2:Q{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle("R2:V{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
         return response()->streamDownload(function () use ($spreadsheet) {
             (new Xlsx($spreadsheet))->save('php://output');

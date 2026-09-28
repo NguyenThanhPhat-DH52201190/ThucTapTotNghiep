@@ -59,7 +59,7 @@
                             <th>Quantity</th>
                             <th>Unit Price (USD)</th>
                             <th>Total (USD)</th>
-                            <th>Expected Date</th>
+                            <th>Note</th>
                             <th style="width:40px"></th>
                         </tr>
                     </thead>
@@ -147,7 +147,7 @@ function addRow(data = {}) {
             <td><input type="number" step="0.01" name="items[${i}][quantity]" class="form-control form-control-sm qty" required min="0.01" value="${data.qty || data.quantity || ''}" onchange="calcTotal()"></td>
             <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || data.unit_price || ''}" placeholder="0.0000" onchange="calcTotal()"></td>
             <td class="row-total text-end">0.0000 USD</td>
-            <td><input type="date" name="items[${i}][expected_date]" class="form-control form-control-sm" value="${data.date || data.expected_date || ''}"></td>
+            <td><input type="text" name="items[${i}][notes]" class="form-control form-control-sm" maxlength="1000" value="${escapeSurchargeValue(data.notes || '')}" placeholder="Add note"></td>
             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${i})"><i class="bi bi-x"></i></button></td>
         </tr>`;
     document.getElementById('itemsBody').insertAdjacentHTML('beforeend', html);
@@ -228,7 +228,7 @@ function calcTotal() {
                 'unit' => $item->unit,
                 'qty' => $item->quantity,
                 'price' => number_format((float) $item->unit_price, 4, '.', ''),
-                'date' => $item->expected_date,
+                'notes' => $item->notes,
                 'materialId' => $item->material_id,
                 'suggestionId' => $item->mrp_suggestion_id,
             ];

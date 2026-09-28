@@ -3,7 +3,17 @@
     if (!body) return;
     const table = body.closest('table');
     const toolbar = document.getElementById('bomCopyToolbarTemplate').content.cloneNode(true);
-    table.closest('.table-responsive').before(toolbar);
+    const wrapper = table.closest('.table-responsive');
+    wrapper.classList.add('bom-items-responsive');
+    wrapper.before(toolbar);
+    const topScroll = document.createElement('div');
+    topScroll.className = 'bom-top-scroll';
+    topScroll.setAttribute('aria-label', 'Scroll BOM items table horizontally');
+    topScroll.tabIndex = 0;
+    const topScrollContent = document.createElement('div');
+    topScrollContent.className = 'bom-top-scroll-content';
+    topScroll.append(topScrollContent);
+    wrapper.before(topScroll);
     const selectAll = document.getElementById('bomSelectAll');
     const copySelected = document.getElementById('bomCopySelected');
     const copies = document.getElementById('bomCopyCount');
@@ -24,10 +34,12 @@
             if (!row.querySelector('[data-bom-copy-select]')) {
                 const number = document.createElement('span');
                 number.dataset.bomRowNumber = '';
+                number.className = 'bom-copy-row-number';
                 const select = document.createElement('input');
-                select.type = 'checkbox'; select.className = 'form-check-input me-2';
+                select.type = 'checkbox'; select.className = 'form-check-input m-0';
                 select.dataset.bomCopySelect = '';
                 row.cells[0].replaceChildren(select, number);
+                row.cells[0].classList.add('bom-copy-index-cell');
                 const button = document.createElement('button');
                 button.type = 'button'; button.className = 'btn btn-sm btn-outline-primary me-1';
                 button.dataset.bomCopyRow = ''; button.textContent = 'Copy';
@@ -38,7 +50,39 @@
             row.lastElementChild.style.whiteSpace = 'nowrap';
         });
         updateSelection();
+        updateTopScrollSize();
     }
+
+    function updateTopScrollSize() {
+        topScrollContent.style.width = `${Math.max(table.scrollWidth, wrapper.clientWidth)}px`;
+        topScroll.hidden = table.scrollWidth <= wrapper.clientWidth;
+        updateTopScrollPosition();
+    }
+    function updateTopScrollPosition() {
+        const rect = wrapper.getBoundingClientRect();
+        const shouldPin = !topScroll.hidden && rect.top < 0 && rect.bottom > 16;
+        topScroll.classList.toggle('is-fixed', shouldPin);
+        if (shouldPin) {
+            topScroll.style.left = `${rect.left}px`;
+            topScroll.style.width = `${rect.width}px`;
+        } else {
+            topScroll.style.left = '';
+            topScroll.style.width = '';
+        }
+    }
+    let syncingScroll = false;
+    topScroll.addEventListener('scroll', () => {
+        if (syncingScroll) return;
+        syncingScroll = true;
+        wrapper.scrollLeft = topScroll.scrollLeft;
+        syncingScroll = false;
+    });
+    wrapper.addEventListener('scroll', () => {
+        if (syncingScroll) return;
+        syncingScroll = true;
+        topScroll.scrollLeft = wrapper.scrollLeft;
+        syncingScroll = false;
+    });
 
     function copyRows(sources) {
         if (!copies.checkValidity()) { copies.reportValidity(); return; }
@@ -57,6 +101,7 @@
         }
         let first;
         for (const source of sources) {
+            let insertionPoint = source;
             for (let n = 0; n < count; n++) {
                 const clone = source.cloneNode(true);
                 const index = ++itemCount;
@@ -81,7 +126,8 @@
                     if (body.rows.length > 1) { clone.remove(); decorateRows(); }
                     else alert('Need at least 1 item');
                 };
-                body.append(clone);
+                insertionPoint.after(clone);
+                insertionPoint = clone;
                 first ??= clone;
             }
         }
@@ -124,5 +170,8 @@
     });
     copySelected.addEventListener('click', () => copyRows([...body.rows].filter(row => row.querySelector('[data-bom-copy-select]').checked)));
     new MutationObserver(decorateRows).observe(body, {childList: true});
+    if ('ResizeObserver' in window) new ResizeObserver(updateTopScrollSize).observe(table);
+    window.addEventListener('resize', updateTopScrollSize);
+    window.addEventListener('scroll', updateTopScrollPosition, {passive: true});
     decorateRows();
 })();

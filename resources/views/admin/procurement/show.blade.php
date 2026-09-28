@@ -1,7 +1,11 @@
 @extends('layouts.app')
 @section('title', 'PO - ' . $po->po_number)
 @section('content')
-@php $canManage = auth()->user()->role === 'admin'; @endphp
+@php
+    $user = auth()->user();
+    $canCreatePo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
+    $canTrackPo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['track', 'both'], true));
+@endphp
 @include('admin.procurement.partials.pdf-modal')
 
 <div class="container-fluid px-0">
@@ -17,15 +21,15 @@
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold"><i class="bi bi-receipt me-2"></i>{{ $po->po_number }}</h5>
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
-                @if($canManage && !in_array($po->status, ['partial', 'received']))
+                @if($canTrackPo)<button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>@endif
+                @if($canCreatePo && !in_array($po->status, ['partial', 'received']))
                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Edit</a>
                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Delete</button>
                     </form>
                 @endif
-                @if($canManage && $po->status !== 'received' && $po->status !== 'cancelled')
+                @if($canTrackPo && $po->status !== 'received' && $po->status !== 'cancelled')
                     @if(in_array($po->status, ['confirmed', 'partial']))
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#receiveModal">Receive goods</button>
                     @endif
@@ -73,7 +77,7 @@
                     <tr>
                         <th>Code</th><th>Name</th><th>Unit</th><th class="text-end">Qty</th>
                         <th class="text-end">Received</th><th class="text-end">Unit Price (USD)</th>
-                        <th class="text-end">Total (USD)</th><th>Expected</th><th>Status</th>
+                        <th class="text-end">Total (USD)</th><th>Note</th><th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -86,7 +90,7 @@
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
                             <td class="text-end fw-bold">{{ number_format($item->total_price, 4) }} USD</td>
-                            <td><small>{{ $item->expected_date ?? '-' }}</small></td>
+                            <td><small>{{ $item->notes ?? '-' }}</small></td>
                             <td>
                                 @php $sc = match($item->status) { 'partial'=>'warning', 'received'=>'success', 'cancelled'=>'danger', default=>'secondary' } @endphp
                                 <span class="badge bg-{{ $sc }}">{{ $item->status }}</span>
@@ -135,7 +139,7 @@
     @endif
 </div>
 
-@if($canManage && in_array($po->status, ['confirmed', 'partial']))
+@if($canTrackPo && in_array($po->status, ['confirmed', 'partial']))
 <div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form id="receiveForm" method="POST" action="{{ route('admin.procurement.receipts.store', $po->id) }}" class="modal-content">@csrf
     <div class="modal-header"><h5 class="modal-title">Receive goods</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
@@ -167,7 +171,7 @@
 </form></div></div>
 @endif
 
-@if($canManage && in_array($po->status, ['draft', 'sent']))
+@if($canTrackPo && in_array($po->status, ['draft', 'sent']))
 @php($allowedStatusTransitions = $po->status === 'draft' ? ['draft', 'sent', 'cancelled'] : ['sent', 'confirmed', 'cancelled'])
 <script>
 document.addEventListener('DOMContentLoaded', function () {

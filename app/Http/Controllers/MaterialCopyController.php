@@ -69,6 +69,7 @@ class MaterialCopyController extends Controller
                     }
                     unset($row['source_id'], $row['copy_image']);
                     DB::table('materials')->insert($row + [
+                        'copied_from_material_id' => $source->id,
                         'image_path' => $imagePath, 'material_type' => $types[$row['category_id']],
                         'created_at' => now(), 'updated_at' => now(),
                     ]);

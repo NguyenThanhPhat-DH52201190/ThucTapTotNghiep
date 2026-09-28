@@ -10,8 +10,7 @@
 <input type="hidden" name="fingerprint" id="replacementFingerprint">
 <div class="row g-3">
 <div class="col-md-6"><label for="replacementSource" class="form-label">Original material *</label><select id="replacementSource" name="bom_item_id" class="form-select" required><option value="">Select material</option>@foreach($sources as $source)<option value="{{ $source->bom_item_id }}" @selected(old('bom_item_id', request('bom_item_id')) == $source->bom_item_id)>{{ $source->material_code }} ? {{ $source->material_name }}</option>@endforeach</select><small id="sourceDetails" class="text-muted"></small></div>
-<div class="col-md-6"><label for="replacementMode" class="form-label">Replacement purpose *</label><select id="replacementMode" name="mode" class="form-select"><option value="remaining" @selected(old('mode') !== 'defect')>Replace unissued requirement</option><option value="defect" @selected(old('mode') === 'defect')>Replace recorded defective material</option></select></div>
-<div class="col-12" id="replacementDefectGroup" hidden><label for="replacementDefect" class="form-label">Material defect *</label><select id="replacementDefect" name="defect_id" class="form-select"></select></div>
+<div class="col-12"><label for="replacementDefect" class="form-label">Recorded material defect <span class="text-muted">(optional)</span></label><select id="replacementDefect" name="defect_id" class="form-select"><option value="">None — replace unissued requirement</option></select><small class="text-muted">Select a defect to replace its recorded defective quantity.</small></div>
 <div class="col-md-6"><label for="replacementQty" class="form-label">Original material quantity to replace *</label><input id="replacementQty" name="source_qty" value="{{ old('source_qty') }}" type="number" min="0.0001" max="99999999" step="0.0001" class="form-control" required><button id="useRemaining" class="btn btn-sm btn-outline-secondary mt-2" type="button">Use all remaining</button></div>
 <div class="col-md-6"><label for="replacementMaterial" class="form-label">Replacement material *</label><select id="replacementMaterial" name="material_id" class="form-select" required><option value="">Select replacement</option>@foreach($materials as $material)<option value="{{ $material->id }}" @selected(old('material_id') == $material->id)>{{ $material->internal_code }} ? {{ $material->material_name }} / {{ $material->color }} / {{ $material->size }} ({{ $material->unit }})</option>@endforeach</select></div>
 <div class="col-md-6"><label class="form-label" for="replacementYield">Yield confirmed (new material) *</label><input id="replacementYield" name="yield_confirmed" value="{{ old('yield_confirmed') }}" type="number" min="0.0001" max="99999999" step="0.0001" class="form-control" required></div>
@@ -21,18 +20,18 @@
 <div class="col-12"><p class="text-muted">Applies only to this CU. Recorded defects add replacement demand without deducting the original issued quantity again. Existing reservations and requisitions need a separate review; stock is deducted only when you confirm a delivery bill.</p><button class="btn btn-primary" @disabled($sources->isEmpty())>Save replacement</button></div>
 </div></form></div></div>
 <h5>Replacement history</h5>
-<div class="table-responsive"><table class="table table-bordered"><thead><tr><th>No</th><th>Original</th><th>Original qty</th><th>Replacement</th><th>Required</th><th>Purpose</th><th>Reason</th><th>Created</th></tr></thead><tbody>
+<div class="table-responsive"><table class="table table-bordered"><thead><tr><th>No</th><th>Original</th><th>Original qty</th><th>Replacement</th><th>Required</th><th>Reason</th><th>Created</th></tr></thead><tbody>
 @forelse($history as $entry)
 @php($before = json_decode($entry->source_snapshot)) @php($after = json_decode($entry->material_snapshot))
-<tr><td>{{ $entry->id }}</td><td>{{ $before->material_code }}</td><td>{{ $entry->source_qty }} {{ $before->unit }}</td><td>{{ $after->material_code }}</td><td>{{ $entry->required_qty }} {{ $after->unit }}</td><td>{{ $entry->defect_id ? 'Defect #'.$entry->defect_id : 'Unissued requirement' }}</td><td>{{ $entry->reason }}</td><td>{{ $entry->created_at }}</td></tr>
-@empty<tr><td colspan="8">No replacements.</td></tr>@endforelse
+<tr><td>{{ $entry->id }}</td><td>{{ $before->material_code }}</td><td>{{ $entry->source_qty }} {{ $before->unit }}</td><td>{{ $after->material_code }}</td><td>{{ $entry->required_qty }} {{ $after->unit }}</td><td>{{ $entry->reason }}</td><td>{{ $entry->created_at }}</td></tr>
+@empty<tr><td colspan="7">No replacements.</td></tr>@endforelse
 </tbody></table></div>
 @endsection
 @push('scripts')
 <script>
 (() => {
     const sources = @json($sources), defects = @json($defects), materials = @json($materials);
-    const source = document.getElementById('replacementSource'), mode = document.getElementById('replacementMode');
+    const source = document.getElementById('replacementSource');
     const defect = document.getElementById('replacementDefect'), qty = document.getElementById('replacementQty');
     const material = document.getElementById('replacementMaterial'), rate = document.getElementById('replacementYield'), waste = document.getElementById('replacementWaste');
     let limit = 0;
@@ -40,7 +39,7 @@
         const row = sources.find(row => String(row.bom_item_id) === source.value);
         document.getElementById('replacementFingerprint').value = row?.fingerprint || '';
         document.getElementById('sourceDetails').textContent = row ? `Remaining: ${row.remaining} ${row.unit}. Yield: ${row.consumption_rate}; waste: ${row.waste_percent}%.` : '';
-        defect.replaceChildren(new Option('Select defect', ''));
+        defect.replaceChildren(new Option('None — replace unissued requirement', ''));
         defects.filter(d => String(d.bom_item_id) === source.value && Number(d.remaining) > 0).forEach(d => defect.add(new Option(`#${d.id} ? ${d.occurred_on}: ${d.remaining} ${d.unit} ? ${d.reason}`, d.id)));
         refresh();
     }
@@ -48,16 +47,14 @@
         const row = sources.find(row => String(row.bom_item_id) === source.value);
         const recorded = defects.find(d => String(d.id) === defect.value);
         const replacement = materials.find(m => String(m.id) === material.value);
-        defect.required = mode.value === 'defect'; defect.disabled = !defect.required;
-        document.getElementById('replacementDefectGroup').hidden = !defect.required;
-        limit = Number(defect.required ? recorded?.remaining || 0 : row?.remaining || 0);
+        limit = Number(defect.value ? recorded?.remaining || 0 : row?.remaining || 0);
         qty.max = limit;
         const factor = Number(row?.consumption_rate) * (1 + Number(row?.waste_percent) / 100);
         const required = factor > 0 ? Number(qty.value) / factor * Number(rate.value) * (1 + Number(waste.value) / 100) : 0;
         document.getElementById('replacementPreview').textContent = replacement && required > 0 ? `New requirement: ${required.toFixed(4)} ${replacement.unit} (${replacement.internal_code}). Maximum original quantity: ${limit} ${row.unit}.` : 'Select materials and enter quantities to preview the replacement requirement.';
     }
     source.addEventListener('change', refreshSource);
-    [mode, defect, qty, material, rate, waste].forEach(el => el.addEventListener('input', refresh));
+    [defect, qty, material, rate, waste].forEach(el => el.addEventListener('input', refresh));
     document.getElementById('useRemaining').onclick = () => { qty.value = limit; refresh(); };
     refreshSource(); defect.value = @json((string) old('defect_id', '')); refresh();
 })();

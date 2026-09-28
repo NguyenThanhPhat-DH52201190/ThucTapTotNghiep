@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'ppic_team'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -20,6 +20,10 @@ class User extends Authenticatable
     public const ROLE_IE = 'ie';
     public const ROLE_PROD = 'prod';
     public const ROLE_ACCOUNTANT = 'accountant';
+    public const ROLE_DEVELOPMENT = 'development';
+    public const PPIC_TEAM_TRACK = 'track';
+    public const PPIC_TEAM_CREATE = 'create';
+    public const PPIC_TEAM_BOTH = 'both';
 
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;

@@ -204,6 +204,10 @@
                     <i class="bi bi-clock-history"></i>
                     Audit Trail
                 </a>
+                <a href="{{ route('admin.users.index') }}" class="d-flex align-items-center gap-2 mt-1 {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                    <i class="bi bi-person-gear"></i>
+                    Account Management
+                </a>
             </div>
             @elseif($role === 'ppic')
             <a href="{{ route('admin.masterplan.index') }}" class="d-flex align-items-center gap-2 mb-1">
@@ -213,6 +217,11 @@
             <a href="{{ route('admin.mrp.index') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-calculator"></i>
                 MRP & Procurement
+            </a>
+            @elseif($role === 'development')
+            <a href="{{ route('admin.development-norms.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.development-norms.*') ? 'active' : '' }}">
+                <i class="bi bi-rulers"></i>
+                Development Norms
             </a>
             @elseif($role === 'ie' || $role === 'prod')
             @if($role === 'ie')
@@ -285,6 +294,8 @@
                         $moduleBack = ['route' => 'admin.bom.index', 'label' => 'BOM & Tech Pack'];
                     } elseif (request()->routeIs('admin.masterplan.*') && !request()->routeIs('admin.masterplan.index')) {
                         $moduleBack = ['route' => 'admin.masterplan.index', 'label' => 'Master Plan'];
+                    } elseif (request()->routeIs('admin.development-norms.*') && !request()->routeIs('admin.development-norms.index')) {
+                        $moduleBack = ['route' => 'admin.development-norms.index', 'label' => 'Development Norms'];
                     } elseif (request()->routeIs('masterplan.fabric.*')) {
                         $moduleBack = ['route' => 'masterplan.view', 'label' => 'Master Plan'];
                     } elseif (request()->routeIs('admin.mrp.*') && !request()->routeIs('admin.mrp.index')) {

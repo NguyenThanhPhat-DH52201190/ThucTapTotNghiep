@@ -18,6 +18,7 @@ class AuthController extends Controller
     {
         return match ($role) {
             User::ROLE_ADMIN => 'admin.ocs.index',
+            User::ROLE_DEVELOPMENT => 'admin.development-norms.index',
             User::ROLE_PPIC => 'masterplan.view',
             User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_PROD, User::ROLE_ACCOUNTANT => 'masterplan.view',
             default => 'dashboard',
@@ -49,6 +50,7 @@ class AuthController extends Controller
                     User::ROLE_PPIC,
                     User::ROLE_PROD,
                     User::ROLE_ACCOUNTANT,
+                    User::ROLE_DEVELOPMENT,
                 ]),
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($value === User::ROLE_ADMIN && User::where('role', User::ROLE_ADMIN)->exists()) {
@@ -65,6 +67,7 @@ class AuthController extends Controller
                 'email' => Str::uuid().'@local.user',
                 'password' => $validated['password'],
                 'role' => $validated['role'],
+                'ppic_team' => $validated['role'] === User::ROLE_PPIC ? User::PPIC_TEAM_BOTH : null,
             ]);
 
             Auth::login($user);

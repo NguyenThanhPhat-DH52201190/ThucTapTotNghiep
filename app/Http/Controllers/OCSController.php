@@ -6,6 +6,7 @@ use App\Services\OrderCostSnapshotService;
 use App\Jobs\CreateRequisitionForCutsheet;
 use App\Services\RequisitionService;
 use App\Services\OrderMaterialRequirementService;
+use App\Services\DevelopmentNormSnapshotService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -580,6 +581,7 @@ class OCSController extends Controller
                 if ($request->status === 'confirmed' && $request->status !== $order->status) {
                     $bom = $order->bom_header_id ? DB::table('bom_headers')->find($order->bom_header_id) : null;
                     if (!$bom) throw new \RuntimeException('Assign a BOM before confirmation.');
+                    app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $id);
                     DB::table('ocs')->where('id', $id)->update(['requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now()]);
                     CreateRequisitionForCutsheet::dispatch((int) $id)->afterCommit();
                 }

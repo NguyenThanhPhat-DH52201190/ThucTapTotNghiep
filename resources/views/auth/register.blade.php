@@ -25,6 +25,7 @@
             <option value="ppic" {{ old('role') === 'ppic' ? 'selected' : '' }}>PPIC</option>
             <option value="prod" {{ old('role') === 'prod' ? 'selected' : '' }}>Production</option>
             <option value="accountant" {{ old('role') === 'accountant' ? 'selected' : '' }}>Accountant</option>
+            <option value="development" {{ old('role') === 'development' ? 'selected' : '' }}>Development</option>
         </select>
     </div>
     

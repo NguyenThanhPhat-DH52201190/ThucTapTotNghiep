@@ -266,7 +266,9 @@ class ProcurementController extends Controller
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'] ?? 0,
                     'total_price' => $totalPrice,
-                    'expected_date' => $item['expected_date'] ?? null,
+                    'expected_date' => !empty($item['mrp_suggestion_id'])
+                        ? DB::table('mrp_suggestions')->where('id', $item['mrp_suggestion_id'])->value('required_date')
+                        : null,
                     'notes' => $item['notes'] ?? null,
                     'mrp_suggestion_id' => $item['mrp_suggestion_id'] ?? null,
                     'material_id' => $item['material_id'] ?? null,
@@ -466,7 +468,7 @@ class ProcurementController extends Controller
             'items.*.material_name' => 'required|string|max:191', 'items.*.unit' => 'required|string|max:20',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'nullable|numeric|decimal:0,4|min:0',
-            'items.*.expected_date' => 'nullable|date', 'items.*.notes' => 'nullable|string',
+            'items.*.notes' => 'nullable|string|max:1000',
             'items.*.mrp_suggestion_id' => 'nullable|exists:mrp_suggestions,id',
             'items.*.material_id' => 'nullable|exists:materials,id',
             'surcharges' => 'nullable|array',
@@ -501,7 +503,10 @@ class ProcurementController extends Controller
                 'material_name' => $material->material_name, 'unit' => $material->unit,
                 'quantity' => $item['quantity'], 'received_qty' => 0,
                 'unit_price' => $item['unit_price'] ?? 0, 'total_price' => $totalPrice,
-                'expected_date' => $item['expected_date'] ?? null, 'notes' => $item['notes'] ?? null,
+                'expected_date' => !empty($item['mrp_suggestion_id'])
+                    ? DB::table('mrp_suggestions')->where('id', $item['mrp_suggestion_id'])->value('required_date')
+                    : null,
+                'notes' => $item['notes'] ?? null,
                 'mrp_suggestion_id' => $item['mrp_suggestion_id'] ?? null,
                 'material_id' => $material->id, 'status' => 'pending',
                 'created_at' => now(), 'updated_at' => now(),

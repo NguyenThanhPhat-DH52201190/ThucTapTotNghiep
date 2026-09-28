@@ -23,6 +23,7 @@ class ModuleAccessMiddleware
             'mrp' => ['ppic'],
             'procurement' => ['ppic'],
             'bom' => ['ie'],
+            'development-norms' => ['development'],
             'shopfloor' => ['prod'],
             'inventory' => ['warehouse'],
             'stock-records' => ['warehouse', 'ppic'],

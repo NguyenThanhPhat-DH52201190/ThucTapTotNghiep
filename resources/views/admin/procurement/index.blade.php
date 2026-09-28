@@ -1,7 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Procurement')
 @section('content')
-@php $canManage = auth()->user()->role === 'admin'; @endphp
+@php
+    $user = auth()->user();
+    $canCreatePo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
+@endphp
 
 <div class="container-fluid px-0">
     @if(session('success'))
@@ -15,12 +18,12 @@
         <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
             <h5 class="mb-0 fw-bold"><i class="bi bi-cart3 me-2"></i>Purchase Orders</h5>
             <div class="d-flex gap-2">
-                <a href="{{ route('admin.procurement.suppliers') }}" class="btn btn-outline-primary btn-sm">
+                @if($canCreatePo)<a href="{{ route('admin.procurement.suppliers') }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-people"></i> Suppliers
                 </a>
                 <a href="{{ route('admin.procurement.create') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-lg"></i> Create PO
-                </a>
+                </a>@endif
             </div>
         </div>
     </div>
@@ -69,7 +72,7 @@
                             </td>
                             <td>
                                 <a href="{{ route('admin.procurement.show', $po->id) }}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
-                                @if($canManage && !in_array($po->status, ['partial', 'received']))
+                                @if($canCreatePo && !in_array($po->status, ['partial', 'received']))
                                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
                                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                                         @csrf @method('DELETE')

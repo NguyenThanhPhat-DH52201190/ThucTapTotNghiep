@@ -41,7 +41,7 @@ class NormMaterialReplacementController extends Controller
         $data = $request->validate([
             'submission_key' => 'required|uuid', 'bom_item_id' => 'required|integer',
             'fingerprint' => 'required|string|size:64', 'material_id' => 'required|integer|exists:materials,id',
-            'mode' => 'required|in:remaining,defect', 'defect_id' => 'nullable|required_if:mode,defect|integer',
+            'defect_id' => 'nullable|integer',
             'source_qty' => 'required|numeric|gt:0|max:99999999|decimal:0,4',
             'yield_confirmed' => 'required|numeric|gt:0|max:99999999|decimal:0,4',
             'waste_confirmed' => 'required|numeric|min:0|max:100|decimal:0,2',
@@ -53,7 +53,7 @@ class NormMaterialReplacementController extends Controller
             $existing = DB::table('norm_material_replacements')->where('submission_key', $data['submission_key'])->first();
             if ($existing) { abort_unless((int) $existing->cutsheet_id === $id, 409); return; }
             if (!in_array($order->status, ['pending', 'confirmed', 'in_production', 'released'])) {
-                throw ValidationException::withMessages(['mode' => 'Only active CUs can replace materials.']);
+                throw ValidationException::withMessages(['bom_item_id' => 'Only active CUs can replace materials.']);
             }
             $needs = $requirements->sync($id);
             $source = $needs->firstWhere('bom_item_id', $data['bom_item_id']);
@@ -67,7 +67,7 @@ class NormMaterialReplacementController extends Controller
             $factor = (float) $source->consumption_rate * (1 + (float) $source->waste_percent / 100);
             if ($factor <= 0) throw ValidationException::withMessages(['source_qty' => 'Confirm a positive source yield first.']);
             $defectId = null;
-            if ($data['mode'] === 'defect') {
+            if (!empty($data['defect_id'])) {
                 $defect = DB::table('norm_material_defects')->where('cutsheet_id', $id)->where('id', $data['defect_id'])->lockForUpdate()->first();
                 if (!$defect || (int) $defect->bom_item_id !== (int) $source->bom_item_id || $delivery->key($defect) !== $delivery->key($source)) {
                     throw ValidationException::withMessages(['defect_id' => 'Select a defect for this source material and CU.']);

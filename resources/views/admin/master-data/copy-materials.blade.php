@@ -1,6 +1,16 @@
 @extends('layouts.app')
 @section('title', 'Copy Materials')
 @section('content')
+<style>
+    .material-copy-table { min-width: 1770px; table-layout: fixed; }
+    .material-copy-table th,
+    .material-copy-table td { padding: .65rem; vertical-align: middle; }
+    .material-copy-table th { white-space: nowrap; word-break: normal; }
+    .material-copy-table .copy-source { white-space: nowrap; font-weight: 600; }
+    .material-copy-table input.form-control,
+    .material-copy-table select.form-select { width: 100%; min-width: 0 !important; }
+    .material-copy-table .copy-actions { display: flex; gap: .4rem; white-space: nowrap; }
+</style>
 <a href="{{ route('admin.master-data.materials') }}" class="btn btn-outline-secondary mb-3">Back to Material Master</a>
 <form method="POST" action="{{ route('admin.master-data.materials.copy.store') }}" id="materialCopyForm">
     @csrf
@@ -20,7 +30,13 @@
             </div>
         </div>
         <div class="table-responsive">
-            <table class="table table-bordered align-middle mb-0" id="materialCopyTable">
+            <table class="table table-bordered align-middle mb-0 material-copy-table" id="materialCopyTable">
+                <colgroup>
+                    <col style="width:150px"><col style="width:180px"><col style="width:150px">
+                    <col style="width:230px"><col style="width:200px"><col style="width:200px">
+                    <col style="width:140px"><col style="width:130px"><col style="width:100px">
+                    <col style="width:110px"><col style="width:180px">
+                </colgroup>
                 <thead class="table-light"><tr><th>Source</th><th>New internal code *</th><th>Old code</th><th>Name *</th><th>Category *</th><th>Subcategory</th><th>Color</th><th>Size</th><th>Unit *</th><th>Copy image</th><th>Actions</th></tr></thead>
                 <tbody id="materialCopyRows"></tbody>
             </table>

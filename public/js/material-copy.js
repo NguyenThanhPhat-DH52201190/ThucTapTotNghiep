@@ -21,7 +21,6 @@
         input.className = 'form-control'; input.dataset.field = field;
         input.value = value ?? ''; input.maxLength = limit; input.required = required;
         input.setAttribute('aria-label', label);
-        input.style.minWidth = field === 'material_name' ? '280px' : field === 'unit' ? '80px' : '150px';
         row.insertCell().append(input);
     }
     function selectCell(row, field, options, selected, placeholder) {
@@ -30,7 +29,7 @@
         select.setAttribute('aria-label', field === 'category_id' ? 'Category' : 'Subcategory');
         select.add(new Option(placeholder, ''));
         options.forEach(option => select.add(new Option(option.name, option.id)));
-        select.value = selected ?? ''; select.style.minWidth = '170px';
+        select.value = selected ?? '';
         row.insertCell().append(select); return select;
     }
     function values(row) {
@@ -42,6 +41,7 @@
         const row = document.createElement('tr');
         const source = sourceById.get(String(draft.source_id));
         const sourceCell = row.insertCell();
+        sourceCell.className = 'copy-source';
         sourceCell.append(document.createTextNode(source?.internal_code || `#${draft.source_id}`));
         const sourceId = document.createElement('input');
         sourceId.type = 'hidden'; sourceId.dataset.field = 'source_id'; sourceId.value = draft.source_id;
@@ -72,7 +72,7 @@
         imageCheck.addEventListener('change', () => imageValue.value = imageCheck.checked ? '1' : '0');
         imageCell.append(imageValue, imageCheck);
         const actions = row.insertCell(); const group = document.createElement('div');
-        group.className = 'd-flex gap-2'; actions.append(group);
+        group.className = 'copy-actions'; actions.append(group);
         const copy = document.createElement('button');
         copy.type = 'button'; copy.className = 'btn btn-outline-primary btn-sm'; copy.textContent = 'Copy';
         copy.addEventListener('click', () => {

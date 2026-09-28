@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\ModuleAccessMiddleware;
+use App\Http\Middleware\PpicTeamMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'module.access' => ModuleAccessMiddleware::class,
+            'ppic.team' => PpicTeamMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

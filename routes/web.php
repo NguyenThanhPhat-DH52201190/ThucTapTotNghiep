@@ -18,7 +18,9 @@ use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\AuditTrailController;
 use App\Http\Controllers\NormController;
+use App\Http\Controllers\DevelopmentNormController;
 use App\Http\Controllers\StockRecordController;
+use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -134,6 +136,11 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('admin')->name('admin.')->middleware('module.access')->group(function () {
 
+        Route::get('users', [UserManagementController::class, 'index'])->middleware('role:admin')->name('users.index');
+        Route::post('users', [UserManagementController::class, 'store'])->middleware('role:admin')->name('users.store');
+        Route::patch('users/{user}', [UserManagementController::class, 'update'])->middleware('role:admin')->name('users.update');
+        Route::delete('users/{user}', [UserManagementController::class, 'destroy'])->middleware('role:admin')->name('users.destroy');
+
         // Trang dashboard admin riêng (nếu cần)
         Route::get('/dashboard', [AuthController::class, 'adminDashboard'])->name('dashboard');
         Route::get('audit-trails', [AuditTrailController::class, 'index'])->name('audit-trails.index');
@@ -176,6 +183,9 @@ Route::middleware('auth')->group(function () {
         Route::post('ocs/import', [OCSController::class, 'import'])->name('ocs.import');
 
         Route::get('norm/materials', [NormController::class, 'materials'])->name('norm.materials');
+        Route::get('development-norms', [DevelopmentNormController::class, 'index'])->name('development-norms.index');
+        Route::get('development-norms/{cutsheetId}', [DevelopmentNormController::class, 'show'])->name('development-norms.show');
+        Route::put('development-norms/{cutsheetId}', [DevelopmentNormController::class, 'update'])->name('development-norms.update');
         Route::get('norm/materials/{id}/replacements', [\App\Http\Controllers\NormMaterialReplacementController::class, 'index'])->name('norm.replacements');
         Route::post('norm/materials/{id}/replacements', [\App\Http\Controllers\NormMaterialReplacementController::class, 'store'])->name('norm.replacements.store');
         Route::get('norm/materials/{id}/delivery-bills', [\App\Http\Controllers\DeliveryBillController::class, 'index'])->name('norm.delivery-bills');
@@ -241,18 +251,24 @@ Route::middleware('auth')->group(function () {
         Route::resource('mrp', MRPController::class)->except(['store', 'edit', 'update']);
 
         // Procurement
-        Route::post('procurement/{id}/pdf', [\App\Http\Controllers\PurchaseOrderPdfController::class, 'export'])->name('procurement.pdf');
-        Route::get('procurement/suppliers', [ProcurementController::class, 'suppliers'])->name('procurement.suppliers');
-        Route::post('procurement/suppliers', [ProcurementController::class, 'suppliersStore'])->name('procurement.suppliers.store');
-        Route::patch('procurement/suppliers/{id}', [ProcurementController::class, 'supplierUpdate'])->name('procurement.suppliers.update');
-        Route::get('procurement/create-from-mrp/{mrpId}', [ProcurementController::class, 'createFromMrp'])->name('procurement.create-from-mrp');
-        Route::post('procurement/store', [ProcurementController::class, 'store'])->name('procurement.store');
-        Route::post('procurement/from-suggestions', [ProcurementController::class, 'createFromSuggestions'])->name('procurement.from-suggestions');
-        Route::patch('procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->name('procurement.status');
-        Route::patch('procurement/{id}/eta', [ProcurementController::class, 'updateEta'])->name('procurement.eta.update');
-        Route::post('procurement/{id}/receipts/import', [ProcurementController::class, 'importReceiptRows'])->name('procurement.receipts.import');
-        Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->name('procurement.receipts.store');
-        Route::resource('procurement', ProcurementController::class)->except(['store']);
+        Route::post('procurement/{id}/pdf', [\App\Http\Controllers\PurchaseOrderPdfController::class, 'export'])->middleware('ppic.team:track')->name('procurement.pdf');
+        Route::get('procurement/suppliers', [ProcurementController::class, 'suppliers'])->middleware('ppic.team:create')->name('procurement.suppliers');
+        Route::post('procurement/suppliers', [ProcurementController::class, 'suppliersStore'])->middleware('ppic.team:create')->name('procurement.suppliers.store');
+        Route::patch('procurement/suppliers/{id}', [ProcurementController::class, 'supplierUpdate'])->middleware('ppic.team:create')->name('procurement.suppliers.update');
+        Route::get('procurement/create-from-mrp/{mrpId}', [ProcurementController::class, 'createFromMrp'])->middleware('ppic.team:create')->name('procurement.create-from-mrp');
+        Route::post('procurement/store', [ProcurementController::class, 'store'])->middleware('ppic.team:create')->name('procurement.store');
+        Route::post('procurement/from-suggestions', [ProcurementController::class, 'createFromSuggestions'])->middleware('ppic.team:create')->name('procurement.from-suggestions');
+        Route::patch('procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->middleware('ppic.team:track')->name('procurement.status');
+        Route::patch('procurement/{id}/eta', [ProcurementController::class, 'updateEta'])->middleware('ppic.team:track')->name('procurement.eta.update');
+        Route::post('procurement/{id}/receipts/import', [ProcurementController::class, 'importReceiptRows'])->middleware('ppic.team:track')->name('procurement.receipts.import');
+        Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->middleware('ppic.team:track')->name('procurement.receipts.store');
+        Route::get('procurement', [ProcurementController::class, 'index'])->middleware('ppic.team:view')->name('procurement.index');
+        Route::get('procurement/create', [ProcurementController::class, 'create'])->middleware('ppic.team:create')->name('procurement.create');
+        Route::get('procurement/{procurement}', [ProcurementController::class, 'show'])->middleware('ppic.team:view')->name('procurement.show');
+        Route::get('procurement/{procurement}/edit', [ProcurementController::class, 'edit'])->middleware('ppic.team:create')->name('procurement.edit');
+        Route::put('procurement/{procurement}', [ProcurementController::class, 'update'])->middleware('ppic.team:create')->name('procurement.update');
+        Route::patch('procurement/{procurement}', [ProcurementController::class, 'update'])->middleware('ppic.team:create');
+        Route::delete('procurement/{procurement}', [ProcurementController::class, 'destroy'])->middleware('ppic.team:create')->name('procurement.destroy');
 
         // Inventory
         Route::get('stock-records', [StockRecordController::class, 'index'])->name('stock-records.index');

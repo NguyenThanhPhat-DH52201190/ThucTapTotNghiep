@@ -86,6 +86,7 @@ class MasterDataController extends Controller
 
     public function materials(Request $request)
     {
+        $materialSearch = trim((string) $request->input('material_search', ''));
         $materials = DB::table('materials')
             ->leftJoin('material_vendors', 'materials.id', '=', 'material_vendors.material_id')
             ->leftJoin('material_categories', 'materials.category_id', '=', 'material_categories.id')
@@ -93,22 +94,46 @@ class MasterDataController extends Controller
             ->select('materials.*', 'material_categories.name as category_name', 'material_subcategories.name as subcategory_name', DB::raw('COUNT(material_vendors.id) as vendor_count'))
             ->when($request->filled('category_id'), fn ($query) => $query->where('materials.category_id', $request->integer('category_id')))
             ->when($request->filled('subcategory_id'), fn ($query) => $query->where('materials.subcategory_id', $request->integer('subcategory_id')))
+            ->when($materialSearch !== '', fn ($query) => $query->where(fn ($sub) =>
+                $sub->where('materials.internal_code', 'like', '%'.$materialSearch.'%')
+                    ->orWhere('materials.material_name', 'like', '%'.$materialSearch.'%')
+                    ->orWhere('materials.color', 'like', '%'.$materialSearch.'%')
+                    ->orWhere('materials.unit', 'like', '%'.$materialSearch.'%')))
             ->groupBy('materials.id', 'materials.internal_code', 'materials.old_code', 'materials.material_name', 'materials.color', 'materials.size', 'materials.unit', 'materials.material_type', 'materials.category_id', 'materials.subcategory_id', 'materials.created_at', 'materials.updated_at', 'materials.image_path', 'material_categories.name', 'material_subcategories.name')
             ->orderBy('material_categories.name')
             ->orderBy('material_subcategories.name')
             ->orderBy('materials.internal_code')
             ->paginate(20)->withQueryString();
         $suppliers = DB::table('suppliers')->where('status', 'active')->orderBy('name')->get();
+        $mappingSearch = trim((string) $request->input('mapping_search', ''));
+        $mappingSort = $request->input('mapping_supplier_sort') === 'code_desc' ? 'desc' : 'asc';
         $vendorMappings = DB::table('material_vendors')->join('materials', 'material_vendors.material_id', '=', 'materials.id')->join('suppliers', 'material_vendors.vendor_id', '=', 'suppliers.id')
-            ->select('material_vendors.*', 'materials.internal_code', 'materials.material_name', 'suppliers.code as supplier_code', 'suppliers.name as supplier_name')
+            ->select('material_vendors.*', 'materials.internal_code', 'materials.material_name', 'suppliers.code as supplier_code', 'suppliers.name as supplier_name', 'suppliers.email as supplier_email', 'suppliers.contact_person as supplier_contact')
             ->when($request->filled('mapping_category_id'), fn ($query) => $query->where('materials.category_id', $request->integer('mapping_category_id')))
             ->when($request->filled('mapping_subcategory_id'), fn ($query) => $query->where('materials.subcategory_id', $request->integer('mapping_subcategory_id')))
-            ->orderByDesc('material_vendors.is_default_vendor')->orderBy('materials.internal_code')->orderBy('material_vendors.id')
+            ->when($mappingSearch !== '', fn ($query) => $query->where(fn ($sub) =>
+                $sub->where('suppliers.code', 'like', '%'.$mappingSearch.'%')
+                    ->orWhere('suppliers.name', 'like', '%'.$mappingSearch.'%')
+                    ->orWhere('materials.internal_code', 'like', '%'.$mappingSearch.'%')
+                    ->orWhere('materials.material_name', 'like', '%'.$mappingSearch.'%')
+                    ->orWhere('material_vendors.vendor_item_code', 'like', '%'.$mappingSearch.'%')))
+            ->orderBy('suppliers.code', $mappingSort)->orderByDesc('material_vendors.is_default_vendor')->orderBy('materials.internal_code')->orderBy('material_vendors.id')
             ->paginate(20, ['*'], 'mapping_page')->withQueryString()->fragment('materialMappings');
         $categories = DB::table('material_categories')->orderBy('name')->get();
         $subcategories = DB::table('material_subcategories')->orderBy('name')->get();
         $mappingMaterials = DB::table('materials')->orderBy('internal_code')->get(['id', 'internal_code', 'material_name']);
-        return view('admin.master-data.materials', compact('materials', 'suppliers', 'vendorMappings', 'categories', 'subcategories', 'mappingMaterials'));
+        $materialSearchSuggestions = collect(['internal_code', 'material_name', 'color', 'unit'])
+            ->flatMap(fn ($column) => DB::table('materials')->whereNotNull($column)->where($column, '<>', '')
+                ->select($column)->distinct()->orderBy($column)->limit(100)->pluck($column))
+            ->unique()->values();
+        $mappingSearchSuggestions = collect([
+            DB::table('materials')->join('material_vendors', 'materials.id', '=', 'material_vendors.material_id')->whereNotNull('materials.internal_code')->where('materials.internal_code', '<>', '')->select('materials.internal_code')->distinct()->orderBy('materials.internal_code')->limit(100)->pluck('materials.internal_code'),
+            DB::table('materials')->join('material_vendors', 'materials.id', '=', 'material_vendors.material_id')->whereNotNull('materials.material_name')->where('materials.material_name', '<>', '')->select('materials.material_name')->distinct()->orderBy('materials.material_name')->limit(100)->pluck('materials.material_name'),
+            DB::table('suppliers')->join('material_vendors', 'suppliers.id', '=', 'material_vendors.vendor_id')->whereNotNull('suppliers.code')->where('suppliers.code', '<>', '')->select('suppliers.code')->distinct()->orderBy('suppliers.code')->limit(100)->pluck('suppliers.code'),
+            DB::table('suppliers')->join('material_vendors', 'suppliers.id', '=', 'material_vendors.vendor_id')->whereNotNull('suppliers.name')->where('suppliers.name', '<>', '')->select('suppliers.name')->distinct()->orderBy('suppliers.name')->limit(100)->pluck('suppliers.name'),
+            DB::table('material_vendors')->whereNotNull('vendor_item_code')->where('vendor_item_code', '<>', '')->select('vendor_item_code')->distinct()->orderBy('vendor_item_code')->limit(100)->pluck('vendor_item_code'),
+        ])->flatten()->unique()->values();
+        return view('admin.master-data.materials', compact('materials', 'suppliers', 'vendorMappings', 'categories', 'subcategories', 'mappingMaterials', 'materialSearchSuggestions', 'mappingSearchSuggestions'));
     }
 
     private function materialRules(?int $id = null): array

@@ -8,17 +8,22 @@
 #taxonomyModal .modal-dialog{max-width:min(1200px,calc(100vw - 2rem))}
 .taxonomy-subcategory-update{min-width:0}
 .taxonomy-subcategory-update .form-control,.taxonomy-subcategory-update .form-select{min-width:0}
+.search-suggest-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1080;max-height:240px;overflow-y:auto;background:#fff;border:1px solid #ced4da;border-radius:.5rem;box-shadow:0 .35rem 1rem rgba(0,0,0,.15);padding:.3rem;display:none}
+.search-suggest-menu.show{display:block}
+.search-suggest-option{display:block;width:100%;border:0;border-radius:.3rem;background:#fff;color:#212529;text-align:left;padding:.45rem .65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-suggest-option:hover,.search-suggest-option:focus,.search-suggest-option.active{background:#f1f3f5;color:#111;outline:0}
 </style>
 <div class="card shadow-sm border-0 mb-4"><div class="card-body d-flex justify-content-between align-items-center">
  <div><h5 class="mb-1 fw-bold"><i class="bi bi-box-seam me-2"></i>Material Master</h5><small class="text-muted">Standard material data used by BOM, MRP, inventory and purchasing.</small></div>
  <div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#taxonomyModal">Manage categories</button><button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#mappingModal">Map supplier</button><button class="btn btn-primary" onclick="newMaterial()">Add material</button></div>
 </div></div>
 <form method="GET" class="row g-2 mb-3 align-items-end">
- @foreach(['mapping_category_id', 'mapping_subcategory_id', 'mapping_page'] as $key)@if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
+ @foreach(['mapping_category_id', 'mapping_subcategory_id', 'mapping_search', 'mapping_supplier_sort', 'mapping_page'] as $key)@if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
  @endforeach
- <div class="col-12 col-md-4"><label class="form-label">Category</label><select id="materialCategoryFilter" name="category_id" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select></div>
- <div class="col-12 col-md-4"><label class="form-label">Subcategory</label><select id="materialSubcategoryFilter" name="subcategory_id" class="form-select"><option value="">All subcategories</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}" @selected((string) request('subcategory_id') === (string) $subcategory->id)>{{ $subcategory->name }}</option>@endforeach</select></div>
- <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-dark">Filter</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials') }}">Reset</a></div>
+ <div class="col-12 col-md-4"><label for="materialSearch" class="form-label">Search materials</label><div class="position-relative"><input id="materialSearch" name="material_search" value="{{ request('material_search') }}" class="form-control" list="materialSearchSuggestions" placeholder="Code, name, color or unit"><datalist id="materialSearchSuggestions">@foreach($materialSearchSuggestions as $suggestion)<option value="{{ $suggestion }}">@endforeach</datalist></div></div>
+ <div class="col-12 col-md-3"><label class="form-label">Category</label><select id="materialCategoryFilter" name="category_id" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select></div>
+ <div class="col-12 col-md-3"><label class="form-label">Subcategory</label><select id="materialSubcategoryFilter" name="subcategory_id" class="form-select"><option value="">All subcategories</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}" @selected((string) request('subcategory_id') === (string) $subcategory->id)>{{ $subcategory->name }}</option>@endforeach</select></div>
+ <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-dark"><i class="bi bi-search me-1"></i>Search</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials', request()->only(['mapping_category_id', 'mapping_subcategory_id', 'mapping_search', 'mapping_supplier_sort', 'mapping_page'])) }}">Reset</a></div>
 </form>
 <div class="card shadow-sm border-0 mb-4">
  <div class="card-header bg-white"><form method="GET" action="{{ route('admin.master-data.materials.copy') }}" id="copySelectedMaterials" class="d-flex align-items-center gap-2 flex-wrap"><button id="copySelectedButton" class="btn btn-outline-primary" disabled><i class="bi bi-copy me-1"></i>Copy selected (<span id="selectedMaterialCount">0</span>)</button><small class="text-muted"></small></form></div>
@@ -33,9 +38,11 @@
 <div class="card-body"><form method="GET" action="{{ route('admin.master-data.materials') }}#materialMappings" class="row g-2 align-items-end">
  @foreach(['category_id', 'subcategory_id', 'page'] as $key)@if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
  @endforeach
- <div class="col-md-4"><label for="mappingCategoryFilter" class="form-label">Category</label><select id="mappingCategoryFilter" name="mapping_category_id" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('mapping_category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select></div>
- <div class="col-md-4"><label for="mappingSubcategoryFilter" class="form-label">Subcategory</label><select id="mappingSubcategoryFilter" name="mapping_subcategory_id" class="form-select"><option value="">All subcategories</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}" @selected((string) request('mapping_subcategory_id') === (string) $subcategory->id)>{{ $subcategory->name }}</option>@endforeach</select></div>
- <div class="col-md-auto d-flex gap-2"><button class="btn btn-dark">Filter</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials', request()->only(['category_id', 'subcategory_id', 'page'])) }}#materialMappings">Reset</a></div>
+ <div class="col-12 col-lg-4"><label for="mappingSearch" class="form-label">Search materials and suppliers</label><div class="position-relative"><input id="mappingSearch" name="mapping_search" value="{{ request('mapping_search') }}" class="form-control" list="mappingSearchSuggestions" placeholder="Material, supplier or supplier item code"><datalist id="mappingSearchSuggestions">@foreach($mappingSearchSuggestions as $suggestion)<option value="{{ $suggestion }}">@endforeach</datalist></div></div>
+ <div class="col-md-4 col-lg-2"><label for="mappingSupplierSort" class="form-label">Sort by Code</label><select id="mappingSupplierSort" name="mapping_supplier_sort" class="form-select"><option value="code_asc" @selected(request('mapping_supplier_sort', 'code_asc') !== 'code_desc')>Ascending</option><option value="code_desc" @selected(request('mapping_supplier_sort') === 'code_desc')>Descending</option></select></div>
+ <div class="col-md-4 col-lg-2"><label for="mappingCategoryFilter" class="form-label">Category</label><select id="mappingCategoryFilter" name="mapping_category_id" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('mapping_category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select></div>
+ <div class="col-md-4 col-lg-2"><label for="mappingSubcategoryFilter" class="form-label">Subcategory</label><select id="mappingSubcategoryFilter" name="mapping_subcategory_id" class="form-select"><option value="">All subcategories</option>@foreach($subcategories as $subcategory)<option value="{{ $subcategory->id }}" data-category="{{ $subcategory->category_id }}" @selected((string) request('mapping_subcategory_id') === (string) $subcategory->id)>{{ $subcategory->name }}</option>@endforeach</select></div>
+ <div class="col-md-auto d-flex gap-2"><button class="btn btn-dark"><i class="bi bi-search me-1"></i>Search</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials', request()->only(['category_id', 'subcategory_id', 'page'])) }}#materialMappings">Reset</a></div>
 </form></div>
 <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Material</th><th>Supplier</th><th>Supplier item code</th><th>Unit price</th><th>Lead time</th><th>Default</th><th></th></tr></thead><tbody>
  @forelse($vendorMappings as $mapping)<tr><td>{{ $mapping->internal_code }} — {{ $mapping->material_name }}</td><td>{{ $mapping->supplier_code }} — {{ $mapping->supplier_name }}</td><td>{{ $mapping->vendor_item_code ?: '-' }}</td><td>{{ number_format($mapping->unit_price, 4) }}</td><td>{{ $mapping->lead_time_days }} days</td><td>{{ $mapping->is_default_vendor ? 'Yes' : 'No' }}</td><td><div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-warning" onclick='editMaterialMapping(@json($mapping))' aria-label="Edit mapping"><i class="bi bi-pencil"></i></button><form method="POST" action="{{ route('admin.master-data.material-vendors.destroy', $mapping->id) }}" onsubmit="return confirm('Delete this mapping?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form></div></td></tr>@empty<tr><td colspan="7" class="text-center text-muted py-3">No mappings yet.</td></tr>@endforelse
@@ -68,6 +75,50 @@
 @endsection
 @push('scripts')
 <script>
+document.querySelectorAll('input[list]').forEach(input => {
+    const source = document.getElementById(input.getAttribute('list'));
+    if (!source) return;
+    const suggestions = [...source.querySelectorAll('option')].map(option => option.value).filter(Boolean);
+    input.removeAttribute('list');
+    const menu = document.createElement('div');
+    menu.className = 'search-suggest-menu';
+    input.parentElement.appendChild(menu);
+    let activeIndex = -1;
+    const close = () => { menu.classList.remove('show'); activeIndex = -1; };
+    const render = () => {
+        const term = input.value.trim().toLocaleLowerCase();
+        const matches = suggestions.filter(value => !term || value.toLocaleLowerCase().includes(term)).slice(0, 10);
+        menu.replaceChildren();
+        activeIndex = -1;
+        matches.forEach(value => {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'search-suggest-option';
+            option.textContent = value;
+            option.addEventListener('mousedown', event => event.preventDefault());
+            option.addEventListener('click', () => { input.value = value; close(); input.focus(); });
+            menu.appendChild(option);
+        });
+        menu.classList.toggle('show', matches.length > 0);
+    };
+    input.addEventListener('focus', render);
+    input.addEventListener('input', render);
+    input.addEventListener('keydown', event => {
+        const options = [...menu.querySelectorAll('.search-suggest-option')];
+        if (!options.length || !menu.classList.contains('show')) return;
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            activeIndex = (activeIndex + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length;
+            options.forEach((option, index) => option.classList.toggle('active', index === activeIndex));
+        } else if (event.key === 'Enter' && activeIndex >= 0) {
+            event.preventDefault();
+            input.value = options[activeIndex].textContent;
+            close();
+        } else if (event.key === 'Escape') close();
+    });
+    input.addEventListener('blur', () => setTimeout(close, 120));
+});
+
 const materialSelections = [...document.querySelectorAll('.material-copy-selection')];
 const selectPageMaterials = document.getElementById('selectPageMaterials');
 function updateMaterialSelection() {

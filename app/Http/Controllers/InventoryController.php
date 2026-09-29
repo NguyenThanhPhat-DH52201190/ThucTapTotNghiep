@@ -131,14 +131,15 @@ class InventoryController extends Controller
                     $remainingAllowed = ($reqItem->requested_qty * (1 + $tolerance)) - $reqItem->issued_qty;
                     if ($entry['quantity'] > $remainingAllowed) throw new \RuntimeException('Issued quantity exceeds the permitted tolerance.');
                     $material = DB::table('materials')->find($balance->material_id);
-                    $ledger->issue([
+                    $transactionId = $ledger->issue([
                         'balance_id' => $balance->id, 'issue_id' => $issueId, 'issue_code' => $issueCode,
                         'issue_date' => today(), 'material_code' => $material->internal_code, 'unit' => $material->unit,
                         'quantity' => $entry['quantity'], 'requisition_item_id' => $reqItem->id,
                         'user_id' => $request->user()?->id,
                     ]);
                     DB::table('issue_items')->insert([
-                        'issue_id' => $issueId, 'requisition_item_id' => $reqItem->id, 'material_id' => $balance->material_id,
+                        'issue_id' => $issueId, 'inventory_transaction_id' => $transactionId,
+                        'requisition_item_id' => $reqItem->id, 'material_id' => $balance->material_id,
                         'material_color' => $balance->material_color, 'material_size' => $balance->material_size,
                         'lot_roll_no' => $balance->lot_roll_no, 'location' => $balance->location, 'location_id' => $balance->location_id,
                         'issued_qty' => $entry['quantity'], 'created_at' => now(), 'updated_at' => now(),

@@ -48,7 +48,8 @@ class NormController extends Controller
             ->leftJoin('bom_headers', 'bom_headers.id', '=', 'ocs.bom_header_id')
             ->leftJoin('bom_headers as template', 'template.id', '=', 'bom_headers.template_id')
             ->whereNotNull('ocs.bom_header_id')
-            ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version')
+            ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version',
+                'bom_headers.total_fabric_cost', 'bom_headers.total_trim_cost')
             ->selectRaw(\App\Services\CustomerStyleService::imageSql('ocs', 'SNo').' as image_path')
             ->selectRaw('CASE WHEN '.\App\Services\CustomerStyleService::imageSql('bom_headers', 'style_no').' IS NOT NULL THEN bom_headers.id WHEN '.\App\Services\CustomerStyleService::imageSql('template', 'style_no').' IS NOT NULL THEN template.id ELSE NULL END as bom_image_id');
     }

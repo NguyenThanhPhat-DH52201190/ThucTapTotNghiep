@@ -23,6 +23,11 @@
                     <span class="border rounded bg-primary-subtle text-primary-emphasis px-3 py-2">CS: <strong>@include('admin.partials.image-trigger', ['imageUrl' => !empty($order->image_path) ? route('admin.ocs.image', $order->id, false) : null, 'imageLabel' => $order->CS])</strong></span>
                     <span class="border rounded bg-light px-3 py-2">Style: <strong>{{ $order->SNo }}</strong></span>
                     <span class="border rounded bg-success-subtle text-success-emphasis px-3 py-2">Product Qty: <strong>{{ number_format($order->Qty, 0) }}</strong></span>
+                    @if(auth()->user()->role === 'admin')
+                        <span class="border rounded bg-light px-3 py-2">Fabric Value: <strong>$ {{ number_format((float) ($order->total_fabric_cost ?? 0), 4) }}</strong></span>
+                        <span class="border rounded bg-light px-3 py-2">Trim Value: <strong>$ {{ number_format((float) ($order->total_trim_cost ?? 0), 4) }}</strong></span>
+                        <span class="border rounded bg-warning-subtle text-warning-emphasis px-3 py-2">Total: <strong>$ {{ number_format((float) ($order->total_fabric_cost ?? 0) + (float) ($order->total_trim_cost ?? 0), 4) }}</strong></span>
+                    @endif
                 </div>
             </div>
             <div class="d-flex gap-2"><a href="{{ route('admin.norm.materials') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>CS List</a><a href="{{ route('admin.norm.materials.export', ['cutsheet_id' => $order->id]) }}" class="btn btn-success"><i class="bi bi-file-earmark-excel me-1"></i>Export Excel</a></div>

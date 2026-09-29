@@ -132,7 +132,13 @@
                 <a href="{{ route('admin.bom.index') }}"
                     class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-file-text"></i>
-                    BOM & Tech Pack
+                    BOM
+                </a>
+
+                <a href="{{ route('admin.development-norms.index') }}"
+                    class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.development-norms.*') ? 'active' : '' }}">
+                    <i class="bi bi-rulers"></i>
+                    Development Norms
                 </a>
 
                 <a href="{{ route('admin.masterplan.index') }}"
@@ -227,7 +233,7 @@
             @if($role === 'ie')
             <a href="{{ route('admin.bom.index') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-file-text"></i>
-                BOM & Tech Pack
+                BOM
             </a>
             @else
             <a href="{{ route('admin.shopfloor.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
@@ -291,7 +297,7 @@
                     if (request()->routeIs('admin.ocs.*') && !request()->routeIs('admin.ocs.index')) {
                         $moduleBack = ['route' => 'admin.ocs.index', 'label' => 'Order Cut Sheet'];
                     } elseif (request()->routeIs('admin.bom.*') && !request()->routeIs('admin.bom.index')) {
-                        $moduleBack = ['route' => 'admin.bom.index', 'label' => 'BOM & Tech Pack'];
+                        $moduleBack = ['route' => 'admin.bom.index', 'label' => 'BOM'];
                     } elseif (request()->routeIs('admin.masterplan.*') && !request()->routeIs('admin.masterplan.index')) {
                         $moduleBack = ['route' => 'admin.masterplan.index', 'label' => 'Master Plan'];
                     } elseif (request()->routeIs('admin.development-norms.*') && !request()->routeIs('admin.development-norms.index')) {

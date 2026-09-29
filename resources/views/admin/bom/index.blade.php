@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'BOM & Tech Pack')
+@section('title', 'BOM')
 @section('content')
 @include('admin.partials.image-popover')
 
@@ -24,7 +24,7 @@
         <div class="card-body p-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <h5 class="mb-0 fw-bold">
-                    <i class="bi bi-file-text me-2"></i>Bill of Materials (BOM) & Tech Pack
+                    <i class="bi bi-file-text me-2"></i>Bill of Materials (BOM)
                 </h5>
                 <div class="d-flex flex-wrap gap-2">
                     @if($canManage)

@@ -217,7 +217,6 @@ Route::middleware('auth')->group(function () {
         Route::post('bom/import-preview', [BOMController::class, 'importPreview'])->name('bom.import-preview');
         Route::post('bom/import-store', [BOMController::class, 'importStore'])->name('bom.import-store');
         Route::post('bom/{bom}/clone', [BOMController::class, 'clone'])->name('bom.clone');
-        Route::post('bom/{bom}/tech-pack', [BOMController::class, 'saveTechPack'])->name('bom.tech-pack.save');
         Route::post('bom/{bom}/colorways', [BOMController::class, 'saveColorways'])->name('bom.colorways.save');
         Route::resource('bom', BOMController::class);
         Route::get('bom/{id}/image', [BOMController::class, 'image'])->name('bom.image');
@@ -274,6 +273,9 @@ Route::middleware('auth')->group(function () {
         Route::get('stock-records', [StockRecordController::class, 'index'])->name('stock-records.index');
         Route::post('stock-records/sync', [StockRecordController::class, 'sync'])->name('stock-records.sync');
         Route::get('stock-records/{id}', [StockRecordController::class, 'show'])->name('stock-records.show');
+        Route::get('stock-records/{id}/transactions/{transactionId}/edit', [StockRecordController::class, 'editIssue'])->middleware('role:admin,warehouse')->name('stock-records.issues.edit');
+        Route::put('stock-records/{id}/transactions/{transactionId}', [StockRecordController::class, 'updateIssue'])->middleware('role:admin,warehouse')->name('stock-records.issues.update');
+        Route::delete('stock-records/{id}/transactions/{transactionId}', [StockRecordController::class, 'voidIssue'])->middleware('role:admin,warehouse')->name('stock-records.issues.void');
         Route::patch('stock-records/{id}/position', [StockRecordController::class, 'position'])->name('stock-records.position');
         Route::put('stock-records/{id}/priorities', [StockRecordController::class, 'priorities'])->name('stock-records.priorities');
         Route::get('inventory/warehouses', [InventoryController::class, 'warehouses'])->name('inventory.warehouses');

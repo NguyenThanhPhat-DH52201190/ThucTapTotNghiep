@@ -35,6 +35,20 @@ class DevelopmentNormSnapshotService
             'updated_at' => $now,
         ]);
 
+        $orderSizes = DB::table('order_sizes')->where('cutsheet_id', $cutsheetId)->orderBy('id')->get();
+        if ($orderSizes->isEmpty()) {
+            $orderSizes = collect([(object) ['size_name' => 'ONE SIZE', 'quantity' => $order->Qty]]);
+        }
+        $developmentSizes = collect();
+        foreach ($orderSizes as $index => $size) {
+            $sizeId = DB::table('development_norm_sizes')->insertGetId([
+                'development_norm_id' => $normId, 'size_name' => $size->size_name,
+                'quantity' => $size->quantity, 'sort_order' => $index,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+            $developmentSizes->push((object) ['id' => $sizeId, 'quantity' => $size->quantity]);
+        }
+
         $items = DB::table('bom_items as item')
             ->leftJoin('materials as material', 'material.id', '=', 'item.material_id')
             ->where('item.bom_header_id', $bom->id)
@@ -44,7 +58,7 @@ class DevelopmentNormSnapshotService
                 'item.consumption_rate', 'item.waste_percent', 'item.remark', 'item.sort_order']);
 
         foreach ($items as $item) {
-            DB::table('development_norm_items')->insert([
+            $developmentItemId = DB::table('development_norm_items')->insertGetId([
                 'development_norm_id' => $normId,
                 'bom_item_id' => $item->id,
                 'material_id' => $item->material_id,
@@ -65,6 +79,12 @@ class DevelopmentNormSnapshotService
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+            foreach ($developmentSizes as $size) {
+                DB::table('development_norm_item_sizes')->insert([
+                    'development_norm_item_id' => $developmentItemId, 'development_norm_size_id' => $size->id,
+                    'yield_value' => $item->consumption_rate, 'created_at' => $now, 'updated_at' => $now,
+                ]);
+            }
         }
 
         return (int) $normId;

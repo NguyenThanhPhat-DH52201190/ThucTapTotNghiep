@@ -56,12 +56,14 @@ class DevelopmentNormsTest extends TestCase
         });
 
         (require database_path('migrations/2026_09_28_000001_create_development_norms_tables.php'))->up();
+        (require database_path('migrations/2026_09_29_000003_add_size_weighted_development_norms.php'))->up();
     }
 
     public function test_confirming_ocs_copies_bom_and_development_edits_stay_separate(): void
     {
         Queue::fake();
-        $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]));
+        $admin = $this->createUserRecord(['role' => User::ROLE_ADMIN]);
+        $this->actingAs($admin);
         $bomId = DB::table('bom_headers')->insertGetId(['style_no' => 'STYLE-DEV', 'version' => 'V2', 'status' => 'active']);
         $materialId = DB::table('materials')->insertGetId(['old_code' => 'OLD-001']);
         $itemId = DB::table('bom_items')->insertGetId([
@@ -72,6 +74,10 @@ class DevelopmentNormsTest extends TestCase
         ]);
         $this->createOcsRecord(['CS' => 'CS-DEV-1', 'status' => 'pending', 'bom_header_id' => $bomId]);
         $cutsheetId = DB::table('ocs')->where('CS', 'CS-DEV-1')->value('id');
+        DB::table('order_sizes')->insert([
+            ['cutsheet_id' => $cutsheetId, 'size_name' => 'S', 'quantity' => 40, 'created_at' => now(), 'updated_at' => now()],
+            ['cutsheet_id' => $cutsheetId, 'size_name' => 'M', 'quantity' => 60, 'created_at' => now(), 'updated_at' => now()],
+        ]);
 
         $this->patch(route('admin.ocs.status', $cutsheetId), ['status' => 'confirmed'])
             ->assertSessionHas('success');
@@ -83,18 +89,32 @@ class DevelopmentNormsTest extends TestCase
         $this->assertSame('MAT-001', $normItem->material_code);
         $this->assertSame('OLD-001', $normItem->material_old_code);
         $this->assertEquals(1.25, $normItem->source_yield);
+        $this->get(route('admin.development-norms.index'))->assertOk()->assertSee('Development Norms');
+        $this->get(route('admin.development-norms.show', $cutsheetId))->assertOk();
 
         $developmentUser = $this->createUserRecord(['role' => User::ROLE_DEVELOPMENT]);
         $this->actingAs($developmentUser);
-        $this->get(route('admin.development-norms.show', $cutsheetId))->assertOk()->assertSee('Sample fabric');
+        $this->get(route('admin.development-norms.show', $cutsheetId))->assertOk()->assertSee('Sample fabric')->assertSee('CU Qty 40')->assertSee('CU Qty 60');
+        $sizeIds = DB::table('development_norm_sizes')->where('development_norm_id', $norm->id)->pluck('id', 'size_name');
         $this->put(route('admin.development-norms.update', $cutsheetId), [
-            'items' => [$normItem->id => ['yield_value' => 1.8, 'waste_percent' => 4.25]],
+            'items' => [$normItem->id => [
+                'size_rates' => [$sizeIds['S'] => 1.0, $sizeIds['M'] => 2.0], 'waste_percent' => 4.25,
+            ]],
         ])->assertRedirect(route('admin.development-norms.show', $cutsheetId));
 
         $this->assertDatabaseHas('development_norm_items', [
-            'id' => $normItem->id, 'source_yield' => 1.25, 'yield_value' => 1.8, 'waste_percent' => 4.25,
+            'id' => $normItem->id, 'source_yield' => 1.25, 'yield_value' => 1.6, 'waste_percent' => 4.25,
         ]);
+        $this->assertDatabaseHas('development_norm_item_sizes', ['development_norm_item_id' => $normItem->id, 'development_norm_size_id' => $sizeIds['S'], 'yield_value' => 1.0]);
+        $this->assertDatabaseHas('development_norm_item_sizes', ['development_norm_item_id' => $normItem->id, 'development_norm_size_id' => $sizeIds['M'], 'yield_value' => 2.0]);
         $this->assertDatabaseHas('bom_items', ['id' => $itemId, 'consumption_rate' => 1.25, 'waste_percent' => 2.5]);
         $this->assertDatabaseHas('ocs', ['id' => $cutsheetId, 'status' => 'confirmed']);
+
+        $this->actingAs($admin)->put(route('admin.development-norms.update', $cutsheetId), [
+            'items' => [$normItem->id => [
+                'size_rates' => [$sizeIds['S'] => 1.5, $sizeIds['M'] => 2.0], 'waste_percent' => 4.25,
+            ]],
+        ])->assertRedirect(route('admin.development-norms.show', $cutsheetId));
+        $this->assertDatabaseHas('development_norm_items', ['id' => $normItem->id, 'yield_value' => 1.8]);
     }
 }

@@ -332,10 +332,9 @@ class BOMController extends Controller
             ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
             ->whereIn('bom_item_customer_sizes.bom_item_id', $items->pluck('id'))
             ->select('bom_item_customer_sizes.bom_item_id', 'customer_sizes.size_name')->get()->groupBy('bom_item_id');
-        $techPack = DB::table('tech_packs')->where('bom_header_id', $id)->first();
         $colorways = DB::table('bom_colorways')->join('bom_items', 'bom_colorways.bom_item_id', '=', 'bom_items.id')
             ->where('bom_items.bom_header_id', $id)->select('bom_colorways.*', 'bom_items.material_code', 'bom_items.material_name')->get();
-        return view('admin.bom.show', compact('bom', 'items', 'styles', 'customers', 'techPack', 'colorways', 'itemSizeNames'));
+        return view('admin.bom.show', compact('bom', 'items', 'styles', 'customers', 'colorways', 'itemSizeNames'));
     }
 
     public function clone(Request $request, $id)
@@ -384,33 +383,6 @@ class BOMController extends Controller
             Log::warning('BOM clone failed', ['bom_id' => $id, 'message' => $e->getMessage()]);
             return back()->with('error', $e->getMessage());
         }
-    }
-
-    public function saveTechPack(Request $request, $id)
-    {
-        $bom = DB::table('bom_headers')->find($id); if (!$bom) abort(404);
-        $data = $request->validate([
-            'size_spec' => 'nullable|json', 'color_way' => 'nullable|json',
-            'sewing_instructions' => 'nullable|string', 'cutting_instructions' => 'nullable|string',
-            'finishing_instructions' => 'nullable|string', 'packing_instructions' => 'nullable|string',
-            'sample_image' => 'nullable|image|max:5120', 'status' => 'nullable|in:draft,approved,archived', 'change_reason' => 'required|string|max:255',
-        ]);
-        $before = DB::table('tech_packs')->where('bom_header_id', $id)->first();
-        $reason = $data['change_reason']; unset($data['change_reason']);
-        $image = $request->hasFile('sample_image') ? $request->file('sample_image')->store('tech-packs', 'public') : null;
-        DB::table('tech_packs')->updateOrInsert(['bom_header_id' => $id], [
-            'style_no' => $bom->style_no, 'style_name' => $bom->style_name, 'customer' => $bom->customer,
-            'size_spec' => $data['size_spec'] ?: null, 'color_way' => $data['color_way'] ?: null,
-            'sewing_instructions' => $data['sewing_instructions'] ?? null,
-            'cutting_instructions' => $data['cutting_instructions'] ?? null,
-            'finishing_instructions' => $data['finishing_instructions'] ?? null,
-            'packing_instructions' => $data['packing_instructions'] ?? null, 'status' => $data['status'] ?? 'draft',
-            'sample_image' => $image ?? ($tech = DB::table('tech_packs')->where('bom_header_id', $id)->value('sample_image')),
-            'created_by' => $request->user()->id, 'updated_at' => now(), 'created_at' => now(),
-        ]);
-        app(\App\Services\AuditTrailService::class)->record('tech_pack_updated', 'bom_header', (int) $id, $request->user()?->id,
-            $before ? ['status' => $before->status, 'updated_at' => $before->updated_at] : [], ['status' => $data['status'] ?? 'draft'], $reason);
-        return back()->with('success', 'Tech Pack saved.');
     }
 
     public function saveColorways(Request $request, $id)

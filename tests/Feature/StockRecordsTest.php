@@ -345,8 +345,9 @@ class StockRecordsTest extends TestCase
         });
         Schema::create('issue_items', function ($t) {
             $t->id(); foreach (['issue_id', 'requisition_item_id', 'material_id'] as $field) $t->unsignedBigInteger($field);
+            $t->unsignedBigInteger('inventory_transaction_id')->nullable();
             foreach (['material_color', 'material_size', 'lot_roll_no', 'location'] as $field) $t->string($field)->nullable();
-            $t->unsignedBigInteger('location_id')->nullable(); $t->decimal('issued_qty', 14, 4); $t->timestamps();
+            $t->unsignedBigInteger('location_id')->nullable(); $t->decimal('issued_qty', 14, 4); $t->string('status')->default('issued'); $t->timestamps();
         });
     }
 

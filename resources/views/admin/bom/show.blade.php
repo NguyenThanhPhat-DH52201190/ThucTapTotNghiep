@@ -148,31 +148,6 @@
         </div>
     </div>
 
-    <!-- Tech Pack Section -->
-    <div class="card shadow-sm border-0 mt-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-0 fw-bold"><i class="bi bi-clipboard-data me-2"></i>Tech Pack Info</h5>
-        </div>
-        <div class="card-body">
-            @if($canManage)
-            <form method="POST" enctype="multipart/form-data" action="{{ route('admin.bom.tech-pack.save', $bom->id) }}" class="row g-3">
-                @csrf
-                <div class="col-md-6"><label class="form-label">Size specification (JSON/text)</label><textarea name="size_spec" class="form-control" rows="3">{{ old('size_spec', $techPack->size_spec ?? '') }}</textarea></div>
-                <div class="col-md-6"><label class="form-label">Colorways (JSON/text)</label><textarea name="color_way" class="form-control" rows="3">{{ old('color_way', $techPack->color_way ?? '') }}</textarea></div>
-                <div class="col-md-6"><label class="form-label">Cutting instructions</label><textarea name="cutting_instructions" class="form-control" rows="3">{{ old('cutting_instructions', $techPack->cutting_instructions ?? '') }}</textarea></div>
-                <div class="col-md-6"><label class="form-label">Sewing instructions</label><textarea name="sewing_instructions" class="form-control" rows="3">{{ old('sewing_instructions', $techPack->sewing_instructions ?? '') }}</textarea></div>
-                <div class="col-md-6"><label class="form-label">Finishing instructions</label><textarea name="finishing_instructions" class="form-control" rows="3">{{ old('finishing_instructions', $techPack->finishing_instructions ?? '') }}</textarea></div>
-                <div class="col-md-6"><label class="form-label">Packing instructions</label><textarea name="packing_instructions" class="form-control" rows="3">{{ old('packing_instructions', $techPack->packing_instructions ?? '') }}</textarea></div>
-                <div class="col-md-4"><label class="form-label">Sample image</label><input type="file" name="sample_image" class="form-control" accept="image/*"></div>
-                <div class="col-md-3"><label class="form-label">Approval status</label><select name="status" class="form-select"><option value="draft">Draft</option><option value="approved" {{ ($techPack->status ?? '') === 'approved' ? 'selected' : '' }}>Approved</option><option value="archived">Archived</option></select></div>
-                <div class="col-md-5"><label class="form-label">Change reason</label><input name="change_reason" class="form-control" required></div>
-                <div class="col-12"><button class="btn btn-primary btn-sm">Save Tech Pack</button></div>
-            </form>
-            @else
-                <p class="text-muted mb-0">No Tech Pack has been recorded.</p>
-            @endif
-        </div>
-    </div>
 </div>
 
 @if($canManage)

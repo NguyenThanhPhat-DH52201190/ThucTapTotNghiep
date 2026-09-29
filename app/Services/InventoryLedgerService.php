@@ -60,9 +60,9 @@ class InventoryLedgerService
         });
     }
 
-    public function issue(array $data): void
+    public function issue(array $data): int
     {
-        DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data) {
             $balance = DB::table('inventory_balances')->where('id', $data['balance_id'])->lockForUpdate()->first();
             if (!$balance) {
                 throw new RuntimeException('Insufficient available stock for this lot/roll.');
@@ -90,7 +90,7 @@ class InventoryLedgerService
             DB::table('inventory_balances')->where('id', $balance->id)->update([
                 'balance_qty' => $balance->balance_qty - $data['quantity'], 'updated_at' => now(),
             ]);
-            DB::table('inventory_transactions')->insert([
+            return DB::table('inventory_transactions')->insertGetId([
                 'transaction_type' => 'OUT', 'reference_type' => 'MATERIAL_ISSUE', 'reference_id' => $data['issue_id'],
                 'reference_doc' => $data['issue_code'], 'transaction_date' => $data['issue_date'],
                 'material_id' => $balance->material_id, 'material_code' => $data['material_code'],

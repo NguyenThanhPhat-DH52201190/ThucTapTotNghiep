@@ -114,14 +114,15 @@ class DeliveryBillService
                     $notes = 'CU '.$order->CS.'; '.$data['reason'].(!empty($data['priority_reason']) ? '; Priority override: '.$data['priority_reason'] : '');
                     foreach ([round(min($qty, $own), 4), round(max(0, $qty - $own), 4)] as $part => $amount) {
                         if ($amount <= 0) continue;
-                        app(InventoryLedgerService::class)->issue([
+                    $transactionId = app(InventoryLedgerService::class)->issue([
                             'balance_id' => $balance->id, 'requisition_item_id' => $part === 0 ? $item->id : null,
                             'issue_id' => $issueId, 'issue_code' => $data['number'], 'issue_date' => $issuedOn,
                             'material_code' => $need->material_code, 'unit' => $need->unit, 'quantity' => $amount,
                             'warehouse_id' => $balance->warehouse_id, 'user_id' => $userId, 'notes' => $notes,
                         ]);
                     }
-                    DB::table('issue_items')->insert(['issue_id' => $issueId, 'requisition_item_id' => $item->id, 'material_id' => $balance->material_id,
+                    DB::table('issue_items')->insert(['issue_id' => $issueId, 'inventory_transaction_id' => $transactionId,
+                        'requisition_item_id' => $item->id, 'material_id' => $balance->material_id,
                         'material_color' => $balance->material_color, 'material_size' => $balance->material_size, 'lot_roll_no' => $balance->lot_roll_no,
                         'location' => $balance->location, 'location_id' => $balance->location_id, 'issued_qty' => $qty, 'created_at' => now(), 'updated_at' => now()]);
                     DB::table('requisition_items')->where('id', $item->id)->increment('issued_qty', $qty, ['updated_at' => now()]);

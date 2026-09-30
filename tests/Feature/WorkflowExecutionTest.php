@@ -123,6 +123,19 @@ class WorkflowExecutionTest extends TestCase
         $this->assertDatabaseHas('audit_trails', ['event_type' => 'goods_received', 'entity_type' => 'purchase_order', 'entity_id' => $poId]);
     }
 
+    public function test_admin_can_close_a_purchase_order_after_receipt_without_removing_receipt_history(): void
+    {
+        $poId = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-CLOSE', 'status' => 'partial']);
+        DB::table('po_receipts')->insert(['receipt_number' => 'RCP-CLOSE', 'po_id' => $poId, 'received_date' => '2026-09-30']);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]))
+            ->patch(route('admin.procurement.close', $poId))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('purchase_orders', ['id' => $poId, 'status' => 'closed']);
+        $this->assertDatabaseHas('po_receipts', ['receipt_number' => 'RCP-CLOSE', 'po_id' => $poId]);
+        $this->assertDatabaseHas('audit_trails', ['event_type' => 'purchase_order_closed', 'entity_id' => $poId]);
+    }
+
     public function test_shop_floor_blocks_output_above_preceding_wip_and_records_actual_labor(): void
     {
         $this->createOcsRecord();

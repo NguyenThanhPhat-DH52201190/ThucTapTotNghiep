@@ -34,7 +34,7 @@
                 <div class="col-md-3">
                     <select name="status" class="form-select">
                         <option value="">All Status</option>
-                        @foreach(['draft','sent','confirmed','partial','received','cancelled'] as $s)
+                        @foreach(['draft','sent','confirmed','partial','received','closed','cancelled'] as $s)
                             <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ ucfirst($s) }}</option>
                         @endforeach
                     </select>
@@ -67,12 +67,12 @@
                             <td><small>{{ $po->expected_delivery ?? '-' }}</small></td>
                             <td class="text-end fw-bold">{{ number_format($po->total_amount, 4) }} USD</td>
                             <td>
-                                @php $sc = match($po->status) { 'sent'=>'info', 'confirmed'=>'primary', 'received'=>'success', 'partial'=>'warning', 'cancelled'=>'danger', default=>'secondary' } @endphp
+                                @php $sc = match($po->status) { 'sent'=>'info', 'confirmed'=>'primary', 'received'=>'success', 'partial'=>'warning', 'closed'=>'dark', 'cancelled'=>'danger', default=>'secondary' } @endphp
                                 <span class="badge bg-{{ $sc }}">{{ ucfirst($po->status) }}</span>
                             </td>
                             <td>
                                 <a href="{{ route('admin.procurement.show', $po->id) }}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
-                                @if($canCreatePo && !in_array($po->status, ['partial', 'received']))
+                                @if($canCreatePo && !in_array($po->status, ['partial', 'received', 'closed']))
                                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
                                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                                         @csrf @method('DELETE')

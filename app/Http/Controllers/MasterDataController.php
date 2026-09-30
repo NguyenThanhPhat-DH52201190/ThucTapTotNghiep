@@ -113,7 +113,7 @@ class MasterDataController extends Controller
         $mappingSearch = trim((string) $request->input('mapping_search', ''));
         $mappingSort = $request->input('mapping_supplier_sort') === 'code_desc' ? 'desc' : 'asc';
         $vendorMappings = DB::table('material_vendors')->join('materials', 'material_vendors.material_id', '=', 'materials.id')->join('suppliers', 'material_vendors.vendor_id', '=', 'suppliers.id')
-            ->select('material_vendors.*', 'materials.internal_code', 'materials.material_name', 'suppliers.code as supplier_code', 'suppliers.name as supplier_name', 'suppliers.email as supplier_email', 'suppliers.contact_person as supplier_contact')
+            ->select('material_vendors.*', 'materials.internal_code', 'materials.old_code as material_old_code', 'materials.material_name', 'suppliers.code as supplier_code', 'suppliers.name as supplier_name', 'suppliers.email as supplier_email', 'suppliers.contact_person as supplier_contact')
             ->when($request->filled('mapping_category_id'), fn ($query) => $query->where('materials.category_id', $request->integer('mapping_category_id')))
             ->when($request->filled('mapping_subcategory_id'), fn ($query) => $query->where('materials.subcategory_id', $request->integer('mapping_subcategory_id')))
             ->when($mappingSearch !== '', fn ($query) => $query->where(fn ($sub) =>

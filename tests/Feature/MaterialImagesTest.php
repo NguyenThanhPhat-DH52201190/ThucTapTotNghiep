@@ -33,6 +33,7 @@ class MaterialImagesTest extends TestCase
         Schema::create('materials', function (Blueprint $table) {
             $table->string('image_path')->nullable();
             $table->id(); $table->unsignedBigInteger('category_id'); $table->unsignedBigInteger('subcategory_id')->nullable();
+            $table->unsignedBigInteger('copied_from_material_id')->nullable();
             foreach (['internal_code', 'old_code', 'material_name', 'material_type', 'color', 'size', 'unit'] as $name) $table->string($name)->nullable();
             $table->timestamps();
         });
@@ -46,6 +47,7 @@ class MaterialImagesTest extends TestCase
         });
         Schema::create('suppliers', function (Blueprint $table) {
             $table->id(); $table->string('code'); $table->string('name'); $table->string('status');
+            $table->string('email')->nullable(); $table->string('contact_person')->nullable();
         });
         DB::table('material_categories')->insert(['id' => 1, 'name' => 'Fabric', 'slug' => 'fabric']);
         DB::table('material_subcategories')->insert(['id' => 1, 'category_id' => 1, 'name' => 'Woven']);
@@ -275,7 +277,7 @@ class MaterialImagesTest extends TestCase
             ]);
             DB::table('material_vendors')->insert(['material_id' => $materialId, 'vendor_id' => 1]);
         }
-        $trimId = DB::table('materials')->insertGetId(['internal_code' => 'TRIM-01', 'material_name' => 'Button', 'unit' => 'PCS', 'category_id' => 2, 'subcategory_id' => 2, 'material_type' => 'trim']);
+        $trimId = DB::table('materials')->insertGetId(['internal_code' => 'TRIM-01', 'old_code' => 'OLD-TRIM-01', 'material_name' => 'Button', 'unit' => 'PCS', 'category_id' => 2, 'subcategory_id' => 2, 'material_type' => 'trim']);
         DB::table('material_vendors')->insert(['material_id' => $trimId, 'vendor_id' => 1]);
         $response = $this->get(route('admin.master-data.materials', [
             'category_id' => 2, 'mapping_category_id' => 1, 'mapping_subcategory_id' => 1, 'mapping_page' => 2,
@@ -289,8 +291,8 @@ class MaterialImagesTest extends TestCase
         $this->assertSame('TRIM-01', $response->viewData('materials')->first()->internal_code);
         $this->assertStringContainsString('mapping_subcategory_id=1', $mappings->url(1));
         $this->assertStringContainsString('#materialMappings', $mappings->url(1));
-        $this->get(route('admin.master-data.materials', ['mapping_subcategory_id' => 2]))->assertOk()
-            ->assertViewHas('vendorMappings', fn ($rows) => $rows->total() === 1 && $rows->first()->internal_code === 'TRIM-01');
+        $this->get(route('admin.master-data.materials', ['mapping_subcategory_id' => 2]))->assertOk()->assertSee('Old Code')->assertSee('OLD-TRIM-01')
+            ->assertViewHas('vendorMappings', fn ($rows) => $rows->total() === 1 && $rows->first()->internal_code === 'TRIM-01' && $rows->first()->material_old_code === 'OLD-TRIM-01');
         $this->get(route('admin.master-data.materials', ['mapping_category_id' => 1, 'mapping_subcategory_id' => 2]))->assertOk()
             ->assertViewHas('vendorMappings', fn ($rows) => $rows->total() === 0);
     }

@@ -332,9 +332,7 @@ class BOMController extends Controller
             ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
             ->whereIn('bom_item_customer_sizes.bom_item_id', $items->pluck('id'))
             ->select('bom_item_customer_sizes.bom_item_id', 'customer_sizes.size_name')->get()->groupBy('bom_item_id');
-        $colorways = DB::table('bom_colorways')->join('bom_items', 'bom_colorways.bom_item_id', '=', 'bom_items.id')
-            ->where('bom_items.bom_header_id', $id)->select('bom_colorways.*', 'bom_items.material_code', 'bom_items.material_name')->get();
-        return view('admin.bom.show', compact('bom', 'items', 'styles', 'customers', 'colorways', 'itemSizeNames'));
+        return view('admin.bom.show', compact('bom', 'items', 'styles', 'customers', 'itemSizeNames'));
     }
 
     public function clone(Request $request, $id)

@@ -15,12 +15,17 @@
     </div>
     <form method="POST" action="{{ route('admin.development-norms.update', $norm->cutsheet_id) }}">
         @csrf @method('PUT')
-        <div class="card shadow-sm border-0"><div class="table-responsive">
-            <table class="table table-sm table-bordered table-hover align-middle mb-0">
+        <div class="card shadow-sm border-0"><div class="table-responsive development-norm-scroll" id="developmentNormTableScroll">
+            <table class="table table-sm table-bordered table-hover align-middle mb-0 development-norm-table">
+                <colgroup>
+                    <col style="width:180px"><col style="width:170px"><col style="width:260px"><col style="width:125px"><col style="width:175px"><col style="width:90px">
+                    @foreach($sizes as $size)<col style="width:155px">@endforeach
+                    <col style="width:175px"><col style="width:115px"><col style="width:175px"><col style="width:170px">
+                </colgroup>
                 <thead class="table-light"><tr>
-                    <th>Material Code</th><th>Old Code</th><th>Description</th><th>Type</th><th>Colour / BOM Size</th><th>Unit</th>
-                    @foreach($sizes as $size)<th class="text-end">{{ $size->size_name }}<div class="small fw-normal text-muted">CU Qty {{ number_format($size->quantity, 0) }}</div></th>@endforeach
-                    <th class="text-end">Weighted average</th><th class="text-end">Waste %</th><th class="text-end">Total incl. waste</th><th class="text-nowrap" style="min-width:150px">Remark</th>
+                    <th class="text-nowrap">Material Code</th><th class="text-nowrap">Old Code</th><th class="text-nowrap">Description</th><th class="text-nowrap">Type</th><th class="text-nowrap">Colour / BOM Size</th><th class="text-nowrap">Unit</th>
+                    @foreach($sizes as $size)<th class="text-end text-nowrap">{{ $size->size_name }}<div class="small fw-normal text-muted">CU Qty {{ number_format($size->quantity, 0) }}</div></th>@endforeach
+                    <th class="text-end text-nowrap">Weighted average</th><th class="text-end text-nowrap">Waste %</th><th class="text-end text-nowrap">Total incl. waste</th><th class="text-nowrap">Remark</th>
                 </tr></thead>
                 <tbody>
                 @forelse($items as $item)
@@ -52,10 +57,54 @@
             </table>
         </div><div class="card-footer d-flex justify-content-end"><button class="btn btn-primary" @disabled($items->isEmpty() || $sizes->isEmpty())><i class="bi bi-save me-1"></i>Save Development Norms</button></div></div>
     </form>
+    <div class="development-norm-scroll-proxy" id="developmentNormScrollProxy" aria-label="Scroll table horizontally" tabindex="0"><div></div></div>
 </div>
+<style>
+    .development-norm-table { width: max-content; min-width: 100%; table-layout: fixed; }
+    .development-norm-table th, .development-norm-table td { white-space: nowrap; }
+    .development-norm-table td:nth-child(3) { overflow: hidden; text-overflow: ellipsis; }
+    .development-norm-table td:nth-child(1) code, .development-norm-table td:nth-child(2) code { white-space: nowrap; }
+    .development-norm-scroll { scrollbar-width: none; }
+    .development-norm-scroll::-webkit-scrollbar { display: none; }
+    .development-norm-scroll-proxy { display: none; position: fixed; left: 12px; right: 12px; bottom: 0; z-index: 1040; height: 16px; overflow-x: auto; overflow-y: hidden; background: #e9ecef; border: 1px solid #adb5bd; border-radius: 8px 8px 0 0; box-shadow: 0 -2px 8px #0002; scrollbar-width: auto; }
+    .development-norm-scroll-proxy > div { height: 1px; }
+    .development-norm-scroll-proxy.is-visible { display: block; }
+</style>
 @endsection
 @push('scripts')
 <script>
+(() => {
+    const tableScroll = document.getElementById('developmentNormTableScroll');
+    const proxy = document.getElementById('developmentNormScrollProxy');
+    if (!tableScroll || !proxy) return;
+    const proxyContent = proxy.firstElementChild;
+    let syncing = false;
+    const syncFromTable = () => {
+        if (syncing) return;
+        syncing = true;
+        proxy.scrollLeft = tableScroll.scrollLeft;
+        syncing = false;
+    };
+    const syncFromProxy = () => {
+        if (syncing) return;
+        syncing = true;
+        tableScroll.scrollLeft = proxy.scrollLeft;
+        syncing = false;
+    };
+    const updateProxy = () => {
+        proxyContent.style.width = `${tableScroll.scrollWidth}px`;
+        const rect = tableScroll.getBoundingClientRect();
+        proxy.classList.toggle('is-visible', tableScroll.scrollWidth > tableScroll.clientWidth + 1 && rect.top < window.innerHeight && rect.bottom > 0);
+        syncFromTable();
+    };
+    tableScroll.addEventListener('scroll', syncFromTable, { passive: true });
+    proxy.addEventListener('scroll', syncFromProxy, { passive: true });
+    window.addEventListener('scroll', updateProxy, { passive: true });
+    window.addEventListener('resize', updateProxy, { passive: true });
+    if ('ResizeObserver' in window) new ResizeObserver(updateProxy).observe(tableScroll);
+    updateProxy();
+})();
+
 document.querySelectorAll('[data-norm-row]').forEach(row => {
     const rates = [...row.querySelectorAll('[data-size-yield]')];
     const waste = row.querySelector('[data-waste]');

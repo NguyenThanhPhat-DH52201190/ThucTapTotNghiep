@@ -26,6 +26,7 @@
                                 data-po="{{ $item->ONum }}"
                                 data-style="{{ $item->SNo }}"
                                 data-qty="{{ $item->Qty }}"
+                                data-required-date="{{ $item->expected_ship_date ?? '' }}"
                                 data-bom="{{ $item->bom_style ?? 'No BOM' }}"
                                 {{ old('CU') === $item->CS ? 'selected' : '' }}>
                                 {{ $item->CS }} @if($item->bom_style) [BOM: {{ $item->bom_style }}] @endif
@@ -82,16 +83,6 @@
                         <input type="number" name="Qty_dis" id="qtyDisInput" class="form-control" min="0" value="{{ old('Qty_dis') }}">
                         @error('Qty_dis')<div class="text-danger" style="font-size: 0.875rem;">{{ $message }}</div>@enderror
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">ExQty</label>
-                        <input type="number" name="ExQty" class="form-control" min="0" value="{{ old('ExQty') }}">
-                        @error('ExQty')<div class="text-danger" style="font-size: 0.875rem;">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">FirstOPT</label>
-                        <input type="date" name="FirstOPT" class="form-control @error('FirstOPT') is-invalid @enderror" value="{{ old('FirstOPT') }}">
-                        @error('FirstOPT')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
                 </div>
             </div>
         </div>
@@ -127,8 +118,25 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Require Date</label>
-                        <input type="date" name="Require_date" class="form-control" value="{{ old('Require_date') }}">
-                        @error('Require_date')<div class="text-danger" style="font-size: 0.875rem;">{{ $message }}</div>@enderror
+                        <input type="date" id="requiredDateDisplay" class="form-control" readonly aria-describedby="requiredDateHelp">
+                        <div id="requiredDateHelp" class="form-text">Automatically taken from the selected OCS.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">First OPT</label>
+                        <input type="date" name="FirstOPT" class="form-control @error('FirstOPT') is-invalid @enderror" value="{{ old('FirstOPT') }}">
+                        @error('FirstOPT')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Norm Date</label>
+                        <input type="date" name="Norm_date" class="form-control" value="{{ old('Norm_date') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">In-Warehouse Date</label>
+                        <input type="date" name="inWHDate" class="form-control" value="{{ old('inWHDate') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">3rd Party Inspection</label>
+                        <input type="text" name="3rd_PartyInspection" class="form-control" value="{{ old('3rd_PartyInspection') }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Confirm Date</label>
@@ -155,24 +163,17 @@
             </div>
         </div>
 
-        <!-- Card 3: Materials -->
+        <!-- Card 3: Supply Chain -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2"></i>Materials & Supply Chain</h5>
+                <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2"></i>Supply Chain</h5>
             </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <label class="form-label">Norm_date</label>
-                        <input type="date" name="Norm_date" class="form-control" value="{{ old('Norm_date') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">inWHDate</label>
-                        <input type="date" name="inWHDate" class="form-control" value="{{ old('inWHDate') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">3rd Party Inspection</label>
-                        <input type="text" name="3rd_PartyInspection" class="form-control" value="{{ old('3rd_PartyInspection') }}">
+                        <label class="form-label">ExQty</label>
+                        <input type="number" name="ExQty" class="form-control" min="0" value="{{ old('ExQty') }}">
+                        @error('ExQty')<div class="text-danger" style="font-size: 0.875rem;">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">ShipDate2</label>
@@ -230,12 +231,14 @@
     const poInput = document.getElementById('poInput');
     const styleInput = document.getElementById('styleInput');
     const ocsQtyDisplay = document.getElementById('ocsQtyDisplay');
+    const requiredDateDisplay = document.getElementById('requiredDateDisplay');
 
     cuSelect.addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
         poInput.value = selected ? selected.getAttribute('data-po') || '' : '';
         styleInput.value = selected ? selected.getAttribute('data-style') || '' : '';
         ocsQtyDisplay.value = selected ? selected.getAttribute('data-qty') || '-' : '-';
+        requiredDateDisplay.value = selected ? selected.getAttribute('data-required-date') || '' : '';
     });
 
     // Trigger on load if old value exists

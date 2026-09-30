@@ -125,28 +125,6 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mt-4">
-        <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-palette me-2"></i>Garment-to-material colorways</h5></div>
-        <div class="card-body">
-            <p class="text-muted small">The mapping is used when an Order Cut Sheet is confirmed: its garment color selects the correct material color for the requisition and MRP.</p>
-            @if($colorways->isNotEmpty())
-                <div class="table-responsive mb-3"><table class="table table-sm table-bordered mb-0"><thead class="table-light"><tr><th>Material</th><th>Garment color</th><th>Material color</th><th>Note</th></tr></thead><tbody>
-                @foreach($colorways as $colorway)<tr><td>{{ $colorway->material_code }} — {{ $colorway->material_name }}</td><td>{{ $colorway->garment_color }}</td><td>{{ $colorway->material_color }}</td><td>{{ $colorway->notes }}</td></tr>@endforeach
-                </tbody></table></div>
-            @endif
-            @if($canManage)
-                <form method="POST" action="{{ route('admin.bom.colorways.save', $bom->id) }}" class="row g-2 align-items-end">
-                    @csrf
-                    <div class="col-md-4"><label class="form-label">BOM material</label><select name="colorways[0][bom_item_id]" class="form-select" required>@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->material_code }} — {{ $item->material_name }}</option>@endforeach</select></div>
-                    <div class="col-md-3"><label class="form-label">Garment color</label><input name="colorways[0][garment_color]" class="form-control" required placeholder="e.g. GREEN"></div>
-                    <div class="col-md-3"><label class="form-label">Material color</label><input name="colorways[0][material_color]" class="form-control" required placeholder="e.g. OLIVE"></div>
-                    <div class="col-md-2"><button class="btn btn-primary w-100">Save mapping</button></div>
-                    <div class="col-12"><input name="colorways[0][notes]" class="form-control" placeholder="Optional note"></div>
-                    <div class="col-12"><input name="change_reason" class="form-control" placeholder="Change reason" required></div>
-                </form>
-            @endif
-        </div>
-    </div>
 
 </div>
 

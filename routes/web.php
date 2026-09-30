@@ -258,6 +258,7 @@ Route::middleware('auth')->group(function () {
         Route::post('procurement/store', [ProcurementController::class, 'store'])->middleware('ppic.team:create')->name('procurement.store');
         Route::post('procurement/from-suggestions', [ProcurementController::class, 'createFromSuggestions'])->middleware('ppic.team:create')->name('procurement.from-suggestions');
         Route::patch('procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->middleware('ppic.team:track')->name('procurement.status');
+        Route::patch('procurement/{id}/close', [ProcurementController::class, 'close'])->middleware('role:admin')->name('procurement.close');
         Route::patch('procurement/{id}/eta', [ProcurementController::class, 'updateEta'])->middleware('ppic.team:track')->name('procurement.eta.update');
         Route::post('procurement/{id}/receipts/import', [ProcurementController::class, 'importReceiptRows'])->middleware('ppic.team:track')->name('procurement.receipts.import');
         Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->middleware('ppic.team:track')->name('procurement.receipts.store');
@@ -290,6 +291,7 @@ Route::middleware('auth')->group(function () {
         Route::get('inventory/requisitions', [InventoryController::class, 'requisitions'])->name('inventory.requisitions');
         Route::get('inventory/transactions', [InventoryController::class, 'transactions'])->name('inventory.transactions');
         Route::get('inventory/report', [InventoryController::class, 'stockReport'])->name('inventory.report');
+        Route::get('inventory/code/{materialCode}', [InventoryController::class, 'codeDetails'])->name('inventory.code-details');
         Route::post('inventory/{id}/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
         Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
         Route::patch('inventory/{id}', [InventoryController::class, 'update'])->name('inventory.update');

@@ -230,31 +230,32 @@ class InventoryController extends Controller
     {
         $query = DB::table('inventory_balances')
             ->join('materials', 'inventory_balances.material_id', '=', 'materials.id')
-            ->leftJoin('warehouses', 'inventory_balances.warehouse_id', '=', 'warehouses.id')
-            ->leftJoin('locations', 'inventory_balances.location_id', '=', 'locations.id')
-            ->select('inventory_balances.id', 'inventory_balances.material_id', 'materials.internal_code as material_code',
-                'materials.old_code', 'materials.material_name',
-                'materials.material_type', 'materials.unit', 'inventory_balances.balance_qty as current_qty',
-                DB::raw('(inventory_balances.balance_qty - inventory_balances.reserved_qty) as available_qty'),
-                'inventory_balances.reserved_qty', 'inventory_balances.min_stock_level',
-                'inventory_balances.reorder_point', 'inventory_balances.unit_cost',
-                'inventory_balances.location as location_bin', 'inventory_balances.location_id',
-                'inventory_balances.warehouse_id', 'inventory_balances.lot_roll_no as batch_no',
-                'warehouses.name as warehouse_name', 'warehouses.code as warehouse_code',
-                'locations.location_code');
+            ->select('materials.internal_code as material_code')
+            ->selectRaw('MIN(materials.material_name) as material_name, MIN(materials.unit) as unit')
+            ->selectRaw('SUM(inventory_balances.balance_qty) as current_qty')
+            ->selectRaw('SUM(inventory_balances.reserved_qty) as reserved_qty')
+            ->selectRaw('SUM(inventory_balances.balance_qty - inventory_balances.reserved_qty) as available_qty')
+            ->selectRaw('SUM(inventory_balances.min_stock_level) as min_stock_level')
+            ->selectRaw('SUM(inventory_balances.reorder_point) as reorder_point')
+            ->selectRaw('SUM(inventory_balances.balance_qty * inventory_balances.unit_cost) as total_value')
+            ->selectRaw('CASE WHEN SUM(inventory_balances.balance_qty) > 0 THEN (SUM(inventory_balances.balance_qty * inventory_balances.unit_cost) * 1.0) / SUM(inventory_balances.balance_qty) ELSE 0 END as unit_cost');
 
         if ($request->filled('material_code')) {
-            $query->where(fn ($q) => $q->where('materials.internal_code', 'like', '%' . $request->material_code . '%')
-                ->orWhere('materials.old_code', 'like', '%' . $request->material_code . '%'));
+            $term = '%' . $request->material_code . '%';
+            $query->where(fn ($q) => $q->where('materials.internal_code', 'like', $term)
+                ->orWhereIn('materials.internal_code', fn ($sub) => $sub->select('matched.internal_code')
+                    ->from('materials as matched')->where('matched.old_code', 'like', $term)));
         }
         if ($request->filled('material_type')) {
-            $query->where('materials.material_type', $request->material_type);
+            $type = $request->material_type;
+            $query->whereIn('materials.internal_code', fn ($sub) => $sub->select('matched.internal_code')
+                ->from('materials as matched')->where('matched.material_type', $type));
         }
         if ($request->filled('low_stock')) {
-            $query->whereRaw('(inventory_balances.balance_qty - inventory_balances.reserved_qty) <= inventory_balances.reorder_point');
+            $query->havingRaw('SUM(inventory_balances.balance_qty - inventory_balances.reserved_qty) <= SUM(inventory_balances.reorder_point)');
         }
 
-        $items = $query->orderBy('materials.internal_code')
+        $items = $query->groupBy('materials.internal_code')->orderBy('materials.internal_code')
             ->paginate(20);
 
         $materials = DB::table('materials')->orderBy('internal_code')->get();
@@ -264,12 +265,35 @@ class InventoryController extends Controller
         return view('admin.inventory.index', compact('items', 'materials', 'warehouses', 'locations'));
     }
 
+    public function codeDetails(string $materialCode)
+    {
+        $items = DB::table('inventory_balances')
+            ->join('materials', 'inventory_balances.material_id', '=', 'materials.id')
+            ->leftJoin('warehouses', 'inventory_balances.warehouse_id', '=', 'warehouses.id')
+            ->leftJoin('locations', 'inventory_balances.location_id', '=', 'locations.id')
+            ->where('materials.internal_code', $materialCode)
+            ->select('inventory_balances.id', 'inventory_balances.material_id', 'materials.internal_code as material_code',
+                'materials.old_code', 'materials.material_name', 'materials.material_type', 'materials.unit',
+                'inventory_balances.balance_qty as current_qty', 'inventory_balances.reserved_qty',
+                DB::raw('(inventory_balances.balance_qty - inventory_balances.reserved_qty) as available_qty'),
+                'inventory_balances.min_stock_level', 'inventory_balances.reorder_point', 'inventory_balances.unit_cost',
+                'inventory_balances.location as location_bin', 'inventory_balances.location_id', 'inventory_balances.warehouse_id',
+                'inventory_balances.custom_code',
+                'inventory_balances.lot_roll_no as batch_no', 'warehouses.name as warehouse_name',
+                'warehouses.code as warehouse_code', 'locations.location_code')
+            ->orderBy('materials.material_type')->orderBy('materials.old_code')
+            ->orderBy('warehouses.code')->orderBy('locations.location_code')->orderBy('inventory_balances.id')->get();
+        abort_if($items->isEmpty(), 404);
+        return view('admin.inventory.code-details', ['materialCode' => $materialCode, 'items' => $items]);
+    }
+
     public function store(Request $request, InventoryLedgerService $ledger)
     {
         $data = $request->validate([
             'material_id' => 'required|exists:materials,id', 'warehouse_id' => 'required|exists:warehouses,id',
             'location_id' => 'required|exists:locations,id', 'opening_qty' => 'required|numeric|min:0',
             'unit_cost' => 'required|numeric|decimal:0,4|min:0', 'lot_roll_no' => 'nullable|string|max:191',
+            'custom_code' => 'nullable|string|max:191',
             'min_stock_level' => 'required|numeric|min:0', 'reorder_point' => 'required|numeric|min:0',
         ]);
         $location = DB::table('locations')->where('id', $data['location_id'])
@@ -295,7 +319,8 @@ class InventoryController extends Controller
             ->where('warehouse_id', $data['warehouse_id'])->where('location_id', $data['location_id'])
             ->where('material_color', $material->color)->where('material_size', $material->size)
             ->where('lot_roll_no', $data['lot_roll_no'] ?? null)
-            ->update(['min_stock_level' => $data['min_stock_level'], 'reorder_point' => $data['reorder_point']]);
+            ->update(['min_stock_level' => $data['min_stock_level'], 'reorder_point' => $data['reorder_point'],
+                'custom_code' => $data['custom_code'] ?? null]);
         return back()->with('success', 'Opening inventory created.');
     }
 
@@ -303,6 +328,7 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'old_code' => 'nullable|string|max:191|unique:materials,old_code,' . $request->material_id,
+            'custom_code' => 'nullable|string|max:191',
             'material_id' => 'required|exists:materials,id', 'new_qty' => 'required|numeric|min:0',
             'min_stock_level' => 'required|numeric|min:0', 'reorder_point' => 'required|numeric|min:0',
             'reason' => 'required|string|max:500',
@@ -314,6 +340,7 @@ class InventoryController extends Controller
                 ->update(['old_code' => $data['old_code'] ?: null, 'updated_at' => now()]);
             DB::table('inventory_balances')->where('id', $balance->id)->update([
                 'min_stock_level' => $data['min_stock_level'], 'reorder_point' => $data['reorder_point'], 'updated_at' => now(),
+                'custom_code' => $data['custom_code'] ?? null,
             ]);
             if ((float) $balance->balance_qty !== (float) $data['new_qty']) {
                 $ledger->adjust(['balance_id' => $balance->id, 'new_qty' => $data['new_qty'],

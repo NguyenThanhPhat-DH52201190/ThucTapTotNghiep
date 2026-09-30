@@ -3,9 +3,9 @@
 @section('content')
 @php $canManage = auth()->user()->role === 'admin'; @endphp
 <style>
-.inventory-items-table{table-layout:fixed;min-width:1500px}
-.inventory-items-table th,.inventory-items-table td{overflow-wrap:anywhere;vertical-align:middle}
-.inventory-items-table code{white-space:normal;overflow-wrap:anywhere}
+.inventory-items-table{table-layout:auto;min-width:1250px}
+.inventory-items-table th,.inventory-items-table td{white-space:nowrap;vertical-align:middle}
+.inventory-items-table code{white-space:nowrap}
 .inventory-items-table .nowrap-cell{white-space:nowrap;overflow-wrap:normal}
 </style>
 
@@ -62,10 +62,9 @@
         </div>
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0 inventory-items-table">
-                <colgroup><col style="width:9%"><col style="width:7%"><col style="width:12%"><col style="width:6%"><col style="width:9%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:5%"><col style="width:6%"><col style="width:8%"><col style="width:10%"><col style="width:9%"></colgroup>
                 <thead class="table-light">
                     <tr>
-                        <th>Code</th><th>Old Code</th><th>Name</th><th>Type</th><th>Location</th>
+                        <th>Code</th>
                         <th class="text-end text-nowrap">Current</th><th class="text-end text-nowrap">Reserved</th>
                         <th class="text-end text-nowrap">Available</th><th class="text-end">Min Stock</th>
                         <th class="text-end">Reorder Point</th><th class="text-end text-nowrap">Unit Cost</th>
@@ -75,11 +74,7 @@
                 <tbody>
                     @forelse($items as $item)
                         <tr class="{{ $item->available_qty <= $item->reorder_point && $item->reorder_point > 0 ? 'table-danger' : '' }}">
-                            <td><code>{{ $item->material_code }}</code></td>
-                            <td><code>{{ $item->old_code ?: '-' }}</code></td>
-                            <td><small>{{ $item->material_name }}</small></td>
-                            <td><span class="badge bg-info">{{ $item->material_type }}</span></td>
-                            <td><small>{{ $item->warehouse_code ?: '-' }} / {{ $item->location_code ?: ($item->location_bin ?: '-') }}</small></td>
+                            <td><a href="{{ route('admin.inventory.code-details', ['materialCode' => $item->material_code]) }}"><code>{{ $item->material_code }}</code></a></td>
                             <td class="text-end text-nowrap">{{ number_format($item->current_qty, 0) }}</td>
                             <td class="text-end text-nowrap">{{ number_format($item->reserved_qty, 0) }}</td>
                             <td class="text-end text-nowrap fw-bold {{ $item->available_qty <= $item->reorder_point && $item->reorder_point > 0 ? 'text-danger' : 'text-success' }}">
@@ -88,18 +83,13 @@
                             <td class="text-end">{{ number_format($item->min_stock_level, 0) }}</td>
                             <td class="text-end">{{ number_format($item->reorder_point, 2) }}</td>
                             <td class="text-end text-nowrap">{{ number_format($item->unit_cost, 4) }}</td>
-                            <td class="text-end text-nowrap fw-bold">$ {{ number_format($item->current_qty * $item->unit_cost, 4) }}</td>
+                            <td class="text-end text-nowrap fw-bold">$ {{ number_format($item->total_value, 4) }}</td>
                             <td class="nowrap-cell">
-                                @if($canManage)
-                                    <button class="btn btn-sm btn-warning" onclick='editInventory(@json($item))'>
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <form method="POST" action="{{ route('admin.inventory.destroy', $item->id) }}" class="d-inline" onsubmit="return confirm('Delete this inventory balance?')">@csrf @method('DELETE')<button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button></form>
-                                @endif
+                                <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.inventory.code-details', ['materialCode' => $item->material_code]) }}"><i class="bi bi-list-ul me-1"></i>Details</a>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="13" class="text-center py-3 text-muted">No inventory items</td></tr>
+                        <tr><td colspan="9" class="text-center py-3 text-muted">No inventory items</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -118,6 +108,7 @@
         <div class="col-md-4"><label class="form-label">Opening Qty *</label><input type="number" step="0.0001" min="0" name="opening_qty" class="form-control" required></div>
         <div class="col-md-4"><label class="form-label">Unit Cost *</label><input type="number" step="0.0001" min="0" name="unit_cost" class="form-control" value="0.0000" required></div>
         <div class="col-md-4"><label class="form-label">Lot/Roll No.</label><input name="lot_roll_no" class="form-control"></div>
+        <div class="col-md-6"><label class="form-label">Custom Code</label><input name="custom_code" class="form-control" maxlength="191"></div>
         <div class="col-md-6"><label class="form-label">Min Stock</label><input type="number" step="0.0001" min="0" name="min_stock_level" class="form-control" value="0" required></div>
         <div class="col-md-6"><label class="form-label">Reorder Point</label><input type="number" step="0.0001" min="0" name="reorder_point" class="form-control" value="0" required></div>
     </div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Create Opening Balance</button></div>

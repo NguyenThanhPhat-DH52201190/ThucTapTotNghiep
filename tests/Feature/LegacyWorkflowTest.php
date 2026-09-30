@@ -247,6 +247,28 @@ class LegacyWorkflowTest extends TestCase
         ])->assertSessionHasErrors('ExQty');
     }
 
+    public function test_masterplan_create_uses_ocs_required_date_and_keeps_mps_inputs(): void
+    {
+        (require database_path('migrations/2026_07_27_000003_update_ocs_final.php'))->up();
+        (require database_path('migrations/2026_04_25_000007_add_require_date_and_confirm_date_to_mtp_table.php'))->up();
+        (require database_path('migrations/2026_07_27_000004_update_mtp_for_mps.php'))->up();
+        $this->createOcsRecord(['CS' => 'CS-REQ-DATE', 'Qty' => 100, 'expected_ship_date' => '2026-10-20']);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]));
+
+        $this->get(route('admin.masterplan.create'))->assertOk()
+            ->assertSee('Supply Chain')->assertSee('First OPT')->assertSee('Norm Date')
+            ->assertSee('data-required-date="2026-10-20"', false);
+        $this->post(route('admin.masterplan.store'), [
+            'CU' => 'CS-REQ-DATE', 'Line' => 'Sewing', 'LineColor' => '#008000',
+            'Qty_dis' => 80, 'ExQty' => 10, 'FirstOPT' => '2026-09-30', 'lt' => 3,
+        ])->assertRedirect(route('admin.masterplan.index'));
+
+        $this->assertDatabaseHas('mtp', [
+            'CU' => 'CS-REQ-DATE', 'Require_date' => '2026-10-20', 'FirstOPT' => '2026-09-30',
+            'ExQty' => 10, 'Norm_date' => null, 'inWHDate' => null,
+        ]);
+    }
+
     public function test_ocs_import_parses_numeric_excel_dates_and_upserts_rows(): void
     {
         \Illuminate\Support\Facades\Schema::create('customer_info', function ($t) { $t->id(); $t->string('name'); });

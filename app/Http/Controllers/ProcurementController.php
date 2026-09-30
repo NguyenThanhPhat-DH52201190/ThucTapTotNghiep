@@ -373,6 +373,33 @@ class ProcurementController extends Controller
         return back()->with('success', "PO status updated to {$newStatus}");
     }
 
+    public function close(int $id, Request $request, AuditTrailService $audit)
+    {
+        try {
+            $beforeStatus = null;
+            DB::transaction(function () use ($id, &$beforeStatus, $request) {
+                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                if (!$po) abort(404);
+                if (!in_array($po->status, ['partial', 'received'], true)) {
+                    throw new \RuntimeException('Only partially or fully received purchase orders can be closed.');
+                }
+                if (!DB::table('po_receipts')->where('po_id', $id)->exists()) {
+                    throw new \RuntimeException('Receive goods at least once before closing this purchase order.');
+                }
+                $beforeStatus = $po->status;
+                DB::table('purchase_orders')->where('id', $id)->update(['status' => 'closed', 'updated_at' => now()]);
+            });
+            $audit->record('purchase_order_closed', 'purchase_order', $id, $request->user()?->id,
+                ['status' => $beforeStatus], ['status' => 'closed']);
+            $this->syncMaterialReadiness(DB::table('mrp_suggestions')->join('po_items', 'po_items.mrp_suggestion_id', '=', 'mrp_suggestions.id')
+                ->where('po_items.po_id', $id)->pluck('mrp_suggestions.cutsheet_id')->all());
+            return back()->with('success', 'Purchase order closed. Receipt history and received stock were preserved.');
+        } catch (\Throwable $e) {
+            Log::warning('PO close rejected', ['po_id' => $id, 'message' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function update(Request $request, $id)
     {
         $data = $this->validatePo($request);

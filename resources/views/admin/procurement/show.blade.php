@@ -22,7 +22,7 @@
             <h5 class="mb-0 fw-bold"><i class="bi bi-receipt me-2"></i>{{ $po->po_number }}</h5>
             <div class="d-flex gap-2">
                 @if($canTrackPo)<button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>@endif
-                @if($canCreatePo && !in_array($po->status, ['partial', 'received']))
+                @if($canCreatePo && !in_array($po->status, ['partial', 'received', 'closed']))
                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Edit</a>
                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                         @csrf @method('DELETE')
@@ -33,7 +33,7 @@
                     @if(in_array($po->status, ['confirmed', 'partial']))
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#receiveModal">Receive goods</button>
                     @endif
-                    @if(!in_array($po->status, ['confirmed', 'partial']))
+                    @if(!in_array($po->status, ['confirmed', 'partial', 'closed']))
                     <form method="POST" action="{{ route('admin.procurement.status', $po->id) }}" class="d-inline">
                         @csrf @method('PATCH')
                         <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto">
@@ -47,6 +47,12 @@
                     </form>
                     @endif
                 @endif
+                @if($user->role === 'admin' && $receipts->isNotEmpty() && !in_array($po->status, ['closed', 'cancelled'], true))
+                    <form method="POST" action="{{ route('admin.procurement.close', $po->id) }}" class="d-inline" onsubmit="return confirm('Close this purchase order? Any unreceived quantity will no longer count as open supply. Existing receipts and received stock will be preserved.')">
+                        @csrf @method('PATCH')
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-lock me-1"></i>Close Order</button>
+                    </form>
+                @endif
                 <a href="{{ route('admin.procurement.index') }}" class="btn btn-sm btn-secondary">Back</a>
             </div>
         </div>
@@ -59,7 +65,7 @@
                 <div class="col-md-2"><small class="text-muted d-block">Expected</small><strong>{{ $po->expected_delivery ?? 'N/A' }}</strong></div>
                 <div class="col-md-1">
                     <small class="text-muted d-block">Status</small>
-                    @php $sc = match($po->status) { 'sent'=>'info', 'confirmed'=>'primary', 'received'=>'success', 'partial'=>'warning', 'cancelled'=>'danger', default=>'secondary' } @endphp
+                    @php $sc = match($po->status) { 'sent'=>'info', 'confirmed'=>'primary', 'received'=>'success', 'partial'=>'warning', 'closed'=>'dark', 'cancelled'=>'danger', default=>'secondary' } @endphp
                     <span class="badge bg-{{ $sc }}">{{ ucfirst($po->status) }}</span>
                 </div>
             </div>
@@ -76,7 +82,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Code</th><th>Name</th><th>Unit</th><th class="text-end">Qty</th>
-                        <th class="text-end">Received</th><th class="text-end">Unit Price (USD)</th>
+                        <th class="text-end">Received</th><th class="text-end">Pending</th><th class="text-end">Unit Price (USD)</th>
                         <th class="text-end">Total (USD)</th><th>Note</th><th>Status</th>
                     </tr>
                 </thead>
@@ -88,6 +94,7 @@
                             <td>{{ $item->unit }}</td>
                             <td class="text-end">{{ number_format($item->quantity, 2) }}</td>
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
+                            <td class="text-end fw-semibold {{ (float) $item->quantity - (float) $item->received_qty < 0 ? 'text-danger' : '' }}">{{ number_format((float) $item->quantity - (float) $item->received_qty, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
                             <td class="text-end fw-bold">{{ number_format($item->total_price, 4) }} USD</td>
                             <td><small>{{ $item->notes ?? '-' }}</small></td>
@@ -98,12 +105,12 @@
                         </tr>
                     @endforeach
                     @foreach($surcharges as $surcharge)
-                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format($surcharge->total_price, 4) }} USD</td><td>-</td><td>-</td></tr>
+                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format($surcharge->total_price, 4) }} USD</td><td>-</td><td>-</td></tr>
                     @endforeach
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
-                        <td colspan="6" class="text-end">TOTAL:</td>
+                        <td colspan="7" class="text-end">TOTAL:</td>
                         <td class="text-end text-primary">{{ number_format($po->total_amount, 4) }} USD</td>
                         <td colspan="2"></td>
                     </tr>

@@ -367,7 +367,6 @@ class MasterPlanController extends Controller
                 }
             ],
             'Qty_dis' => 'nullable|integer|min:0',
-            'Require_date' => 'nullable|date',
             'Confirm_date' => 'nullable|date',
             // MPS new fields
             'mps_status' => 'nullable|in:planned,in_production,completed,on_hold',
@@ -413,7 +412,7 @@ class MasterPlanController extends Controller
                 'lt' => $this->nullableInteger($request->lt),
                 'FirstOPT' => $this->nullableDate($request->FirstOPT),
                 'Qty_dis' => $this->nullableInteger($request->Qty_dis),
-                'Require_date' => $this->nullableDate($request->Require_date),
+                'Require_date' => $this->nullableDate($ocs->expected_ship_date),
                 'Confirm_date' => $this->nullableDate($request->Confirm_date),
                 // MPS new fields
                 'mps_status' => $request->mps_status ?? 'planned',

@@ -240,6 +240,49 @@ class StockRecordsTest extends TestCase
         $this->assertDatabaseHas('stock_records', ['id' => $record->id, 'sort_order' => 1]);
     }
 
+    public function test_projected_supply_is_consumed_by_receipt_date_and_moves_to_next_po_when_needed(): void
+    {
+        $issuedOrder = $this->order('CU-ISSUED', 100);
+        $this->order('CU-FIFO', 700);
+        DB::table('inventory_balances')->where('id', 1)->update(['balance_qty' => 0]);
+        $record = $this->record();
+        Schema::create('purchase_orders', function (Blueprint $table): void { $table->id(); $table->string('po_number'); });
+        Schema::create('po_receipts', function (Blueprint $table): void { $table->id(); $table->unsignedBigInteger('po_id'); $table->date('received_date'); });
+        $oldPo = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-OLD']);
+        $newPo = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-NEW']);
+        $oldReceipt = DB::table('po_receipts')->insertGetId(['po_id' => $oldPo, 'received_date' => '2026-09-01']);
+        $newReceipt = DB::table('po_receipts')->insertGetId(['po_id' => $newPo, 'received_date' => '2026-09-02']);
+        DB::table('inventory_balances')->where('id', 1)->update(['balance_qty' => 300]);
+        DB::table('inventory_balances')->insert(['material_id' => 1, 'balance_qty' => 600, 'reserved_qty' => 0, 'material_color' => 'Red', 'material_size' => 'M']);
+        foreach ([[$oldReceipt, '2026-09-01', 400], [$newReceipt, '2026-09-02', 600]] as [$receiptId, $date, $quantity]) {
+            DB::table('inventory_transactions')->insert([
+                'transaction_type' => 'IN', 'reference_type' => 'PO_RECEIPT', 'reference_id' => $receiptId,
+                'reference_doc' => 'RCP-'.$receiptId, 'transaction_date' => $date, 'material_id' => 1, 'material_code' => 'FAB-01',
+                'material_color' => 'Red', 'material_size' => 'M', 'quantity' => $quantity, 'unit' => 'M',
+                'unit_cost' => 1, 'total_cost' => $quantity, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $requisitionId = DB::table('material_requisitions')->insertGetId(['requisition_code' => 'REQ-ISSUED', 'cutsheet_id' => $issuedOrder, 'status' => 'partial']);
+        DB::table('requisition_items')->insert(['requisition_id' => $requisitionId, 'material_id' => 1, 'material_color' => 'Red', 'material_size' => 'M', 'requested_qty' => 100, 'issued_qty' => 100]);
+        DB::table('inventory_transactions')->insert([
+            'transaction_type' => 'OUT', 'reference_type' => 'MATERIAL_ISSUE', 'reference_id' => 1,
+            'transaction_date' => '2026-09-03', 'material_id' => 1, 'material_code' => 'FAB-01',
+            'material_color' => 'Red', 'material_size' => 'M', 'quantity' => -100, 'unit' => 'M',
+            'unit_cost' => 1, 'total_cost' => -100, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $plan = $this->plan();
+        $fifoLine = $plan->first(fn ($line) => $line->order->CS === 'CU-FIFO');
+        $this->assertEquals(100, $plan[0]->issued);
+        $this->assertEquals(700, $fifoLine->covered);
+        $this->assertEquals(0, $fifoLine->shortage);
+        $this->assertSame(['PO-OLD', 'PO-NEW'], $fifoLine->po_allocations->pluck('source')->all());
+        $this->assertEquals([300, 400], $fifoLine->po_allocations->pluck('quantity')->all());
+        $this->get(route('admin.stock-records.show', $record->id))->assertOk()->assertSee('Allocated supply (FIFO)')->assertSee('PO-OLD: 300')->assertSee('PO-NEW: 400');
+        $this->assertDatabaseHas('inventory_balances', ['id' => 1, 'balance_qty' => 300]);
+        $this->assertDatabaseHas('inventory_balances', ['id' => 2, 'balance_qty' => 600]);
+    }
+
     public function test_issued_stock_is_not_deducted_twice_and_reservations_are_protected(): void
     {
         $first = $this->order('CU-FIRST', 400);

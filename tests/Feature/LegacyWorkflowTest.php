@@ -247,7 +247,7 @@ class LegacyWorkflowTest extends TestCase
         ])->assertSessionHasErrors('ExQty');
     }
 
-    public function test_masterplan_create_uses_ocs_required_date_and_keeps_mps_inputs(): void
+    public function test_masterplan_create_and_edit_match_layout_and_use_ocs_required_date(): void
     {
         (require database_path('migrations/2026_07_27_000003_update_ocs_final.php'))->up();
         (require database_path('migrations/2026_04_25_000007_add_require_date_and_confirm_date_to_mtp_table.php'))->up();
@@ -266,6 +266,25 @@ class LegacyWorkflowTest extends TestCase
         $this->assertDatabaseHas('mtp', [
             'CU' => 'CS-REQ-DATE', 'Require_date' => '2026-10-20', 'FirstOPT' => '2026-09-30',
             'ExQty' => 10, 'Norm_date' => null, 'inWHDate' => null,
+        ]);
+
+        $planId = DB::table('mtp')->where('CU', 'CS-REQ-DATE')->value('id');
+        $this->get(route('admin.masterplan.edit', $planId))->assertOk()
+            ->assertSee('Supply Chain')->assertSee('First OPT')->assertSee('Norm Date')
+            ->assertSee('value="2026-10-20" readonly', false)
+            ->assertDontSee('name="Require_date"', false);
+
+        $this->put(route('admin.masterplan.update', $planId), [
+            'CU' => 'CS-REQ-DATE', 'Line' => 'Sewing', 'LineColor' => '#008000',
+            'Qty_dis' => 80, 'ExQty' => 10, 'FirstOPT' => '2026-09-30', 'lt' => 3,
+            'Require_date' => '2030-01-01', 'Norm_date' => '2026-09-25', 'inWHDate' => '2026-09-26',
+            '3rd_PartyInspection' => 'Passed', 'ShipDate2' => '2026-10-01', 'SoTK' => 'TK-1',
+            'mps_status' => 'planned', 'mps_priority' => 'medium', 'daily_target_qty' => 20,
+        ])->assertRedirect(route('admin.masterplan.index', ['role' => 'admin', 'page' => 'masterplan']));
+
+        $this->assertDatabaseHas('mtp', [
+            'id' => $planId, 'Require_date' => '2026-10-20', 'Norm_date' => '2026-09-25',
+            'inWHDate' => '2026-09-26', '3rd_PartyInspection' => 'Passed', 'ExQty' => 10,
         ]);
     }
 

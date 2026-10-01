@@ -359,6 +359,67 @@ class ProcurementController extends Controller
         return view('admin.procurement.receipt-history', compact('po', 'receipt', 'items'));
     }
 
+    public function updateReceiptHistory(Request $request, $id, $receiptId, AuditTrailService $audit)
+    {
+        $data = $request->validate([
+            'received_date' => 'required|date',
+            'customs_declaration_date' => 'nullable|date',
+            'customs_declaration_number' => 'nullable|string|max:100',
+            'contract_number' => 'nullable|string|max:100',
+            'reference_number' => 'nullable|string|max:191',
+            'notes' => 'nullable|string|max:5000',
+            'items' => 'nullable|array',
+            'items.*.id' => 'required|integer',
+            'items.*.customs_material_code' => 'nullable|string|max:100',
+            'items.*.customs_unit_price' => 'nullable|numeric|decimal:0,4|min:0',
+        ]);
+
+        try {
+            $before = null;
+            DB::transaction(function () use ($id, $receiptId, $data, &$before) {
+                $receipt = DB::table('po_receipts')->where('po_id', $id)->where('id', $receiptId)->lockForUpdate()->first();
+                if (!$receipt) abort(404);
+                $before = (array) $receipt;
+                $before['items'] = DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)->get()->toArray();
+
+                DB::table('po_receipts')->where('id', $receiptId)->update([
+                    'received_date' => $data['received_date'],
+                    'customs_declaration_date' => $data['customs_declaration_date'] ?? null,
+                    'customs_declaration_number' => $data['customs_declaration_number'] ?? null,
+                    'contract_number' => $data['contract_number'] ?? null,
+                    'reference_number' => $data['reference_number'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'updated_at' => now(),
+                ]);
+
+                foreach ($data['items'] ?? [] as $item) {
+                    $updated = DB::table('po_receipt_items')
+                        ->where('po_receipt_id', $receiptId)
+                        ->where('id', $item['id'])
+                        ->update([
+                            'customs_material_code' => $item['customs_material_code'] ?? null,
+                            'customs_unit_price' => $item['customs_unit_price'] ?? null,
+                            'updated_at' => now(),
+                        ]);
+                    if (!$updated && !DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)->where('id', $item['id'])->exists()) {
+                        throw new \RuntimeException('A receipt item does not belong to this receipt.');
+                    }
+                }
+            });
+
+            $after = DB::table('po_receipts')->where('id', $receiptId)->first();
+            $afterData = (array) $after;
+            $afterData['items'] = DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)->get()->toArray();
+            $audit->record('receipt_history_updated', 'po_receipt', (int) $receiptId, $request->user()?->id,
+                $before ?? [], $afterData, $after->reference_number ?? null);
+
+            return redirect()->route('admin.procurement.receipts.show', [$id, $receiptId])->with('success', 'Receipt history updated. Inventory quantities were not changed.');
+        } catch (\Throwable $e) {
+            Log::warning('Receipt history update rejected', ['po_id' => $id, 'receipt_id' => $receiptId, 'message' => $e->getMessage()]);
+            return back()->withInput()->with('error', 'Could not update receipt history: ' . $e->getMessage());
+        }
+    }
+
     public function updateStatus(Request $request, $id)
     {
         $request->validate([

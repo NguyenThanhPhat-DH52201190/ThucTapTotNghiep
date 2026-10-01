@@ -272,6 +272,7 @@ Route::middleware('auth')->group(function () {
         Route::post('procurement/{id}/receipts/import', [ProcurementController::class, 'importReceiptRows'])->middleware('ppic.team:track')->name('procurement.receipts.import');
         Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->middleware('ppic.team:track')->name('procurement.receipts.store');
         Route::get('procurement/{procurement}/receipts/{receipt}', [ProcurementController::class, 'receiptHistory'])->middleware('ppic.team:view')->name('procurement.receipts.show');
+        Route::patch('procurement/{procurement}/receipts/{receipt}', [ProcurementController::class, 'updateReceiptHistory'])->middleware('ppic.team:track')->name('procurement.receipts.update');
         Route::get('procurement', [ProcurementController::class, 'index'])->middleware('ppic.team:view')->name('procurement.index');
         Route::get('procurement/create', [ProcurementController::class, 'create'])->middleware('ppic.team:create')->name('procurement.create');
         Route::get('procurement/{procurement}', [ProcurementController::class, 'show'])->middleware('ppic.team:view')->name('procurement.show');

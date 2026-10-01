@@ -134,6 +134,7 @@ function addRow(data = {}) {
         <tr id="row${i}">
             <td>
                 <select name="items[${i}][material_code]" class="form-select form-select-sm material-code" required onchange="materialChanged(this)"></select>
+                <input type="hidden" name="items[${i}][po_item_id]" value="${data.po_item_id || data.id || ''}">
                 <input type="hidden" name="items[${i}][material_id]" class="material-id" value="${data.materialId || data.material_id || ''}">
                 <input type="hidden" name="items[${i}][mrp_suggestion_id]" value="${data.suggestionId || data.mrp_suggestion_id || ''}">
             </td>
@@ -148,11 +149,15 @@ function addRow(data = {}) {
             <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || data.unit_price || ''}" placeholder="0.0000" onchange="calcTotal()"></td>
             <td class="row-total text-end">0.0000 USD</td>
             <td><input type="text" name="items[${i}][notes]" class="form-control form-control-sm" maxlength="1000" value="${escapeSurchargeValue(data.notes || '')}" placeholder="Add note"></td>
-            <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${i})"><i class="bi bi-x"></i></button></td>
+            <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${i})" ${Number(data.received_qty || 0) > 0 ? 'disabled title="This item has received goods and cannot be removed"' : ''}><i class="bi bi-x"></i></button></td>
         </tr>`;
     document.getElementById('itemsBody').insertAdjacentHTML('beforeend', html);
     document.querySelector(`#row${i} select[name$="[unit]"]`).value = data.unit || 'M';
     populateMaterialSelect(document.querySelector(`#row${i} .material-code`), data.materialId || data.material_id || '');
+    if (data.price !== undefined || data.unit_price !== undefined) {
+        document.querySelector(`#row${i} .price`).value = data.price ?? data.unit_price ?? '';
+        calcTotal();
+    }
 }
 
 const vendorMaterials = @json($vendorMaterials->groupBy('vendor_id'));
@@ -223,10 +228,12 @@ function calcTotal() {
     if ($initialPoItems === null) {
         $initialPoItems = isset($items) ? $items->map(function ($item) {
             return [
+                'po_item_id' => $item->id,
                 'code' => $item->material_code,
                 'name' => $item->material_name,
                 'unit' => $item->unit,
                 'qty' => $item->quantity,
+                'received_qty' => $item->received_qty,
                 'price' => number_format((float) $item->unit_price, 4, '.', ''),
                 'notes' => $item->notes,
                 'materialId' => $item->material_id,

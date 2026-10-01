@@ -72,8 +72,10 @@
                             </td>
                             <td>
                                 <a href="{{ route('admin.procurement.show', $po->id) }}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
-                                @if($canCreatePo && !in_array($po->status, ['partial', 'received', 'closed']))
+                                @if($canCreatePo)
                                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                @endif
+                                @if($canCreatePo && !in_array($po->status, ['partial', 'received', 'closed']))
                                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>

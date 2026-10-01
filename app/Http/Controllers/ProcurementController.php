@@ -195,11 +195,6 @@ class ProcurementController extends Controller
     {
         $po = DB::table('purchase_orders')->find($id);
         if (!$po) abort(404);
-        if ($this->hasReceipts((int) $id)) {
-            return redirect()->route('admin.procurement.show', $id)
-                ->with('error', 'PO đã phát sinh nhận hàng nên không thể sửa.');
-        }
-
         $items = DB::table('po_items')->where('po_id', $id)->orderBy('id')->get();
         $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
         $suppliers = DB::table('suppliers')
@@ -414,16 +409,57 @@ class ProcurementController extends Controller
             $cutsheetIds = DB::transaction(function () use ($id, $data) {
                 $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
                 if (!$po) abort(404);
-                if ($this->hasReceipts((int) $id)) {
-                    throw new \RuntimeException('PO đã phát sinh nhận hàng nên không thể sửa.');
-                }
-
                 $oldSuggestionIds = DB::table('po_items')->where('po_id', $id)
                     ->pluck('mrp_suggestion_id')->filter()->all();
-                DB::table('po_items')->where('po_id', $id)->delete();
-
-                [$items, $totalAmount] = $this->preparePoItems($data['items'], (int) $id);
-                DB::table('po_items')->insert($items);
+                $existingItems = DB::table('po_items')->where('po_id', $id)->get()->keyBy('id');
+                $hasReceipts = $this->hasReceipts((int) $id);
+                if ($hasReceipts) {
+                    $receiptLinkedIds = DB::table('po_receipt_items')->whereIn('po_item_id', $existingItems->keys())->pluck('po_item_id')->map(fn ($itemId) => (int) $itemId)->unique();
+                    $submittedIds = collect($data['items'])->pluck('po_item_id')->filter()->map(fn ($itemId) => (int) $itemId);
+                    foreach ($existingItems as $existing) {
+                        if (($receiptLinkedIds->contains((int) $existing->id) || (float) $existing->received_qty > 0) && !$submittedIds->contains((int) $existing->id)) {
+                            throw new \RuntimeException("Received PO item {$existing->material_code} cannot be removed.");
+                        }
+                    }
+                    $totalAmount = 0;
+                    $keptIds = [];
+                    foreach ($data['items'] as $entry) {
+                        $itemId = (int) ($entry['po_item_id'] ?? 0);
+                        $existing = $existingItems->get($itemId);
+                        if ($itemId && !$existing) throw new \RuntimeException('Invalid PO item submitted.');
+                        $material = DB::table('materials')->find($entry['material_id']);
+                        if (!$material) throw new \RuntimeException('Selected material no longer exists in Material Master.');
+                        if ($existing && ($receiptLinkedIds->contains((int) $existing->id) || (float) $existing->received_qty > 0)) {
+                            if ((int) $existing->material_id !== (int) $material->id || $existing->unit !== $entry['unit']) {
+                                throw new \RuntimeException("Material and unit cannot be changed for received PO item {$existing->material_code}.");
+                            }
+                            if ((float) $entry['quantity'] < (float) $existing->received_qty) {
+                                throw new \RuntimeException("Quantity for {$existing->material_code} cannot be less than its received quantity ({$existing->received_qty}).");
+                            }
+                        }
+                        $lineTotal = (float) $entry['quantity'] * (float) ($entry['unit_price'] ?? 0);
+                        $totalAmount += $lineTotal;
+                        $row = [
+                            'material_code' => $material->internal_code, 'material_name' => $material->material_name,
+                            'unit' => $entry['unit'], 'quantity' => $entry['quantity'],
+                            'unit_price' => $entry['unit_price'] ?? 0, 'total_price' => $lineTotal,
+                            'notes' => $entry['notes'] ?? null, 'material_id' => $material->id,
+                            'mrp_suggestion_id' => $entry['mrp_suggestion_id'] ?? null, 'updated_at' => now(),
+                        ];
+                        if ($existing) {
+                            DB::table('po_items')->where('id', $itemId)->update($row);
+                            $keptIds[] = $itemId;
+                        } else {
+                            $row += ['po_id' => $id, 'received_qty' => 0, 'expected_date' => null, 'status' => 'pending', 'created_at' => now()];
+                            $keptIds[] = DB::table('po_items')->insertGetId($row);
+                        }
+                    }
+                    DB::table('po_items')->where('po_id', $id)->whereNotIn('id', $keptIds)->delete();
+                } else {
+                    DB::table('po_items')->where('po_id', $id)->delete();
+                    [$items, $totalAmount] = $this->preparePoItems($data['items'], (int) $id);
+                    DB::table('po_items')->insert($items);
+                }
                 [$surcharges, $surchargeTotal] = $this->preparePoSurcharges($data['surcharges'] ?? []);
                 foreach ($surcharges as &$surcharge) $surcharge['po_id'] = $id;
                 unset($surcharge);
@@ -493,7 +529,7 @@ class ProcurementController extends Controller
         $data = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id', 'order_date' => 'required|date',
             'expected_delivery' => 'nullable|date|after_or_equal:order_date', 'notes' => 'nullable|string',
-            'items' => 'required|array|min:1', 'items.*.material_code' => 'required|string|max:100',
+            'items' => 'required|array|min:1', 'items.*.po_item_id' => 'nullable|integer', 'items.*.material_code' => 'required|string|max:100',
             'items.*.material_name' => 'required|string|max:191', 'items.*.unit' => 'required|string|max:20',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'nullable|numeric|decimal:0,4|min:0',

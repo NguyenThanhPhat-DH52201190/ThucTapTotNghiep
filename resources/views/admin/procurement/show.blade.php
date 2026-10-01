@@ -132,16 +132,46 @@
                 </thead>
                 <tbody>
                     @foreach($receipts as $r)
+                        @php($itemsForReceipt = $receiptItems[$r->id] ?? collect())
                         <tr>
                             <td class="fw-bold">{{ $r->receipt_number }}</td>
                             <td>{{ $r->received_date }}</td>
                             <td>{{ $r->customs_declaration_date ?? '-' }}</td>
                             <td>{{ $r->customs_declaration_number ?? '-' }}</td>
                             <td>{{ $r->contract_number ?? '-' }}</td>
-                            <td><small>@foreach(($receiptItems[$r->id] ?? collect()) as $receiptItem){{ $receiptItem->customs_material_code ?: $receiptItem->material_code }} · {{ $receiptItem->customs_unit_price !== null ? number_format($receiptItem->customs_unit_price, 4) : '-' }}@if(!$loop->last)<br>@endif @endforeach</small></td>
+                            <td>
+                                @if($itemsForReceipt->isNotEmpty())
+                                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#receipt-items-{{ $r->id }}" aria-expanded="false" aria-controls="receipt-items-{{ $r->id }}">View {{ $itemsForReceipt->count() }} item(s)</button>
+                                @else
+                                    <span class="text-muted">No item details</span>
+                                @endif
+                            </td>
                             <td><small>{{ $r->reference_number ?? '-' }}</small></td>
                             <td><small>{{ $r->notes ?? '' }}</small></td>
                         </tr>
+                        @if($itemsForReceipt->isNotEmpty())
+                        <tr class="bg-light">
+                            <td colspan="8" class="p-0">
+                                <div class="collapse p-3" id="receipt-items-{{ $r->id }}">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered align-middle mb-0 bg-white">
+                                        <thead class="table-light"><tr><th>PO material code</th><th>Customs material code</th><th class="text-end">Customs unit price</th><th class="text-end">Received qty</th></tr></thead>
+                                        <tbody>
+                                            @foreach($itemsForReceipt as $receiptItem)
+                                            <tr>
+                                                <td>{{ $receiptItem->material_code ?? '-' }}</td>
+                                                <td>{{ $receiptItem->customs_material_code ?: '-' }}</td>
+                                                <td class="text-end">{{ $receiptItem->customs_unit_price !== null ? number_format($receiptItem->customs_unit_price, 4) : '-' }}</td>
+                                                <td class="text-end">{{ number_format((float) $receiptItem->quantity_received, 4) }}</td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                </div>
+                            </td>
+                        </tr>
+                        @endif
                     @endforeach
                 </tbody>
             </table>

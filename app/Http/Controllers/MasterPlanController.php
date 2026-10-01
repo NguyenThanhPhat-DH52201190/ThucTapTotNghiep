@@ -509,6 +509,41 @@ class MasterPlanController extends Controller
         return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute', 'colors'));
     }
 
+    public function editWarehouse(string $id)
+    {
+        $plan = DB::table('mtp')
+            ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
+            ->select('mtp.*', 'ocs.SNo as Style', 'ocs.ONum as PO', 'ocs.Qty as Order_Qty')
+            ->where('mtp.id', $id)
+            ->first();
+
+        abort_unless($plan, 404);
+
+        return view('admin.masterplan.warehouse-edit', compact('plan'));
+    }
+
+    public function updateWarehouse(Request $request, string $id)
+    {
+        $data = $request->validate([
+            'Norm_date' => 'nullable|date',
+            'fabric_issue_date' => 'nullable|date',
+            'trims_issue_date' => 'nullable|date',
+            'mps_notes' => 'nullable|string|max:5000',
+        ]);
+
+        $updated = DB::table('mtp')->where('id', $id)->update([
+            'Norm_date' => $this->nullableDate($data['Norm_date'] ?? null),
+            'fabric_issue_date' => $this->nullableDate($data['fabric_issue_date'] ?? null),
+            'trims_issue_date' => $this->nullableDate($data['trims_issue_date'] ?? null),
+            'mps_notes' => $data['mps_notes'] ?? null,
+            'updated_at' => now(),
+        ]);
+
+        abort_unless($updated || DB::table('mtp')->where('id', $id)->exists(), 404);
+
+        return redirect()->route('masterplan.view')->with('success', 'Warehouse planning updated.');
+    }
+
     public function update(Request $request, string $id)
     {
         $request->validate([

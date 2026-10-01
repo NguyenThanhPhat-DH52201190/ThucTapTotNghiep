@@ -3,7 +3,7 @@
 @section('content')
 @include('admin.partials.image-popover')
 
-@php $canManage = auth()->user()->role === 'admin'; @endphp
+@php $canManage = in_array(auth()->user()->role, ['admin', 'ppic'], true); @endphp
 
 <div class="container-fluid px-0">
     @if(session('success'))
@@ -77,14 +77,10 @@
                         <th>Style Name</th>
                         <th>Customer</th>
                         <th>Version</th>
-                        <th>Fabric Cost</th>
-                        <th>Trim Cost</th>
-                        <th>Total Cost</th>
+                        @if($canManage)<th>Fabric Cost</th><th>Trim Cost</th><th>Total Cost</th>@endif
                         <th>Status</th>
                         <th>Created</th>
-                        @if($canManage)
-                            <th>Actions</th>
-                        @endif
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -102,9 +98,11 @@
                             <td>{{ $bom->style_name }}</td>
                             <td>{{ $bom->customer }}</td>
                             <td><span class="badge bg-secondary">{{ $bom->version }}</span></td>
-                            <td>{{ number_format($bom->total_fabric_cost, 4) }}</td>
-                            <td>{{ number_format($bom->total_trim_cost, 4) }}</td>
-                            <td><strong>{{ number_format($bom->total_fabric_cost + $bom->total_trim_cost, 4) }}</strong></td>
+                            @if($canManage)
+                                <td>{{ number_format($bom->total_fabric_cost, 4) }}</td>
+                                <td>{{ number_format($bom->total_trim_cost, 4) }}</td>
+                                <td><strong>{{ number_format($bom->total_fabric_cost + $bom->total_trim_cost, 4) }}</strong></td>
+                            @endif
                             <td>
                                 @if($bom->status === 'active')
                                     <span class="badge bg-success">Active</span>
@@ -115,12 +113,12 @@
                                 @endif
                             </td>
                             <td>{{ $bom->created_at ? \Carbon\Carbon::parse($bom->created_at)->format('d/m/Y') : '' }}</td>
-                            @if($canManage)
-                                <td>
-                                    <div class="d-flex gap-1">
-                                        <a href="{{ route('admin.bom.show', $bom->id) }}" class="btn btn-sm btn-info" title="View">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <a href="{{ route('admin.bom.show', $bom->id) }}" class="btn btn-sm btn-info" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    @if($canManage)
                                         <a href="{{ route('admin.bom.edit', $bom->id) }}" class="btn btn-sm btn-warning" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
@@ -134,13 +132,13 @@
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
-                                    </div>
-                                </td>
-                            @endif
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center py-4 text-muted">
+                            <td colspan="{{ $canManage ? 10 : 7 }}" class="text-center py-4 text-muted">
                                 <i class="bi bi-file-text fs-3 d-block mb-2"></i>
                                 No BOM records found. Create a new BOM or import from Excel.
                             </td>

@@ -22,7 +22,7 @@ class ModuleAccessMiddleware
             'work-orders' => ['ppic'],
             'mrp' => ['ppic'],
             'procurement' => ['ppic'],
-            'bom' => ['ie'],
+            'bom' => ['user', 'warehouse', 'ppic', 'ie', 'prod', 'accountant', 'development'],
             'development-norms' => ['development'],
             'shopfloor' => ['prod'],
             'inventory' => ['warehouse'],
@@ -32,6 +32,11 @@ class ModuleAccessMiddleware
         ];
 
         abort_unless(in_array($role, $allowedRoles[$segment] ?? [], true), 403);
+        if ($segment === 'bom') {
+            $readOnlyMethod = in_array($request->method(), ['GET', 'HEAD'], true);
+            $managementPage = $request->routeIs('admin.bom.create', 'admin.bom.edit');
+            abort_unless($role === 'ppic' || ($readOnlyMethod && !$managementPage), 403);
+        }
         // PPIC may plan/update a master plan, but only an administrator may remove it.
         if ($segment === 'masterplan' && $request->isMethod('DELETE')) abort(403);
         // Accountants have read access to costing reports; financial master changes remain admin-only.

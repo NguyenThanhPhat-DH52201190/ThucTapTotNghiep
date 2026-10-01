@@ -6,6 +6,7 @@
 @php
 $canManage = auth()->user()->role === 'admin';
 $canEditFabric = $canManage;
+$isWarehouse = auth()->user()->role === 'warehouse';
 $isAccountant = auth()->user()->role === 'accountant';
 $hidePpicCols = in_array(auth()->user()->role, ['ppic', 'accountant'], true);
 $hideMidCols = $isAccountant;
@@ -306,6 +307,18 @@ $hideMidCols = $isAccountant;
         color: #ffffff;
         font-weight: 500;
     }
+
+    #warehouseMasterplanTable th,
+    #warehouseMasterplanTable td {
+        white-space: nowrap !important;
+        overflow-wrap: normal !important;
+    }
+
+    #warehouseMasterplanTable .warehouse-notes-cell {
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 </style>
 
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4 masterplan-filter" id="filterForm">
@@ -363,6 +376,35 @@ $hideMidCols = $isAccountant;
     </div>
 </form>
 
+@if($isWarehouse)
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2"></i>MPS Planning</h5></div>
+    <div class="table-responsive masterplan-scroll">
+    <table id="warehouseMasterplanTable" class="table table-hover align-middle mb-0 masterplan-table">
+        <thead class="table-light"><tr>
+            <th>CU</th><th>Line</th><th>Style</th><th>PO</th><th>Order Qty</th><th>Qty Dis</th>
+            <th>Confirm Date</th><th>Norm Date</th><th>Fabric Issue Date</th><th>Trims Issue Date</th>
+            <th>LT</th><th>FirstOPT</th><th>Finish_SEW</th><th>EX_Fact</th><th>Notes</th><th>Action</th>
+        </tr></thead>
+        <tbody>
+        @forelse($plan as $item)
+            <tr>
+                <td>{{ $item->CU }}</td><td class="line-color-cell" data-line-color="{{ preg_match('/^#(?:[A-Fa-f0-9]{3}){1,2}$/', (string) $item->LineColor) ? $item->LineColor : '#808080' }}" style="background-color: {{ preg_match('/^#(?:[A-Fa-f0-9]{3}){1,2}$/', (string) $item->LineColor) ? $item->LineColor : '#808080' }}">{{ $item->Line }}</td><td>{{ $item->Style }}</td><td>{{ $item->PO }}</td>
+                <td>{{ $item->Order_Qty }}</td><td>{{ $item->Qty_dis }}</td><td>{{ $item->Confirm_date }}</td><td>{{ $item->Norm_date }}</td>
+                <td>{{ $item->fabric_issue_date ?? '' }}</td><td>{{ $item->trims_issue_date ?? '' }}</td><td>{{ $item->lt }}</td>
+                <td>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>
+                <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
+                <td>{{ $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '' }}</td><td class="warehouse-notes-cell" title="{{ $item->mps_notes ?? '' }}">{{ $item->mps_notes }}</td>
+                <td><a class="btn btn-warning btn-sm" href="{{ route('masterplan.warehouse.edit', $item->id) }}"><i class="bi bi-pencil-square"></i> Edit</a></td>
+            </tr>
+        @empty
+            <tr><td colspan="16" class="text-center">No data</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+    </div>
+</div>
+@else
 <div class="table-responsive masterplan-scroll">
 <table class="table masterplan-table">
     <thead>
@@ -583,6 +625,7 @@ $hideMidCols = $isAccountant;
 <div id="masterplanScrollProxy" class="masterplan-scrollbar-proxy" aria-hidden="true">
     <div id="masterplanScrollProxyInner" class="masterplan-scrollbar-proxy-inner"></div>
 </div>
+@endif
 
 <script>
     function calculate() {
@@ -614,7 +657,7 @@ $hideMidCols = $isAccountant;
     }
 
     // Toggle ShipBalance filter button
-    document.getElementById('toggleShipBalanceBtn').addEventListener('click', function(e) {
+    document.getElementById('toggleShipBalanceBtn')?.addEventListener('click', function(e) {
         e.preventDefault();
         const filterInput = document.getElementById('shipBalanceFilter');
         const filterForm = document.getElementById('filterForm');

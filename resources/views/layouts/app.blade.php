@@ -230,24 +230,21 @@
                 Development Norms
             </a>
             @elseif($role === 'ie' || $role === 'prod')
-            @if($role === 'ie')
-            <a href="{{ route('admin.bom.index') }}" class="d-flex align-items-center gap-2 mb-1">
-                <i class="bi bi-file-text"></i>
-                BOM
-            </a>
-            @else
+            @if($role === 'prod')
             <a href="{{ route('admin.shopfloor.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-gear"></i>
                 Shop Floor
             </a>
-            @endif
-            @if($role === 'prod')
             <a href="{{ route('revenue.view') }}" class="d-flex align-items-center gap-2">
                 <i class="bi bi-bar-chart"></i>
                 Revenue
             </a>
             @endif
             @elseif($role === 'warehouse')
+            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('masterplan.view', 'masterplan.warehouse.*') ? 'active' : '' }}">
+                <i class="bi bi-calendar-check"></i>
+                Master Plan
+            </a>
             <a href="{{ route('admin.inventory.index') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-boxes"></i>
                 Inventory & Issue
@@ -256,6 +253,12 @@
             <a href="{{ route('admin.finance.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-graph-up-arrow"></i>
                 Finance & Costing
+            </a>
+            @endif
+            @if($role !== 'admin')
+            <a href="{{ route('admin.bom.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.bom.*', 'bom.view') ? 'active' : '' }}">
+                <i class="bi bi-file-text"></i>
+                BOM
             </a>
             @endif
             @if(in_array($role, ['admin', 'ppic', 'warehouse']))

@@ -330,10 +330,12 @@ class ProcurementController extends Controller
             ->where('po_items.po_id', $id)->select('po_items.*', 'materials.size as default_material_size', 'materials.color as default_material_color')->get();
         $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
         $receipts = DB::table('po_receipts')->where('po_id', $id)->orderBy('received_date', 'desc')->get();
+        $receiptItems = DB::table('po_receipt_items')->whereIn('po_receipt_id', $receipts->pluck('id'))
+            ->orderBy('id')->get()->groupBy('po_receipt_id');
         $warehouses = DB::table('warehouses')->where('is_active', 1)->orderBy('name')->get();
         $locations = DB::table('locations')->where('is_active', 1)->orderBy('location_code')->get();
 
-        return view('admin.procurement.show', compact('po', 'items', 'surcharges', 'receipts', 'warehouses', 'locations'));
+        return view('admin.procurement.show', compact('po', 'items', 'surcharges', 'receipts', 'receiptItems', 'warehouses', 'locations'));
     }
 
     public function updateStatus(Request $request, $id)
@@ -580,9 +582,13 @@ class ProcurementController extends Controller
     {
         $data = $request->validate([
             'received_date' => 'required|date', 'reference_number' => 'nullable|string|max:191', 'notes' => 'nullable|string',
+            'customs_declaration_date' => 'nullable|date', 'customs_declaration_number' => 'nullable|string|max:100',
+            'contract_number' => 'nullable|string|max:100',
             'warehouse_id' => 'required|exists:warehouses,id', 'location_id' => 'required|exists:locations,id',
             'items' => 'required|array|min:1', 'items.*.po_item_id' => 'required|exists:po_items,id',
             'items.*.quantity' => 'required|numeric|decimal:0,4|gt:0',
+            'items.*.customs_material_code' => 'nullable|string|max:100',
+            'items.*.customs_unit_price' => 'nullable|numeric|decimal:0,4|min:0',
             'items.*.lot_no' => 'required_without:items.*.lot_roll_no|nullable|string|max:40',
             'items.*.roll_no' => 'required_without:items.*.lot_roll_no|nullable|string|max:40',
             'items.*.lot_roll_no' => 'nullable|string|max:100',
@@ -601,7 +607,12 @@ class ProcurementController extends Controller
             });
             $this->syncMaterialReadiness(DB::table('mrp_suggestions')->join('po_items', 'po_items.mrp_suggestion_id', '=', 'mrp_suggestions.id')
                 ->where('po_items.po_id', $id)->pluck('mrp_suggestions.cutsheet_id')->all());
-            $audit->record('goods_received', 'purchase_order', (int) $id, $request->user()?->id, [], ['items' => $data['items'], 'received_date' => $data['received_date']], $data['reference_number'] ?? null);
+            $audit->record('goods_received', 'purchase_order', (int) $id, $request->user()?->id, [], [
+                'items' => $data['items'], 'received_date' => $data['received_date'],
+                'customs_declaration_date' => $data['customs_declaration_date'] ?? null,
+                'customs_declaration_number' => $data['customs_declaration_number'] ?? null,
+                'contract_number' => $data['contract_number'] ?? null,
+            ], $data['reference_number'] ?? null);
             return back()->with('success', 'Goods receipt posted to inventory.');
         } catch (\Throwable $e) {
             Log::warning('PO receipt rejected', ['po_id' => $id, 'message' => $e->getMessage()]);
@@ -694,11 +705,18 @@ class ProcurementController extends Controller
         foreach ($entries->groupBy('po_item_id') as $itemId => $rows) {
             $item = $items->get($itemId);
             if (!$item) throw new \RuntimeException('A receipt line does not belong to this PO.');
+            $newQuantity = $rows->sum(fn ($row) => (float) $row['quantity']);
+            if ((float) $item->received_qty + $newQuantity > (float) $item->quantity + 0.0001) {
+                throw new \RuntimeException("Receipt quantity exceeds the pending quantity for {$item->material_code}.");
+            }
         }
         $receiptNo = 'RCP-' . now()->format('YmdHisv') . '-' . Str::upper(Str::random(6));
         $receiptId = DB::table('po_receipts')->insertGetId([
             'receipt_number' => $receiptNo, 'po_id' => $poId, 'received_date' => $meta['received_date'],
             'reference_number' => $meta['reference_number'] ?? null, 'notes' => $meta['notes'] ?? null,
+            'customs_declaration_date' => $meta['customs_declaration_date'] ?? null,
+            'customs_declaration_number' => $meta['customs_declaration_number'] ?? null,
+            'contract_number' => $meta['contract_number'] ?? null,
             'created_by' => request()->user()->id, 'created_at' => now(), 'updated_at' => now(),
         ]);
         foreach ($entries as $entry) {
@@ -716,6 +734,8 @@ class ProcurementController extends Controller
                 'po_receipt_id' => $receiptId, 'po_item_id' => $item->id, 'material_id' => $material->id,
                 'material_code' => $material->internal_code, 'material_color' => $color, 'material_size' => $size,
                 'quantity_received' => $qty, 'batch_no' => $label, 'lot_no' => $lot, 'roll_no' => $roll,
+                'customs_material_code' => $entry['customs_material_code'] ?? null,
+                'customs_unit_price' => $entry['customs_unit_price'] ?? null,
                 'warehouse_id' => $meta['warehouse_id'], 'location_id' => $meta['location_id'],
                 'created_at' => now(), 'updated_at' => now(),
             ]);

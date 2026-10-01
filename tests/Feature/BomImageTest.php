@@ -151,4 +151,38 @@ class BomImageTest extends TestCase
         $this->assertDatabaseCount('bom_headers', 0);
         $this->assertCount(0, Storage::disk('local')->allFiles());
     }
+
+    public function test_every_non_manager_role_can_view_bom_without_costs_and_cannot_manage_it(): void
+    {
+        $bomId = DB::table('bom_headers')->insertGetId([
+            'style_no' => 'STYLE-READ', 'style_name' => 'Read Only', 'customer' => 'Customer', 'version' => 'V1',
+            'total_fabric_cost' => 12.34, 'total_trim_cost' => 5.67, 'status' => 'active', 'bom_kind' => 'template',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        foreach ([User::ROLE_USER, User::ROLE_WAREHOUSE, User::ROLE_IE, User::ROLE_PROD, User::ROLE_ACCOUNTANT, User::ROLE_DEVELOPMENT] as $role) {
+            $this->actingAs($this->createUserRecord(['role' => $role]));
+            $this->get(route('admin.bom.index'))->assertOk()->assertDontSee('Fabric Cost')->assertDontSee('Total Cost');
+            $this->get(route('admin.bom.show', $bomId))->assertOk()
+                ->assertDontSee('Total Fabric Cost')->assertDontSee('Total Trim Cost')->assertDontSee('$ 12.3400');
+            $this->get(route('admin.bom.create'))->assertForbidden();
+            $this->get(route('admin.bom.edit', $bomId))->assertForbidden();
+            $this->post(route('admin.bom.store'), [])->assertForbidden();
+        }
+    }
+
+    public function test_ppic_can_manage_bom_and_view_cost_fields(): void
+    {
+        $bomId = DB::table('bom_headers')->insertGetId([
+            'style_no' => 'STYLE-PPIC', 'style_name' => 'PPIC BOM', 'customer' => 'Customer', 'version' => 'V1',
+            'total_fabric_cost' => 12.34, 'total_trim_cost' => 5.67, 'status' => 'active', 'bom_kind' => 'template',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PPIC]));
+
+        $this->get(route('admin.bom.index'))->assertOk()->assertSee('Fabric Cost')->assertSee('12.3400');
+        $this->get(route('admin.bom.show', $bomId))->assertOk()->assertSee('Total Fabric Cost')->assertSee('$ 12.3400');
+        $this->get(route('admin.bom.create'))->assertOk();
+        $this->get(route('admin.bom.edit', $bomId))->assertOk();
+    }
 }

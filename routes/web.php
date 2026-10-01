@@ -71,6 +71,14 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie,warehouse')
         ->name('masterplan.export');
 
+    Route::get('/master-plan/warehouse/{id}/edit', [MasterPlanController::class, 'editWarehouse'])
+        ->middleware('role:warehouse')
+        ->name('masterplan.warehouse.edit');
+
+    Route::put('/master-plan/warehouse/{id}', [MasterPlanController::class, 'updateWarehouse'])
+        ->middleware('role:warehouse')
+        ->name('masterplan.warehouse.update');
+
     Route::get('/master-plan/ocs/{id}/image', [OCSController::class, 'image'])
         ->middleware('role:admin,ie,warehouse,ppic,prod,accountant')
         ->name('masterplan.ocs-image');
@@ -78,7 +86,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/customer-styles/{style}/image', [\App\Http\Controllers\CustomerStyleController::class, 'image'])->middleware('role:admin,ie')->name('customer-styles.image');
 
     Route::get('/bom', [BOMController::class, 'index'])
-        ->middleware('role:admin,ie')
+        ->middleware('role:admin,user,warehouse,ppic,ie,prod,accountant,development')
         ->name('bom.view');
 
     Route::get('/revenue-view', [RevenueController::class, 'index'])

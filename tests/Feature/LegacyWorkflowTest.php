@@ -21,6 +21,7 @@ class LegacyWorkflowTest extends TestCase
         $this->createLegacySchema();
         \Illuminate\Support\Facades\Schema::table('ocs', fn ($t) => $t->unsignedBigInteger('customer_id')->nullable());
         (require database_path('migrations/2026_09_22_000001_add_image_path_to_ocs_table.php'))->up();
+        (require database_path('migrations/2026_10_01_000002_add_warehouse_planning_dates_to_mtp.php'))->up();
     }
 
     public function test_public_auth_pages_are_accessible(): void
@@ -512,6 +513,42 @@ class LegacyWorkflowTest extends TestCase
         $this->assertSame('Green', $updated->Line);
         $this->assertSame(100, (int) $updated->Qty_dis);
         $this->assertSame('OLD-SOTK', $updated->SoTK);
+    }
+
+    public function test_warehouse_can_only_edit_warehouse_planning_fields_in_masterplan(): void
+    {
+        (require database_path('migrations/2026_04_25_000007_add_require_date_and_confirm_date_to_mtp_table.php'))->up();
+        (require database_path('migrations/2026_07_27_000004_update_mtp_for_mps.php'))->up();
+        $this->createOcsRecord(['CS' => 'CU-WH-01', 'SNo' => 'STYLE-WH', 'ONum' => 'PO-WH', 'Qty' => 400]);
+        $id = DB::table('mtp')->insertGetId([
+            'CU' => 'CU-WH-01', 'Line' => 'Green', 'LineColor' => '#008000', 'Qty_dis' => 200,
+            'Norm_date' => '2026-10-01', 'inWHDate' => '2026-10-02', 'lt' => 5, 'FirstOPT' => '2026-10-03',
+        ]);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_WAREHOUSE]));
+
+        $this->get(route('masterplan.view'))->assertOk()
+            ->assertSee('Fabric Issue Date')->assertSee('Trims Issue Date')->assertSee('Notes')
+            ->assertSee('style="background-color: #008000"', false)
+            ->assertSee('name="cu"', false)->assertSee('name="style"', false)
+            ->assertSee('name="ship_balance_only"', false)->assertSee('id="warehouseMasterplanTable"', false)
+            ->assertDontSee('MPS Status')->assertDontSee('inWHDate');
+        $this->get(route('masterplan.warehouse.edit', $id))->assertOk()
+            ->assertSee('name="Norm_date"', false)->assertSee('name="fabric_issue_date"', false)
+            ->assertSee('name="trims_issue_date"', false)->assertSee('name="mps_notes"', false)
+            ->assertDontSee('name="FirstOPT"', false)->assertDontSee('name="Line"', false);
+        $this->get(route('admin.masterplan.edit', $id))->assertForbidden();
+
+        $this->put(route('masterplan.warehouse.update', $id), [
+            'Norm_date' => '2026-10-10', 'fabric_issue_date' => '2026-10-11',
+            'trims_issue_date' => '2026-10-12', 'mps_notes' => 'Ready for issue',
+            'Line' => 'Blue', 'Qty_dis' => 999, 'FirstOPT' => '2030-01-01', 'ExQty' => 100,
+        ])->assertRedirect(route('masterplan.view'));
+
+        $this->assertDatabaseHas('mtp', [
+            'id' => $id, 'Norm_date' => '2026-10-10', 'fabric_issue_date' => '2026-10-11',
+            'trims_issue_date' => '2026-10-12', 'mps_notes' => 'Ready for issue',
+            'Line' => 'Green', 'Qty_dis' => 200, 'FirstOPT' => '2026-10-03',
+        ]);
     }
 
     public function test_ppic_cannot_delete_masterplan_records(): void

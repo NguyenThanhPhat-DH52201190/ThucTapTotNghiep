@@ -128,13 +128,17 @@
         <div class="table-responsive">
             <table class="table table-sm mb-0">
                 <thead class="table-light">
-                    <tr><th>Receipt#</th><th>Date</th><th>Reference</th><th>Notes</th></tr>
+                    <tr><th>Receipt#</th><th>Receipt date</th><th>Declaration date</th><th>Declaration No.</th><th>Contract No.</th><th>Customs material / unit price</th><th>Reference</th><th>Notes</th></tr>
                 </thead>
                 <tbody>
                     @foreach($receipts as $r)
                         <tr>
                             <td class="fw-bold">{{ $r->receipt_number }}</td>
                             <td>{{ $r->received_date }}</td>
+                            <td>{{ $r->customs_declaration_date ?? '-' }}</td>
+                            <td>{{ $r->customs_declaration_number ?? '-' }}</td>
+                            <td>{{ $r->contract_number ?? '-' }}</td>
+                            <td><small>@foreach(($receiptItems[$r->id] ?? collect()) as $receiptItem){{ $receiptItem->customs_material_code ?: $receiptItem->material_code }} · {{ $receiptItem->customs_unit_price !== null ? number_format($receiptItem->customs_unit_price, 4) : '-' }}@if(!$loop->last)<br>@endif @endforeach</small></td>
                             <td><small>{{ $r->reference_number ?? '-' }}</small></td>
                             <td><small>{{ $r->notes ?? '' }}</small></td>
                         </tr>
@@ -147,6 +151,27 @@
 </div>
 
 @if($canTrackPo && in_array($po->status, ['confirmed', 'partial']))
+<style>
+    #receiveModal .modal-dialog { max-width: min(96vw, 1600px); }
+    #receiveModal .receipt-lines { overflow-x: auto; }
+    #receiveModal .receipt-lines table { min-width: 1450px; table-layout: fixed; }
+    #receiveModal .receipt-lines th { white-space: nowrap; }
+    #receiveModal .receipt-lines td { vertical-align: middle; }
+    #receiveModal .receipt-lines input.form-control { min-width: 0 !important; width: 100%; }
+    #receiveModal .receipt-lines .receipt-material { width: 230px; overflow-wrap: anywhere; }
+    #receiveModal .receipt-lines .receipt-remaining { width: 100px; white-space: nowrap; }
+    #receiveModal .receipt-lines .receipt-actions { width: 110px; }
+    #receiveModal .receipt-lines th:nth-child(1), #receiveModal .receipt-lines td:nth-child(1) { width: 230px; }
+    #receiveModal .receipt-lines th:nth-child(2), #receiveModal .receipt-lines td:nth-child(2) { width: 100px; }
+    #receiveModal .receipt-lines th:nth-child(3), #receiveModal .receipt-lines td:nth-child(3) { width: 120px; }
+    #receiveModal .receipt-lines th:nth-child(4), #receiveModal .receipt-lines td:nth-child(4) { width: 100px; }
+    #receiveModal .receipt-lines th:nth-child(5), #receiveModal .receipt-lines td:nth-child(5),
+    #receiveModal .receipt-lines th:nth-child(6), #receiveModal .receipt-lines td:nth-child(6) { width: 130px; }
+    #receiveModal .receipt-lines th:nth-child(7), #receiveModal .receipt-lines td:nth-child(7) { width: 180px; }
+    #receiveModal .receipt-lines th:nth-child(8), #receiveModal .receipt-lines td:nth-child(8) { width: 150px; }
+    #receiveModal .receipt-lines th:nth-child(9), #receiveModal .receipt-lines td:nth-child(9) { width: 130px; }
+    #receiveModal .receipt-lines th:nth-child(10), #receiveModal .receipt-lines td:nth-child(10) { width: 110px; white-space: nowrap; }
+</style>
 <div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form id="receiveForm" method="POST" action="{{ route('admin.procurement.receipts.store', $po->id) }}" class="modal-content">@csrf
     <div class="modal-header"><h5 class="modal-title">Receive goods</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
@@ -156,8 +181,16 @@
             <div class="form-text">Column order can vary. Header row must include Material Code (or Code) and Quantity (or Qty). Optional headers: Size, Lot No, Roll No, or Lot/Roll.</div>
             <div id="receiptImportFeedback" class="small mt-2" role="status"></div>
         </div>
-        <div class="row g-3 mb-3"><div class="col-md-3"><label class="form-label">Receipt date</label><input type="date" name="received_date" class="form-control" value="{{ now()->toDateString() }}" required></div><div class="col-md-4"><label class="form-label">Warehouse</label><select name="warehouse_id" class="form-select" required><option value="">Select warehouse</option>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->code }} — {{ $warehouse->name }}</option>@endforeach</select></div><div class="col-md-5"><label class="form-label">Delivery reference</label><input name="reference_number" class="form-control"></div><div class="col-md-6"><label class="form-label">Location</label><select name="location_id" class="form-select" required><option value="">Select location</option>@foreach($locations as $location)<option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}">{{ $location->location_code }}{{ $location->location_name ? ' — '.$location->location_name : '' }}</option>@endforeach</select><small class="text-muted">Location must belong to the selected warehouse.</small></div></div>
-        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Material</th><th>Remaining</th><th>Color</th><th>Size</th><th>Lot No</th><th>Roll No</th><th>Receive qty</th><th></th></tr></thead><tbody id="receiptRows">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3"><label class="form-label">Receipt date</label><input type="date" name="received_date" class="form-control" value="{{ now()->toDateString() }}" required></div>
+            <div class="col-md-3"><label class="form-label">Customs declaration date</label><input type="date" name="customs_declaration_date" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">Customs declaration number</label><input name="customs_declaration_number" class="form-control" maxlength="100"></div>
+            <div class="col-md-3"><label class="form-label">Contract number</label><input name="contract_number" class="form-control" maxlength="100"></div>
+            <div class="col-md-4"><label class="form-label">Warehouse</label><select name="warehouse_id" class="form-select" required><option value="">Select warehouse</option>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->code }} — {{ $warehouse->name }}</option>@endforeach</select></div>
+            <div class="col-md-4"><label class="form-label">Delivery reference</label><input name="reference_number" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">Location</label><select name="location_id" class="form-select" required><option value="">Select location</option>@foreach($locations as $location)<option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}">{{ $location->location_code }}{{ $location->location_name ? ' — '.$location->location_name : '' }}</option>@endforeach</select><small class="text-muted">Location must belong to the selected warehouse.</small></div>
+        </div>
+        <div class="receipt-lines"><table class="table table-sm align-middle"><thead><tr><th>Material</th><th>Remaining</th><th>Color</th><th>Size</th><th>Lot No</th><th>Roll No</th><th>Customs material code</th><th>Customs unit price</th><th>Receive qty</th><th></th></tr></thead><tbody id="receiptRows">
         @foreach($items as $item)
             @if($item->quantity > $item->received_qty)
             <tr data-po-item="{{ $item->id }}">
@@ -167,6 +200,8 @@
                 <td><input data-field="material_size" class="form-control" style="min-width:80px" value="{{ $item->default_material_size }}" required></td>
                 <td><input data-field="lot_no" class="form-control" style="min-width:110px" maxlength="40" placeholder="Lot No" required></td>
                 <td><input data-field="roll_no" class="form-control" style="min-width:110px" maxlength="40" placeholder="Roll No" required></td>
+                <td><input data-field="customs_material_code" class="form-control" style="min-width:120px" maxlength="100" placeholder="Customs material code"></td>
+                <td><input data-field="customs_unit_price" type="number" step="0.0001" min="0" class="form-control" style="min-width:120px" placeholder="0.0000"></td>
                 <td><input data-field="quantity" type="number" step="0.0001" min="0.0001" class="form-control" style="min-width:110px" required></td>
                 <td><div class="d-flex gap-1"><button type="button" class="btn btn-sm btn-outline-primary add-receipt-row">Add</button><button type="button" class="btn btn-sm btn-outline-danger remove-receipt-row" aria-label="Remove receipt row">×</button></div></td>
             </tr>
@@ -211,13 +246,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const template = templates.get(String(entry.po_item_id));
             if (!template) return;
             const copy = template.cloneNode(true);
-            ['material_size', 'lot_no', 'roll_no', 'quantity'].forEach(field => {
+            ['material_size', 'lot_no', 'roll_no', 'quantity', 'customs_material_code', 'customs_unit_price'].forEach(field => {
                 copy.querySelector(`[data-field="${field}"]`).value = entry[field] ?? '';
             });
             restored.push(copy);
         });
         if (restored.length) rows.replaceChildren(...restored);
-        ['received_date', 'warehouse_id', 'location_id', 'reference_number', 'notes'].forEach(name => {
+        ['received_date', 'customs_declaration_date', 'customs_declaration_number', 'contract_number', 'warehouse_id', 'location_id', 'reference_number', 'notes'].forEach(name => {
             if (previousMeta[name] != null) form.elements[name].value = previousMeta[name];
         });
         bootstrap.Modal.getOrCreateInstance(document.getElementById('receiveModal')).show();
@@ -241,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = event.target.closest('tr');
         if (event.target.closest('.add-receipt-row')) {
             const copy = row.cloneNode(true);
-            ['quantity', 'roll_no'].forEach(field => copy.querySelector(`[data-field="${field}"]`).value = '');
+            ['quantity', 'roll_no', 'customs_material_code', 'customs_unit_price'].forEach(field => copy.querySelector(`[data-field="${field}"]`).value = '');
             row.after(copy);
             renumber();
             copy.querySelector('[data-field="roll_no"]').focus();

@@ -23,6 +23,7 @@ class WorkflowExecutionTest extends TestCase
         $this->createLegacySchema();
         $this->createWorkflowSchema();
         (require database_path('migrations/2026_09_22_000006_add_lot_and_roll_numbers.php'))->up();
+        (require database_path('migrations/2026_10_01_000001_add_customs_details_to_po_receipts.php'))->up();
     }
 
     public function test_release_requisition_reserves_stock_and_issue_cannot_exceed_reservation(): void
@@ -67,8 +68,8 @@ class WorkflowExecutionTest extends TestCase
         $poId = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-SPLIT', 'status' => 'confirmed']);
         $itemId = DB::table('po_items')->insertGetId(['po_id' => $poId, 'material_id' => $materialId, 'material_code' => 'FAB-SPLIT', 'material_name' => 'Fabric', 'color' => 'OLD', 'unit' => 'M', 'quantity' => 100, 'unit_price' => 2]);
         $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]));
-        $line = ['po_item_id' => $itemId, 'material_color' => 'FORGED', 'material_size' => 'M', 'lot_no' => 'LOT-1'];
-        $meta = ['received_date' => '2026-09-20', 'warehouse_id' => $warehouseId, 'location_id' => $locationId];
+        $line = ['po_item_id' => $itemId, 'material_color' => 'FORGED', 'material_size' => 'M', 'lot_no' => 'LOT-1', 'customs_material_code' => 'CUS-FAB-01', 'customs_unit_price' => '2.4500'];
+        $meta = ['received_date' => '2026-09-20', 'customs_declaration_date' => '2026-09-19', 'customs_declaration_number' => 'DECL-001', 'contract_number' => 'CONTRACT-001', 'warehouse_id' => $warehouseId, 'location_id' => $locationId];
         $url = route('admin.procurement.receipts.store', $poId);
         $this->post($url, $meta + ['items' => [$line + ['roll_no' => 'R1', 'quantity' => 60], $line + ['roll_no' => 'R2', 'quantity' => 50]]])->assertSessionHas('error');
         $this->assertDatabaseCount('po_receipts', 0);
@@ -77,6 +78,8 @@ class WorkflowExecutionTest extends TestCase
 
         $this->post($url, $meta + ['items' => [$line + ['roll_no' => 'R1', 'quantity' => 30], $line + ['roll_no' => 'R2', 'quantity' => 50]]])->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertDatabaseCount('po_receipt_items', 2);
+        $this->assertDatabaseHas('po_receipts', ['customs_declaration_date' => '2026-09-19', 'customs_declaration_number' => 'DECL-001', 'contract_number' => 'CONTRACT-001']);
+        $this->assertDatabaseHas('po_receipt_items', ['customs_material_code' => 'CUS-FAB-01', 'customs_unit_price' => '2.4500']);
         $this->assertDatabaseCount('inventory_balances', 2);
         $this->assertDatabaseHas('inventory_balances', ['material_id' => $materialId, 'lot_no' => 'LOT-1', 'roll_no' => 'R1', 'material_color' => 'RED', 'balance_qty' => 30]);
         $this->assertDatabaseHas('inventory_transactions', ['lot_no' => 'LOT-1', 'roll_no' => 'R2', 'quantity' => 50, 'transaction_date' => '2026-09-20']);

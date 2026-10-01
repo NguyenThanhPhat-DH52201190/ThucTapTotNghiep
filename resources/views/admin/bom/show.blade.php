@@ -3,7 +3,7 @@
 @section('content')
 @include('admin.partials.customer-style-selector')
 
-@php $canManage = auth()->user()->role === 'admin'; @endphp
+@php $canManage = in_array(auth()->user()->role, ['admin', 'ppic'], true); @endphp
 
 <div class="container-fluid px-0">
     <div class="card shadow-sm border-0 mb-4">
@@ -60,14 +60,16 @@
                     <label class="fw-semibold text-muted small">Effective Date</label>
                     <p class="mb-0">{{ $bom->effective_date ? \Carbon\Carbon::parse($bom->effective_date)->format('d/m/Y') : '-' }}</p>
                 </div>
-                <div class="col-md-3">
-                    <label class="fw-semibold text-muted small">Total Fabric Cost</label>
-                    <p class="mb-0 fw-bold text-primary">$ {{ number_format($bom->total_fabric_cost, 4) }}</p>
-                </div>
-                <div class="col-md-3">
-                    <label class="fw-semibold text-muted small">Total Trim Cost</label>
-                    <p class="mb-0 fw-bold text-success">$ {{ number_format($bom->total_trim_cost, 4) }}</p>
-                </div>
+                @if($canManage)
+                    <div class="col-md-3">
+                        <label class="fw-semibold text-muted small">Total Fabric Cost</label>
+                        <p class="mb-0 fw-bold text-primary">$ {{ number_format($bom->total_fabric_cost, 4) }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="fw-semibold text-muted small">Total Trim Cost</label>
+                        <p class="mb-0 fw-bold text-success">$ {{ number_format($bom->total_trim_cost, 4) }}</p>
+                    </div>
+                @endif
                 @if($bom->notes)
                 <div class="col-12">
                     <label class="fw-semibold text-muted small">Notes</label>

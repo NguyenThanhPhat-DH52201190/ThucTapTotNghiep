@@ -335,6 +335,30 @@ class ProcurementController extends Controller
         return view('admin.procurement.show', compact('po', 'items', 'surcharges', 'receipts', 'receiptItems', 'warehouses', 'locations'));
     }
 
+    public function receiptHistory($id, $receiptId)
+    {
+        $po = DB::table('purchase_orders')
+            ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
+            ->select('purchase_orders.id', 'purchase_orders.po_number', 'suppliers.name as supplier_name', 'suppliers.code as supplier_code')
+            ->whereNull('purchase_orders.deleted_at')
+            ->where('purchase_orders.id', $id)
+            ->first();
+        if (!$po) abort(404);
+
+        $receipt = DB::table('po_receipts')
+            ->where('po_id', $id)
+            ->where('id', $receiptId)
+            ->first();
+        if (!$receipt) abort(404);
+
+        $items = DB::table('po_receipt_items')
+            ->where('po_receipt_id', $receiptId)
+            ->orderBy('id')
+            ->get();
+
+        return view('admin.procurement.receipt-history', compact('po', 'receipt', 'items'));
+    }
+
     public function updateStatus(Request $request, $id)
     {
         $request->validate([

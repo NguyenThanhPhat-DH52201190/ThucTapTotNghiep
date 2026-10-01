@@ -143,7 +143,7 @@
                             <td>{{ $r->contract_number ?? '-' }}</td>
                             <td>
                                 @if($itemsForReceipt->isNotEmpty())
-                                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#receipt-items-{{ $r->id }}" aria-expanded="false" aria-controls="receipt-items-{{ $r->id }}">View {{ $itemsForReceipt->count() }} item(s)</button>
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.procurement.receipts.show', [$po->id, $r->id]) }}">View {{ $itemsForReceipt->count() }} item(s)</a>
                                 @else
                                     <span class="text-muted">No item details</span>
                                 @endif
@@ -151,35 +151,6 @@
                             <td><small>{{ $r->reference_number ?? '-' }}</small></td>
                             <td><small>{{ $r->notes ?? '' }}</small></td>
                         </tr>
-                        @if($itemsForReceipt->isNotEmpty())
-                        <tr class="bg-light">
-                            <td colspan="8" class="p-0">
-                                <div class="collapse p-3" id="receipt-items-{{ $r->id }}">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-bordered align-middle mb-0 bg-white receipt-item-table">
-                                        <thead class="table-light"><tr>
-                                            <th>PO material code</th><th>Lot No</th><th>Roll No</th>
-                                            <th>Customs material code</th><th class="text-end">Customs unit price</th>
-                                            <th class="text-end">Received qty</th>
-                                        </tr></thead>
-                                        <tbody>
-                                            @foreach($itemsForReceipt as $receiptItem)
-                                            <tr>
-                                                <td>{{ $receiptItem->material_code ?? '-' }}</td>
-                                                <td>{{ $receiptItem->lot_no ?: '-' }}</td>
-                                                <td>{{ $receiptItem->roll_no ?: '-' }}</td>
-                                                <td>{{ $receiptItem->customs_material_code ?: '-' }}</td>
-                                                <td class="text-end">{{ $receiptItem->customs_unit_price !== null ? number_format((float) $receiptItem->customs_unit_price, 4) : '-' }}</td>
-                                                <td class="text-end">{{ number_format((float) $receiptItem->quantity_received, 4) }}</td>
-                                            </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                                </div>
-                            </td>
-                        </tr>
-                        @endif
                     @endforeach
                 </tbody>
             </table>
@@ -200,15 +171,6 @@
     #receipt-history .receipt-history-table th:nth-child(6), #receipt-history .receipt-history-table td:nth-child(6) { min-width: 250px; }
     #receipt-history .receipt-history-table th:nth-child(7), #receipt-history .receipt-history-table td:nth-child(7) { min-width: 180px; }
     #receipt-history .receipt-history-table th:nth-child(8), #receipt-history .receipt-history-table td:nth-child(8) { min-width: 220px; }
-    #receipt-history .receipt-item-table { min-width: 1100px; table-layout: fixed; }
-    #receipt-history .receipt-item-table th { white-space: nowrap; vertical-align: middle; }
-    #receipt-history .receipt-item-table td { white-space: nowrap; }
-    #receipt-history .receipt-item-table th:nth-child(1), #receipt-history .receipt-item-table td:nth-child(1) { min-width: 220px; }
-    #receipt-history .receipt-item-table th:nth-child(2), #receipt-history .receipt-item-table td:nth-child(2),
-    #receipt-history .receipt-item-table th:nth-child(3), #receipt-history .receipt-item-table td:nth-child(3) { min-width: 140px; }
-    #receipt-history .receipt-item-table th:nth-child(4), #receipt-history .receipt-item-table td:nth-child(4) { min-width: 240px; }
-    #receipt-history .receipt-item-table th:nth-child(5), #receipt-history .receipt-item-table td:nth-child(5) { min-width: 180px; }
-    #receipt-history .receipt-item-table th:nth-child(6), #receipt-history .receipt-item-table td:nth-child(6) { min-width: 150px; }
 </style>
 
 @if($canTrackPo && in_array($po->status, ['confirmed', 'partial']))

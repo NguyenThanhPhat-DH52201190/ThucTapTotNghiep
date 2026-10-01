@@ -67,6 +67,7 @@ class NormController extends Controller
         }
         $purchaseOrders = DB::table('po_items')
             ->join('purchase_orders', 'purchase_orders.id', '=', 'po_items.po_id')
+            ->whereNull('purchase_orders.deleted_at')
             ->where(function ($query) use ($materialIds, $materialCodes) {
                 if ($materialIds->isNotEmpty()) $query->whereIn('po_items.material_id', $materialIds);
                 if ($materialCodes->isNotEmpty()) {

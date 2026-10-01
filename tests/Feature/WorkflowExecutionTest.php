@@ -24,6 +24,7 @@ class WorkflowExecutionTest extends TestCase
         $this->createWorkflowSchema();
         (require database_path('migrations/2026_09_22_000006_add_lot_and_roll_numbers.php'))->up();
         (require database_path('migrations/2026_10_01_000001_add_customs_details_to_po_receipts.php'))->up();
+        (require database_path('migrations/2026_10_01_000003_add_deleted_at_to_purchase_orders.php'))->up();
     }
 
     public function test_release_requisition_reserves_stock_and_issue_cannot_exceed_reservation(): void
@@ -95,6 +96,21 @@ class WorkflowExecutionTest extends TestCase
         $otherPo = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-OTHER', 'status' => 'confirmed']);
         $this->post(route('admin.procurement.receipts.store', $otherPo), $meta + ['items' => [$line + ['roll_no' => 'R3', 'quantity' => 1]]])->assertSessionHas('error');
         $this->assertDatabaseCount('po_receipts', 2);
+    }
+
+    public function test_closed_purchase_order_can_be_deleted_without_losing_receipt_history(): void
+    {
+        $poId = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-CLOSED', 'status' => 'closed']);
+        DB::table('po_receipts')->insert([
+            'receipt_number' => 'RCP-CLOSED', 'po_id' => $poId, 'received_date' => '2026-09-30',
+        ]);
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_ADMIN]))
+            ->delete(route('admin.procurement.destroy', $poId))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('purchase_orders', ['id' => $poId]);
+        $this->assertNotNull(DB::table('purchase_orders')->where('id', $poId)->value('deleted_at'));
+        $this->assertDatabaseHas('po_receipts', ['receipt_number' => 'RCP-CLOSED', 'po_id' => $poId]);
     }
 
     public function test_mps_schedule_rejects_capacity_above_line_limit(): void

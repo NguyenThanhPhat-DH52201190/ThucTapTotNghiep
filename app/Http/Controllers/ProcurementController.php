@@ -17,7 +17,7 @@ class ProcurementController extends Controller
     {
         $data = $request->validate(['items' => 'required|array|min:1', 'items.*.id' => 'required|exists:po_items,id', 'items.*.expected_date' => 'nullable|date']);
         $cutsheets = DB::transaction(function () use ($id, $data, $outbox, $audit, $request) {
-            $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->firstOrFail();
+            $po = DB::table('purchase_orders')->whereNull('deleted_at')->where('id', $id)->lockForUpdate()->firstOrFail();
             $cutsheets = [];
             foreach ($data['items'] as $row) {
                 $item = DB::table('po_items')->where('id', $row['id'])->where('po_id', $po->id)->lockForUpdate()->firstOrFail();
@@ -177,6 +177,7 @@ class ProcurementController extends Controller
         $pos = DB::table('purchase_orders')
             ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
             ->select('purchase_orders.*', 'suppliers.name as supplier_name', 'suppliers.code as supplier_code')
+            ->whereNull('purchase_orders.deleted_at')
             ->when($request->filled('status'), fn($q) => $q->where('purchase_orders.status', $request->status))
             ->orderBy('purchase_orders.created_at', 'desc')
             ->paginate(15);
@@ -193,7 +194,7 @@ class ProcurementController extends Controller
 
     public function edit($id)
     {
-        $po = DB::table('purchase_orders')->find($id);
+        $po = DB::table('purchase_orders')->whereNull('deleted_at')->find($id);
         if (!$po) abort(404);
         $items = DB::table('po_items')->where('po_id', $id)->orderBy('id')->get();
         $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
@@ -317,6 +318,7 @@ class ProcurementController extends Controller
             ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
             ->select('purchase_orders.*', 'suppliers.name as supplier_name', 'suppliers.code as supplier_code',
                      'suppliers.contact_person', 'suppliers.phone', 'suppliers.email', 'suppliers.payment_terms as supplier_payment_terms')
+            ->whereNull('purchase_orders.deleted_at')
             ->where('purchase_orders.id', $id)
             ->first();
         if (!$po) abort(404);
@@ -352,7 +354,7 @@ class ProcurementController extends Controller
         $newStatus = $request->status;
         try {
             DB::transaction(function () use ($id, $newStatus, $allowedTransitions) {
-                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                $po = DB::table('purchase_orders')->whereNull('deleted_at')->where('id', $id)->lockForUpdate()->first();
                 if (!$po) abort(404);
                 if (!in_array($newStatus, $allowedTransitions[$po->status] ?? [], true)) {
                     throw new \RuntimeException("Cannot change status from '{$po->status}' to '{$newStatus}'.");
@@ -375,7 +377,7 @@ class ProcurementController extends Controller
         try {
             $beforeStatus = null;
             DB::transaction(function () use ($id, &$beforeStatus, $request) {
-                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                $po = DB::table('purchase_orders')->whereNull('deleted_at')->where('id', $id)->lockForUpdate()->first();
                 if (!$po) abort(404);
                 if (!in_array($po->status, ['partial', 'received'], true)) {
                     throw new \RuntimeException('Only partially or fully received purchase orders can be closed.');
@@ -407,7 +409,7 @@ class ProcurementController extends Controller
 
         try {
             $cutsheetIds = DB::transaction(function () use ($id, $data) {
-                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                $po = DB::table('purchase_orders')->whereNull('deleted_at')->where('id', $id)->lockForUpdate()->first();
                 if (!$po) abort(404);
                 $oldSuggestionIds = DB::table('po_items')->where('po_id', $id)
                     ->pluck('mrp_suggestion_id')->filter()->all();
@@ -475,7 +477,7 @@ class ProcurementController extends Controller
 
                 $newSuggestionIds = collect($items)->pluck('mrp_suggestion_id')->filter()->all();
                 foreach (array_diff($oldSuggestionIds, $newSuggestionIds) as $suggestionId) {
-                    if (!DB::table('po_items')->where('mrp_suggestion_id', $suggestionId)->exists()) {
+                    if (!DB::table('po_items')->join('purchase_orders', 'purchase_orders.id', '=', 'po_items.po_id')->where('po_items.mrp_suggestion_id', $suggestionId)->whereNull('purchase_orders.deleted_at')->exists()) {
                         DB::table('mrp_suggestions')->where('id', $suggestionId)
                             ->update(['status' => 'pending', 'updated_at' => now()]);
                     }
@@ -498,18 +500,15 @@ class ProcurementController extends Controller
     {
         try {
             $cutsheetIds = DB::transaction(function () use ($id) {
-                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                $po = DB::table('purchase_orders')->whereNull('deleted_at')->where('id', $id)->lockForUpdate()->first();
                 if (!$po) abort(404);
-                if ($this->hasReceipts((int) $id)) {
-                    throw new \RuntimeException('PO đã phát sinh nhận hàng nên không thể xóa.');
-                }
                 $suggestionIds = DB::table('po_items')->where('po_id', $id)
                     ->pluck('mrp_suggestion_id')->filter()->all();
                 $cutsheetIds = DB::table('mrp_suggestions')->whereIn('id', $suggestionIds)
                     ->pluck('cutsheet_id')->all();
-                DB::table('purchase_orders')->where('id', $id)->delete();
+                DB::table('purchase_orders')->where('id', $id)->update(['deleted_at' => now(), 'updated_at' => now()]);
                 foreach ($suggestionIds as $suggestionId) {
-                    if (!DB::table('po_items')->where('mrp_suggestion_id', $suggestionId)->exists()) {
+                    if (!DB::table('po_items')->join('purchase_orders', 'purchase_orders.id', '=', 'po_items.po_id')->where('po_items.mrp_suggestion_id', $suggestionId)->whereNull('purchase_orders.deleted_at')->exists()) {
                         DB::table('mrp_suggestions')->where('id', $suggestionId)
                             ->update(['status' => 'pending', 'updated_at' => now()]);
                     }
@@ -517,7 +516,7 @@ class ProcurementController extends Controller
                 return $cutsheetIds;
             });
             $this->syncMaterialReadiness($cutsheetIds);
-            return redirect()->route('admin.procurement.index')->with('success', 'PO deleted successfully.');
+            return redirect()->route('admin.procurement.index')->with('success', 'PO deleted. Its receipt history and inventory records have been preserved.');
         } catch (\Throwable $e) {
             Log::warning('PO delete rejected', ['po_id' => $id, 'message' => $e->getMessage()]);
             return back()->with('error', $e->getMessage());
@@ -632,7 +631,7 @@ class ProcurementController extends Controller
         ]);
         try {
             DB::transaction(function () use ($id, $data) {
-                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->first();
+                $po = DB::table('purchase_orders')->whereNull('deleted_at')->where('id', $id)->lockForUpdate()->first();
                 if (!$po || !in_array($po->status, ['confirmed', 'partial'], true)) {
                     throw new \RuntimeException('Only confirmed or partially received POs can receive goods.');
                 }
@@ -659,7 +658,7 @@ class ProcurementController extends Controller
     public function importReceiptRows(Request $request, int $id)
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
-        $po = DB::table('purchase_orders')->where('id', $id)->firstOrFail();
+        $po = DB::table('purchase_orders')->whereNull('deleted_at')->where('id', $id)->firstOrFail();
         if (!in_array($po->status, ['confirmed', 'partial'], true)) {
             return response()->json(['message' => 'Only confirmed or partially received POs can receive goods.'], 422);
         }

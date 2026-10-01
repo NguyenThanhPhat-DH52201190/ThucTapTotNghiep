@@ -25,7 +25,7 @@
                 @if($canCreatePo)
                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Edit</a>
                 @endif
-                @if($canCreatePo && !in_array($po->status, ['partial', 'received', 'closed']))
+                @if($canCreatePo)
                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Delete</button>

@@ -194,6 +194,7 @@ Route::middleware('auth')->group(function () {
         Route::get('norm/materials/{id}/defects', [\App\Http\Controllers\NormMaterialDefectController::class, 'index'])->name('norm.defects');
         Route::post('norm/materials/{id}/defects', [\App\Http\Controllers\NormMaterialDefectController::class, 'store'])->name('norm.defects.store');
         Route::get('norm/materials/{id}/defects/{defect}/image', [\App\Http\Controllers\NormMaterialDefectController::class, 'image'])->name('norm.defects.image');
+        Route::get('norm/materials/{id}/images', [NormController::class, 'materialImages'])->name('norm.materials.images');
         Route::get('norm/materials/export', [NormController::class, 'exportMaterials'])->name('norm.materials.export');
         Route::get('norm/materials/{id}', [NormController::class, 'materialDetail'])->name('norm.materials.show');
         Route::put('norm/materials/{id}/confirmed', [NormController::class, 'updateConfirmed'])->name('norm.materials.confirmed');

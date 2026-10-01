@@ -10,6 +10,9 @@
 .norm-materials-table code{white-space:normal;overflow-wrap:anywhere}
 .norm-materials-table .form-control{min-width:0;padding:.3rem .4rem;font-size:.82rem}
 .norm-materials-table .badge{white-space:normal}
+.norm-materials-table .po-column{padding:.35rem .4rem}
+.norm-materials-table .po-list{display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;white-space:normal}
+.norm-materials-table .po-link{display:block;max-width:100%;line-height:1.25;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 </style>
 <div class="container-fluid px-0">
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -36,6 +39,7 @@
 
     <div class="mb-3"><span class="text-muted">BOM:</span> @include('admin.partials.image-trigger', ['imageUrl' => $order->bom_image_id ? route('admin.bom.image', $order->bom_image_id, false) : null, 'imageLabel' => $order->bom_style . ' / ' . $order->bom_version])</div>
     <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+        <a href="{{ route('admin.norm.materials.images', $order->id) }}" class="btn btn-outline-dark"><i class="bi bi-images me-1"></i>All Images</a>
         <a href="{{ route('admin.norm.replacements', $order->id) }}" class="btn btn-outline-primary">Replace material</a>
         <a href="{{ route('admin.norm.defects', $order->id) }}" class="btn btn-outline-danger">Material defects</a>
         <a href="{{ route('admin.norm.delivery-bills', $order->id) }}" class="btn btn-success">Export Excel &amp; Confirm Issue</a>
@@ -53,10 +57,12 @@
         @endif
     </div>
     <div class="card shadow-sm border-0"><div class="table-responsive"><table class="table table-sm table-bordered table-hover align-middle mb-0 norm-materials-table">
-        <colgroup><col style="width:10%"><col style="width:8%"><col style="width:16%"><col style="width:8%"><col style="width:11%"><col style="width:5%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup>
-        <thead class="table-light"><tr><th>Material</th><th>Old Code</th><th>Description</th><th>Type</th><th>Colour / Size</th><th>Unit</th><th class="text-end">Yield plan</th><th class="text-end">Yield confirmed</th><th class="text-end">watse confirmed</th><th class="text-end text-nowrap">Required</th><th class="text-end text-nowrap">Available</th><th class="text-end text-nowrap">Shortage</th></tr></thead>
+        <colgroup><col style="width:8%"><col style="width:12%"><col style="width:7%"><col style="width:13%"><col style="width:7%"><col style="width:9%"><col style="width:5%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup>
+        <thead class="table-light"><tr><th>Material</th><th>PO</th><th>Old Code</th><th>Description</th><th>Type</th><th>Colour / Size</th><th>Unit</th><th class="text-end">Yield plan</th><th class="text-end">Yield confirmed</th><th class="text-end">watse confirmed</th><th class="text-end text-nowrap">Required</th><th class="text-end text-nowrap">Available</th><th class="text-end text-nowrap">Shortage</th></tr></thead>
         <tbody>@forelse($rows as $row)<tr>
-            <td>@if($row->replacement_id)<span class="badge bg-secondary d-block mb-1">Replacement #{{ $row->replacement_id }}</span>@endif<code>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_code])</code></td><td><code>{{ $row->material_old_code ?: '-' }}</code></td><td>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_name])</td><td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
+            <td>@if($row->replacement_id)<span class="badge bg-secondary d-block mb-1">Replacement #{{ $row->replacement_id }}</span>@endif<code>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_code])</code></td>
+            <td class="po-column">@if($row->purchase_orders->isNotEmpty())<div class="po-list">@foreach($row->purchase_orders as $po)<a class="po-link" href="{{ route('admin.procurement.show', $po->id) }}" title="{{ ucfirst($po->status) }}">{{ $po->po_number }}</a>@endforeach</div>@else<span class="text-muted">-</span>@endif</td>
+            <td><code>{{ $row->material_old_code ?: '-' }}</code></td><td>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_name])</td><td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
             <td>{{ $row->material_color ?: '-' }} / {{ $row->material_size ?: '-' }}</td><td>{{ $row->unit }}</td>
             <td class="text-end">{{ $row->replacement_id ? '?' : number_format($row->yield_plan ?? $row->consumption_rate, 4) }}
                 @if(isset($row->confirmation_revision) && ((float) $row->yield_plan !== (float) $row->bom_yield_at_confirmation || (float) $row->waste_plan !== (float) $row->bom_waste_at_confirmation))<div class="small text-warning">BOM changed; review confirmed values</div>@endif
@@ -77,7 +83,7 @@
                 @else {{ number_format($row->waste_percent, 2) }}% @if(!isset($row->waste_confirmed))<small class="text-muted">(BOM)</small>@endif @endif
             </td>
             <td class="text-end text-nowrap fw-bold">{{ number_format($row->required_qty, 0) }}</td><td class="text-end text-nowrap">{{ number_format($row->available_qty, 0) }}</td><td class="text-end text-nowrap fw-bold {{ $row->shortage_qty > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($row->shortage_qty, 0) }}</td>
-        </tr>@empty<tr><td colspan="12" class="text-center text-muted py-4">No material requirements found.</td></tr>@endforelse</tbody>
+        </tr>@empty<tr><td colspan="13" class="text-center text-muted py-4">No material requirements found.</td></tr>@endforelse</tbody>
     </table></div>@if($rows->hasPages())<div class="card-footer">{{ $rows->links() }}</div>@endif</div>
 </div>
 @endsection

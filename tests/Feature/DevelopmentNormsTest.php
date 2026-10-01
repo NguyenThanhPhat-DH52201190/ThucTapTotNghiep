@@ -117,4 +117,27 @@ class DevelopmentNormsTest extends TestCase
         ])->assertRedirect(route('admin.development-norms.show', $cutsheetId));
         $this->assertDatabaseHas('development_norm_items', ['id' => $normItem->id, 'yield_value' => 1.8]);
     }
+
+    public function test_ocs_can_be_confirmed_without_bom_for_planning_without_creating_requisition(): void
+    {
+        Queue::fake();
+        Schema::create('material_requisitions', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('cutsheet_id');
+        });
+        $admin = $this->createUserRecord(['role' => User::ROLE_ADMIN]);
+        $this->actingAs($admin);
+        $this->createOcsRecord(['CS' => 'CS-NO-BOM', 'status' => 'pending', 'bom_header_id' => null]);
+        $cutsheetId = DB::table('ocs')->where('CS', 'CS-NO-BOM')->value('id');
+
+        $this->patch(route('admin.ocs.status', $cutsheetId), ['status' => 'confirmed'])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('ocs', [
+            'id' => $cutsheetId, 'status' => 'confirmed', 'requisition_job_status' => 'waiting_bom',
+        ]);
+        $this->assertDatabaseMissing('development_norms', ['cutsheet_id' => $cutsheetId]);
+        $this->assertDatabaseMissing('material_requisitions', ['cutsheet_id' => $cutsheetId]);
+        Queue::assertNothingPushed();
+    }
 }

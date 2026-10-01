@@ -580,10 +580,19 @@ class OCSController extends Controller
                 }
                 if ($request->status === 'confirmed' && $request->status !== $order->status) {
                     $bom = $order->bom_header_id ? DB::table('bom_headers')->find($order->bom_header_id) : null;
-                    if (!$bom) throw new \RuntimeException('Assign a BOM before confirmation.');
-                    app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $id);
-                    DB::table('ocs')->where('id', $id)->update(['requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now()]);
-                    CreateRequisitionForCutsheet::dispatch((int) $id)->afterCommit();
+                    if ($bom) {
+                        app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $id);
+                        DB::table('ocs')->where('id', $id)->update(['requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now()]);
+                        CreateRequisitionForCutsheet::dispatch((int) $id)->afterCommit();
+                    } else {
+                        // Orders may be confirmed for planning before their BOM is ready.
+                        // Material requirements and reservations must wait until a BOM is assigned.
+                        DB::table('ocs')->where('id', $id)->update([
+                            'requisition_job_status' => 'waiting_bom',
+                            'requisition_job_error' => 'Waiting for BOM assignment.',
+                            'updated_at' => now(),
+                        ]);
+                    }
                 }
                 DB::table('ocs')->where('id', $id)->update(['status' => $request->status, 'updated_at' => now()]);
                 if ($request->status !== $order->status) $audit->record('status_changed', 'order_cutsheet', (int) $id, $request->user()?->id, ['status' => $order->status], ['status' => $request->status], $request->change_reason ?: 'Workflow status transition');

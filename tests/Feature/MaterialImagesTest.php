@@ -231,6 +231,15 @@ class MaterialImagesTest extends TestCase
         $bomId = DB::table('bom_headers')->insertGetId(['style_no' => 'BOM-01']);
         $this->createOcsRecord(['bom_header_id' => $bomId]);
         $id = DB::table('ocs')->value('id');
+        Schema::create('purchase_orders', function (Blueprint $table) {
+            $table->id(); $table->string('po_number'); $table->string('status'); $table->date('order_date')->nullable();
+        });
+        Schema::create('po_items', function (Blueprint $table) {
+            $table->id(); $table->unsignedBigInteger('po_id'); $table->unsignedBigInteger('material_id')->nullable();
+            $table->string('material_code');
+        });
+        $poId = DB::table('purchase_orders')->insertGetId(['po_number' => 'PO-MATERIAL-1', 'status' => 'confirmed', 'order_date' => '2026-09-30']);
+        DB::table('po_items')->insert(['po_id' => $poId, 'material_id' => $materialId, 'material_code' => 'FAB-01']);
         DB::table('order_material_requirements')->insert([
             'cutsheet_id' => $id, 'bom_header_id' => $bomId, 'material_id' => $materialId,
             'material_code' => 'FAB-01', 'material_name' => 'Fabric', 'material_type' => 'fabric',
@@ -239,7 +248,15 @@ class MaterialImagesTest extends TestCase
         $url = route('admin.master-data.material-image', $materialId, false);
         $response = $this->get(route('admin.norm.materials.show', $id))->assertOk();
         $this->assertSame(2, substr_count($response->getContent(), 'data-image-url="' . $url . '"'));
-        $response->assertSee('View image for FAB-01')->assertSee('View image for Fabric')->assertDontSee('data-category-image-url=', false);
+        $response->assertSee('View image for FAB-01')->assertSee('View image for Fabric')->assertSee('PO-MATERIAL-1')->assertDontSee('data-category-image-url=', false);
+        DB::table('order_material_requirements')->insert([
+            'cutsheet_id' => $id, 'bom_header_id' => $bomId, 'material_id' => $materialId,
+            'material_code' => 'FAB-01', 'material_name' => 'Fabric', 'material_type' => 'fabric',
+            'material_size' => 'L',
+        ]);
+        $allImages = $this->get(route('admin.norm.materials.images', $id))->assertOk()
+            ->assertSee('Material Images')->assertSee('CS-001')->assertSee($url, false);
+        $this->assertSame(1, substr_count($allImages->getContent(), 'material-image-card'));
         DB::table('material_categories')->update(['image_path' => 'old-category.png']);
         DB::table('materials')->update(['image_path' => null]);
         $this->get(route('admin.norm.materials.show', $id))->assertOk()->assertDontSee('data-image-url=', false)->assertSee('Fabric');

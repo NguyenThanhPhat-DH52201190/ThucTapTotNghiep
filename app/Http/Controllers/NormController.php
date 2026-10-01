@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\OrderMaterialRequirementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -54,6 +55,39 @@ class NormController extends Controller
             ->selectRaw('CASE WHEN '.\App\Services\CustomerStyleService::imageSql('bom_headers', 'style_no').' IS NOT NULL THEN bom_headers.id WHEN '.\App\Services\CustomerStyleService::imageSql('template', 'style_no').' IS NOT NULL THEN template.id ELSE NULL END as bom_image_id');
     }
 
+    private function attachPurchaseOrders($rows)
+    {
+        if (!Schema::hasTable('po_items') || !Schema::hasTable('purchase_orders')) {
+            return $rows->each(fn ($row) => $row->purchase_orders = collect());
+        }
+        $materialIds = $rows->pluck('material_id')->filter()->unique()->values();
+        $materialCodes = $rows->pluck('material_code')->filter()->unique()->values();
+        if ($materialIds->isEmpty() && $materialCodes->isEmpty()) {
+            return $rows->each(fn ($row) => $row->purchase_orders = collect());
+        }
+        $purchaseOrders = DB::table('po_items')
+            ->join('purchase_orders', 'purchase_orders.id', '=', 'po_items.po_id')
+            ->where(function ($query) use ($materialIds, $materialCodes) {
+                if ($materialIds->isNotEmpty()) $query->whereIn('po_items.material_id', $materialIds);
+                if ($materialCodes->isNotEmpty()) {
+                    $materialIds->isNotEmpty()
+                        ? $query->orWhereIn('po_items.material_code', $materialCodes)
+                        : $query->whereIn('po_items.material_code', $materialCodes);
+                }
+            })
+            ->orderByDesc('purchase_orders.order_date')->orderByDesc('purchase_orders.id')
+            ->get(['purchase_orders.id', 'purchase_orders.po_number', 'purchase_orders.status', 'po_items.material_id', 'po_items.material_code'])
+            ->unique(fn ($item) => $item->id . '|' . $item->material_id . '|' . $item->material_code)
+            ->values();
+
+        return $rows->each(function ($row) use ($purchaseOrders) {
+            $row->purchase_orders = $purchaseOrders->filter(fn ($po) =>
+                ($row->material_id && (int) $po->material_id === (int) $row->material_id)
+                || trim((string) $po->material_code) === trim((string) $row->material_code)
+            )->unique('id')->values();
+        });
+    }
+
     public function materials(Request $request, OrderMaterialRequirementService $service)
     {
         $orders = $this->ordersWithImages()
@@ -72,7 +106,24 @@ class NormController extends Controller
             ->leftJoin('materials as material', 'material.id', '=', 'norm.material_id')
             ->addSelect('material.id as image_material_id', 'material.image_path as material_image_path')
             ->paginate(50)->withQueryString();
+        $this->attachPurchaseOrders($rows->getCollection());
         return view('admin.norm.materials', compact('rows', 'order'));
+    }
+
+    public function materialImages(int $id, OrderMaterialRequirementService $service)
+    {
+        $order = $this->ordersWithImages()->where('ocs.id', $id)->first();
+        if (!$order) abort(404);
+        $service->sync($id);
+        $request = request()->merge(['cutsheet_id' => $id]);
+        $materials = $this->query($request)
+            ->leftJoin('materials as image_material', 'image_material.id', '=', 'norm.material_id')
+            ->addSelect('image_material.id as image_material_id', 'image_material.image_path as material_image_path')
+            ->get()
+            ->unique('material_code')
+            ->values();
+
+        return view('admin.norm.material-images', compact('order', 'materials'));
     }
 
     public function updateConfirmed(Request $request, int $id, OrderMaterialRequirementService $service, \App\Services\AuditTrailService $audit)

@@ -155,13 +155,13 @@
                                 <div class="collapse p-3" id="receipt-items-{{ $r->id }}">
                                 <div class="table-responsive">
                                     <table class="table table-sm table-bordered align-middle mb-0 bg-white">
-                                        <thead class="table-light"><tr><th>PO material code</th><th>Customs material code</th><th class="text-end">Customs unit price</th><th class="text-end">Received qty</th></tr></thead>
+                                        <thead class="table-light"><tr><th>PO material code</th><th>Lot No</th><th>Roll No</th><th class="text-end">Received qty</th></tr></thead>
                                         <tbody>
                                             @foreach($itemsForReceipt as $receiptItem)
                                             <tr>
                                                 <td>{{ $receiptItem->material_code ?? '-' }}</td>
-                                                <td>{{ $receiptItem->customs_material_code ?: '-' }}</td>
-                                                <td class="text-end">{{ $receiptItem->customs_unit_price !== null ? number_format($receiptItem->customs_unit_price, 4) : '-' }}</td>
+                                                <td>{{ $receiptItem->lot_no ?: '-' }}</td>
+                                                <td>{{ $receiptItem->roll_no ?: '-' }}</td>
                                                 <td class="text-end">{{ number_format((float) $receiptItem->quantity_received, 4) }}</td>
                                             </tr>
                                             @endforeach

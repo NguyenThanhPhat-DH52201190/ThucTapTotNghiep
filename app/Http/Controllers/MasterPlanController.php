@@ -316,9 +316,11 @@ class MasterPlanController extends Controller
 
     public function create()
     {
+        $usedCus = DB::table('mtp')->pluck('CU')->unique();
         $ocs = DB::table('ocs')
             ->leftJoin('bom_headers', 'ocs.bom_header_id', '=', 'bom_headers.id')
             ->select('ocs.*', 'bom_headers.style_no as bom_style', 'bom_headers.version as bom_version')
+            ->whereNotIn('ocs.CS', $usedCus)
             ->orderBy('ocs.CS', 'asc')
             ->get();
 
@@ -382,6 +384,10 @@ class MasterPlanController extends Controller
 
         if (!$ocs) {
             return back()->withErrors(['CU' => 'CS not found in OCS'])->withInput();
+        }
+
+        if (DB::table('mtp')->where('CU', $request->CU)->exists()) {
+            return back()->withErrors(['CU' => 'This CS already exists in Master Plan.'])->withInput();
         }
 
         // total Qty_dis for current CU
@@ -597,6 +603,10 @@ class MasterPlanController extends Controller
 
         if (!$ocs) {
             return back()->withErrors(['CU' => 'CS not found in OCS'])->withInput();
+        }
+
+        if (DB::table('mtp')->where('CU', $request->CU)->where('id', '!=', $id)->exists()) {
+            return back()->withErrors(['CU' => 'This CS already exists in another Master Plan record.'])->withInput();
         }
 
         // total Qty_dis excluding current record

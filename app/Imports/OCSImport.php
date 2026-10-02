@@ -15,6 +15,8 @@ class OCSImport implements ToCollection, WithHeadingRow
     {
         DB::transaction(function () use ($rows) {
         foreach ($rows as $row) {
+            // BOM is intentionally optional in the import sheet. OCS rows can be
+            // imported first and a matching BOM assigned later from Edit OCS.
             $cs = trim((string) ($row['cs'] ?? ''));
             $qty = (int) ($row['qty'] ?? 0);
             if ($cs === '' || $qty < 1 || empty($row['onum']) || empty($row['sno']) || empty($row['sname']) || empty($row['customer'])) {

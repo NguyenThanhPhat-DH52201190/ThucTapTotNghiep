@@ -105,9 +105,16 @@
                     </div>
                 </div>
 
-                <div class="card border mt-4">
+                <div class="card border mt-4 mx-auto" style="max-width: 760px;">
                     <div class="card-header"><strong>Size breakdown by customer</strong></div>
-                    <div class="card-body" id="sizeRows">@foreach(old('sizes', []) as $index => $size)<div class="row g-2 size-row {{ $index ? 'mt-2' : '' }}"><div class="col-md-5"><select name="sizes[{{ $index }}][size_name]" class="form-select customer-size-select" data-current="{{ $size['size_name'] }}" required></select></div><div class="col-md-5"><input type="number" min="0" name="sizes[{{ $index }}][quantity]" class="form-control" value="{{ $size['quantity'] }}" required></div></div>@endforeach</div>
+                    <div class="card-body" id="sizeRows">
+                        @foreach(old('sizes', []) as $index => $size)
+                            <div class="row g-2 size-row justify-content-center {{ $index ? 'mt-2' : '' }}">
+                                <div class="col-6 col-md-3"><input class="form-control text-center" value="{{ $size['size_name'] }}" readonly tabindex="-1" aria-label="Size"><input type="hidden" name="sizes[{{ $index }}][size_name]" value="{{ $size['size_name'] }}"></div>
+                                <div class="col-6 col-md-3"><input type="number" min="0" name="sizes[{{ $index }}][quantity]" class="form-control text-center" value="{{ $size['quantity'] }}" required aria-label="Quantity for {{ $size['size_name'] }}"></div>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
 
                 <div class="mt-4 d-flex gap-2">
@@ -124,7 +131,7 @@
 <script>
 const customerMaster = document.getElementById('customerMaster');
 function customerSizeNames(){const option=customerMaster.options[customerMaster.selectedIndex];try{return JSON.parse(option?.dataset.sizes||'[]');}catch{return [];}}
-function renderCustomerSizes(reset=false){const sizes=customerSizeNames(),box=document.getElementById('sizeRows');if(reset||!box.querySelector('.size-row')){box.innerHTML=sizes.length?sizes.map((size,i)=>`<div class="row g-2 size-row ${i?'mt-2':''}"><div class="col-md-5"><input class="form-control" value="${size}" readonly><input type="hidden" name="sizes[${i}][size_name]" value="${size}"></div><div class="col-md-5"><input type="number" min="0" name="sizes[${i}][quantity]" class="form-control" value="0" required></div></div>`).join(''):'<div class="text-muted">Configure sizes for this customer in Customer Size Breakdown first.</div>';return;}box.querySelectorAll('.customer-size-select').forEach(select=>{const current=select.dataset.current;const values=sizes.includes(current)?sizes:[current,...sizes].filter(Boolean);select.innerHTML=values.map(size=>`<option value="${size}" ${size===current?'selected':''}>${size}</option>`).join('');});}
+function renderCustomerSizes(reset=false){const sizes=customerSizeNames(),box=document.getElementById('sizeRows');if(reset||!box.querySelector('.size-row')){box.innerHTML=sizes.length?sizes.map((size,i)=>`<div class="row g-2 size-row justify-content-center ${i?'mt-2':''}"><div class="col-6 col-md-3"><input class="form-control text-center" value="${size}" readonly tabindex="-1" aria-label="Size"><input type="hidden" name="sizes[${i}][size_name]" value="${size}"></div><div class="col-6 col-md-3"><input type="number" min="0" name="sizes[${i}][quantity]" class="form-control text-center" value="0" required aria-label="Quantity for ${size}"></div></div>`).join(''):'<div class="text-muted text-center">Configure sizes for this customer in Customer Size Breakdown first.</div>';}}
 customerMaster?.addEventListener('change',function(){const option=this.options[this.selectedIndex];if(option.dataset.name)document.getElementById('customerName').value=option.dataset.name;renderCustomerSizes(true);});
 renderCustomerSizes(false);
 

@@ -75,7 +75,7 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
                         <div>
                             <h6 class="mb-1"><i class="bi bi-file-earmark-arrow-up me-1"></i> Import Order Cutsheet</h6>
-                            <p class="text-muted small mb-0">Chọn file Excel (.xlsx hoặc .xls, tối đa 2 MB). Hệ thống sẽ kiểm tra dữ liệu trước khi lưu.</p>
+                            <p class="text-muted small mb-0">Chọn file Excel (.xlsx hoặc .xls, tối đa 2 MB). CS, PO, Style, Style Name, Customer và Qty là bắt buộc; BOM có thể để trống và gán sau trong Edit OCS.</p>
                         </div>
                         <a href="{{ route('ordercutsheet.export') }}" class="small text-decoration-none">
                             <i class="bi bi-download me-1"></i>Tải file mẫu theo cấu trúc Export

@@ -24,23 +24,21 @@
             <form method="POST" action="{{ route('admin.ocs.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">CS <span class="text-danger">*</span></label>
+                        <input type="text" name="CS" class="form-control" value="{{ old('CS') }}" required autofocus>
+                    </div>
                     @include('admin.partials.customer-style-selector')
                     <div class="col-md-4">
                         <label class="form-label">Customer master <span class="text-danger">*</span></label>
                         <select name="customer_id" id="customerMaster" class="form-select" required><option value="">-- Select customer --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-name="{{ $customer->name }}" data-sizes='@json(($customerSizes[$customer->id] ?? collect())->pluck("size_name")->values())' @selected(old('customer_id') == $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' · '.$customer->brand : '' }}</option>@endforeach</select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Customer name <span class="text-danger">*</span></label>
-                        <input type="text" id="customerName" name="Customer" class="form-control" value="{{ old('Customer') }}" required>
-                    </div>
+                    <input type="hidden" id="customerName" name="Customer" value="{{ old('Customer') }}">
                     <div class="col-md-4">
                         <label class="form-label">SNo (Style) <span class="text-danger">*</span></label>
                         <select name="SNo" id="styleNo" class="form-select" data-customer-style data-current="{{ old('SNo', $order->SNo ?? '') }}" required><option value="">-- Select Style --</option></select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">SName <span class="text-danger">*</span></label>
-                        <input type="text" id="styleName" name="Sname" class="form-control" value="{{ old('Sname') }}" required>
-                    </div>
+                    <input type="hidden" id="styleName" name="Sname" value="{{ old('Sname') }}">
                     <div class="col-md-4">
                         <label class="form-label">BOM (Bill of Materials)</label>
                         <select name="bom_header_id" id="bomHeader" class="form-select">
@@ -53,10 +51,6 @@
                         </select>
                     </div>
                     <!-- Core fields -->
-                    <div class="col-md-4">
-                        <label class="form-label">CS <span class="text-danger">*</span></label>
-                        <input type="text" name="CS" class="form-control" value="{{ old('CS') }}" required>
-                    </div>
                     <div class="col-md-4">
                         <label class="form-label">CsDate <span class="text-danger">*</span></label>
                         <input type="date" name="CsDate" class="form-control" value="{{ old('CsDate') }}" required>
@@ -77,6 +71,10 @@
                         <label class="form-label">CMT</label>
                         <input type="number" name="CMT" step="0.01" class="form-control" value="{{ old('CMT') }}">
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Expected Ship Date</label>
+                        <input type="date" name="expected_ship_date" class="form-control" value="{{ old('expected_ship_date') }}">
+                    </div>
                     <div class="col-md-2"><label class="form-label">Order Type</label><select name="order_type" class="form-select"><option value="cmt" {{ old('order_type','cmt')==='cmt'?'selected':'' }}>CMT</option><option value="fob" {{ old('order_type')==='fob'?'selected':'' }}>FOB</option></select></div>
                     <div class="col-md-3"><label class="form-label">Material Owner</label><select name="material_ownership" class="form-select"><option value="factory" {{ old('material_ownership','factory')==='factory'?'selected':'' }}>Factory</option><option value="customer" {{ old('material_ownership')==='customer'?'selected':'' }}>Customer</option></select></div>
                     <div class="col-md-3"><label class="form-label">FOB Unit Price</label><input type="number" step="0.0001" min="0" name="unit_price" class="form-control" value="{{ old('unit_price','0.0000') }}"></div>
@@ -94,10 +92,6 @@
                             <option value="high" {{ old('priority') == 'high' ? 'selected' : '' }}>🟠 High</option>
                             <option value="urgent" {{ old('priority') == 'urgent' ? 'selected' : '' }}>🔴 Urgent</option>
                         </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Expected Ship Date</label>
-                        <input type="date" name="expected_ship_date" class="form-control" value="{{ old('expected_ship_date') }}">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Order Notes</label>

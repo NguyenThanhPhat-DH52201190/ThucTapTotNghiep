@@ -49,8 +49,8 @@
                     <input type="text" name="customer" class="form-control" placeholder="Fill Customer" value="{{ request('customer') }}">
                 </div>
                 <div class="col-12 col-md-3 col-lg-2">
-                    <label class="form-label">SName</label>
-                    <input type="text" name="sname" class="form-control" placeholder="Fill SName" value="{{ request('sname') }}">
+                    <label class="form-label">SNo</label>
+                    <input type="text" name="sno" class="form-control" placeholder="Fill SNo" value="{{ request('sno') }}">
                 </div>
                 <div class="col-12 col-md-2 col-lg-2">
                     <label class="form-label">Status</label>

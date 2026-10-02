@@ -118,8 +118,8 @@ class OCSController extends Controller
             ->when($request->filled('customer'), function ($query) use ($request) {
                 $query->where('ocs.Customer', 'like', '%' . $request->customer . '%');
             })
-            ->when($request->filled('sname'), function ($query) use ($request) {
-                $query->where('ocs.Sname', 'like', '%' . $request->sname . '%');
+            ->when($request->filled('sno'), function ($query) use ($request) {
+                $query->where('ocs.SNo', 'like', '%' . $request->sno . '%');
             })
             ->when($request->filled('status'), function ($query) use ($request) {
                 $query->where('ocs.status', $request->status);

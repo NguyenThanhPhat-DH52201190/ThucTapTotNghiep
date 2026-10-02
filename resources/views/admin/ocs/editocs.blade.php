@@ -24,23 +24,21 @@
             <form method="POST" action="{{ route('admin.ocs.update', $order->id) }}" enctype="multipart/form-data">
                 @csrf @method('PUT')
                 <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">CS <span class="text-danger">*</span></label>
+                        <input type="text" name="CS" class="form-control" value="{{ old('CS', $order->CS) }}" required autofocus>
+                    </div>
                     @include('admin.partials.customer-style-selector')
                     <div class="col-md-4">
                         <label class="form-label">Customer master <span class="text-danger">*</span></label>
                         <select name="customer_id" id="customerMaster" class="form-select" required><option value="">-- Select customer --</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-name="{{ $customer->name }}" data-sizes='@json(($customerSizes[$customer->id] ?? collect())->pluck("size_name")->values())' @selected(old('customer_id', $order->customer_id) == $customer->id)>{{ $customer->name }}{{ $customer->brand ? ' · '.$customer->brand : '' }}</option>@endforeach</select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Customer name <span class="text-danger">*</span></label>
-                        <input type="text" id="customerName" name="Customer" class="form-control" value="{{ old('Customer', $order->Customer) }}" required>
-                    </div>
+                    <input type="hidden" id="customerName" name="Customer" value="{{ old('Customer', $order->Customer) }}">
                     <div class="col-md-4">
                         <label class="form-label">SNo (Style) <span class="text-danger">*</span></label>
                         <select name="SNo" id="styleNo" class="form-select" data-customer-style data-current="{{ old('SNo', $order->SNo ?? '') }}" required><option value="">-- Select Style --</option></select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">SName <span class="text-danger">*</span></label>
-                        <input type="text" id="styleName" name="Sname" class="form-control" value="{{ old('Sname', $order->Sname) }}" required>
-                    </div>
+                    <input type="hidden" id="styleName" name="Sname" value="{{ old('Sname', $order->Sname) }}">
                     <div class="col-md-4">
                         <label class="form-label">BOM (Bill of Materials)</label>
                         <select name="bom_header_id" id="bomHeader" class="form-select">
@@ -51,10 +49,6 @@
                                 </option>
                             @endforeach
                         </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">CS <span class="text-danger">*</span></label>
-                        <input type="text" name="CS" class="form-control" value="{{ old('CS', $order->CS) }}" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">CsDate <span class="text-danger">*</span></label>
@@ -76,6 +70,10 @@
                         <label class="form-label">CMT</label>
                         <input type="number" step="0.01" name="CMT" class="form-control" value="{{ old('CMT', $order->CMT) }}">
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Expected Ship Date</label>
+                        <input type="date" name="expected_ship_date" class="form-control" value="{{ old('expected_ship_date', $order->expected_ship_date) }}">
+                    </div>
 
                     <!-- Order Management Fields -->
                     <div class="col-md-4">
@@ -93,10 +91,6 @@
                             <option value="high" {{ old('priority', $order->priority) == 'high' ? 'selected' : '' }}>🟠 High</option>
                             <option value="urgent" {{ old('priority', $order->priority) == 'urgent' ? 'selected' : '' }}>🔴 Urgent</option>
                         </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Expected Ship Date</label>
-                        <input type="date" name="expected_ship_date" class="form-control" value="{{ old('expected_ship_date', $order->expected_ship_date) }}">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Order Notes</label>

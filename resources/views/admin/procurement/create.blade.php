@@ -50,7 +50,7 @@
                 <button type="button" class="btn btn-primary btn-sm" onclick="addRow()"><i class="bi bi-plus-lg"></i> Add Item</button>
             </div>
             <div class="table-responsive">
-                <table class="table table-bordered mb-0 po-create-items-table" id="itemsTable">
+                <table class="table table-sm table-bordered align-middle mb-0 po-create-items-table" id="itemsTable">
                     <thead class="table-light">
                         <tr>
                             <th>Material Code</th>
@@ -59,7 +59,7 @@
                             <th>Unit</th>
                             <th>Quantity</th>
                             <th>Unit Price (USD)</th>
-                            <th>Total (USD)</th>
+                            <th class="text-end">Total (USD)</th>
                             <th>Note</th>
                             <th style="width:40px"></th>
                         </tr>
@@ -70,7 +70,7 @@
                             <td colspan="4" class="text-end">GRAND TOTAL:</td>
                             <td id="totalQty">0</td>
                             <td></td>
-                            <td id="totalAmount">0.0000 USD</td>
+                            <td id="totalAmount" class="text-end">0.0000 USD</td>
                             <td colspan="2"></td>
                         </tr>
                     </tfoot>
@@ -105,6 +105,12 @@
     .po-create-items-table th:nth-child(1), .po-create-items-table td:nth-child(1) { min-width: 250px; }
     .po-create-items-table th:nth-child(2), .po-create-items-table td:nth-child(2) { min-width: 240px; }
     .po-create-items-table th:nth-child(3), .po-create-items-table td:nth-child(3) { min-width: 130px; }
+    .po-create-items-table th:nth-child(6), .po-create-items-table td:nth-child(6) { min-width: 180px; }
+    .po-create-items-table th:nth-child(7), .po-create-items-table td:nth-child(7) {
+        min-width: 135px;
+        white-space: nowrap;
+    }
+    .po-create-items-table th:nth-child(8), .po-create-items-table td:nth-child(8) { min-width: 180px; }
 </style>
 
 <script>
@@ -158,7 +164,7 @@ function addRow(data = {}) {
             </td>
             <td><input type="number" step="0.01" name="items[${i}][quantity]" class="form-control form-control-sm qty" required min="0.01" value="${data.qty || data.quantity || ''}" onchange="calcTotal()"></td>
             <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || data.unit_price || ''}" placeholder="0.0000" onchange="calcTotal()"></td>
-            <td class="row-total text-end">0.0000 USD</td>
+            <td class="row-total text-end fw-semibold">0.0000 USD</td>
             <td><input type="text" name="items[${i}][notes]" class="form-control form-control-sm" maxlength="1000" value="${escapeSurchargeValue(data.notes || '')}" placeholder="Add note"></td>
             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${i})" ${Number(data.received_qty || 0) > 0 ? 'disabled title="This item has received goods and cannot be removed"' : ''}><i class="bi bi-x"></i></button></td>
         </tr>`;

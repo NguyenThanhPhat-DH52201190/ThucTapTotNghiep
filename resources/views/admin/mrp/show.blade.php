@@ -17,9 +17,11 @@
                 <span class="badge bg-{{ $sc }} ms-2">{{ ucfirst($mrp->status) }}</span>
             </h5>
             <div class="d-flex gap-2">
+                @if(auth()->user()->role === 'admin' || (auth()->user()->role === 'ppic' && in_array(auth()->user()->ppic_team, ['create', 'both'], true)))
                 <a href="{{ route('admin.procurement.create-from-mrp', $mrp->id) }}" class="btn btn-success btn-sm">
                     <i class="bi bi-cart-plus"></i> Create POs
                 </a>
+                @endif
                 <a href="{{ route('admin.mrp.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>

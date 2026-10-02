@@ -4,6 +4,7 @@
 @php
     $user = auth()->user();
     $canCreatePo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
+    $canManagePo = $user->role === 'admin';
 @endphp
 
 <div class="container-fluid px-0">
@@ -18,9 +19,10 @@
         <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
             <h5 class="mb-0 fw-bold"><i class="bi bi-cart3 me-2"></i>Purchase Orders</h5>
             <div class="d-flex gap-2">
-                @if($canCreatePo)<a href="{{ route('admin.procurement.suppliers') }}" class="btn btn-outline-primary btn-sm">
+                @if($user->role === 'admin')<a href="{{ route('admin.procurement.suppliers') }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-people"></i> Suppliers
-                </a>
+                </a>@endif
+                @if($canCreatePo)
                 <a href="{{ route('admin.procurement.create') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-lg"></i> Create PO
                 </a>@endif
@@ -72,10 +74,10 @@
                             </td>
                             <td>
                                 <a href="{{ route('admin.procurement.show', $po->id) }}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
-                                @if($canCreatePo)
+                                @if($canManagePo)
                                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
                                 @endif
-                                @if($canCreatePo)
+                                @if($canManagePo)
                                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>

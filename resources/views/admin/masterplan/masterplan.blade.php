@@ -8,7 +8,7 @@ $canManage = auth()->user()->role === 'admin';
 $canEditFabric = $canManage;
 $isWarehouse = auth()->user()->role === 'warehouse';
 $isAccountant = auth()->user()->role === 'accountant';
-$hidePpicCols = in_array(auth()->user()->role, ['ppic', 'accountant'], true);
+$hidePpicCols = auth()->user()->role === 'accountant';
 $hideMidCols = $isAccountant;
 @endphp
 

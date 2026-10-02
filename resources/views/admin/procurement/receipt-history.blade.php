@@ -3,7 +3,7 @@
 @section('content')
 @php
     $user = auth()->user();
-    $canTrackPo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['track', 'both'], true));
+    $canTrackPo = $user->role === 'admin';
 @endphp
 <div class="container-fluid px-0">
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif

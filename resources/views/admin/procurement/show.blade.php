@@ -4,7 +4,9 @@
 @php
     $user = auth()->user();
     $canCreatePo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
-    $canTrackPo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['track', 'both'], true));
+    $canManagePo = $user->role === 'admin';
+    $canTrackPo = $canManagePo;
+    $canExportPo = in_array($user->role, ['admin', 'ppic'], true);
 @endphp
 @include('admin.procurement.partials.pdf-modal')
 
@@ -21,11 +23,11 @@
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold"><i class="bi bi-receipt me-2"></i>{{ $po->po_number }}</h5>
             <div class="d-flex gap-2">
-                @if($canTrackPo)<button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>@endif
-                @if($canCreatePo)
+                @if($canExportPo)<button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>@endif
+                @if($canManagePo)
                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Edit</a>
                 @endif
-                @if($canCreatePo)
+                @if($canManagePo)
                     <form method="POST" action="{{ route('admin.procurement.destroy', $po->id) }}" class="d-inline" onsubmit="return confirm('Delete this PO?')">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Delete</button>

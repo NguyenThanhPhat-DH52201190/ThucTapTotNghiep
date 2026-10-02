@@ -224,6 +224,10 @@
                 <i class="bi bi-calculator"></i>
                 MRP & Procurement
             </a>
+            <a href="{{ route('admin.development-norms.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.development-norms.*') ? 'active' : '' }}">
+                <i class="bi bi-rulers"></i>
+                Development Norms
+            </a>
             @elseif($role === 'development')
             <a href="{{ route('admin.development-norms.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.development-norms.*') ? 'active' : '' }}">
                 <i class="bi bi-rulers"></i>

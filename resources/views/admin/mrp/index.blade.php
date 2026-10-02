@@ -1,7 +1,11 @@
 @extends('layouts.app')
 @section('title', 'MRP')
 @section('content')
-@php $canManage = auth()->user()->role === 'admin'; @endphp
+@php
+    $user = auth()->user();
+    $canManage = $user->role === 'admin';
+    $canCreatePo = $canManage || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
+@endphp
 
 <div class="container-fluid px-0">
     @if(session('success'))
@@ -14,6 +18,11 @@
             @if($canManage)
                 <a href="{{ route('admin.mrp.create') }}" class="btn btn-primary">
                     <i class="bi bi-plus-lg"></i> New MRP Calculation
+                </a>
+            @endif
+            @if($canCreatePo)
+                <a href="{{ route('admin.procurement.create') }}" class="btn btn-success">
+                    <i class="bi bi-cart-plus"></i> Create PO
                 </a>
             @endif
         </div>

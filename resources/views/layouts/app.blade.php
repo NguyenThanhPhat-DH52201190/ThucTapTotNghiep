@@ -222,7 +222,11 @@
             </a>
             <a href="{{ route('admin.mrp.index') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-calculator"></i>
-                MRP & Procurement
+                MRP
+            </a>
+            <a href="{{ route('admin.procurement.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.procurement.*') ? 'active' : '' }}">
+                <i class="bi bi-cart3"></i>
+                Procurement / PO
             </a>
             <a href="{{ route('admin.development-norms.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.development-norms.*') ? 'active' : '' }}">
                 <i class="bi bi-rulers"></i>

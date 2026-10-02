@@ -50,11 +50,12 @@
                 <button type="button" class="btn btn-primary btn-sm" onclick="addRow()"><i class="bi bi-plus-lg"></i> Add Item</button>
             </div>
             <div class="table-responsive">
-                <table class="table table-bordered mb-0" id="itemsTable">
+                <table class="table table-bordered mb-0 po-create-items-table" id="itemsTable">
                     <thead class="table-light">
                         <tr>
                             <th>Material Code</th>
                             <th>Name</th>
+                            <th>Color</th>
                             <th>Unit</th>
                             <th>Quantity</th>
                             <th>Unit Price (USD)</th>
@@ -66,7 +67,7 @@
                     <tbody id="itemsBody"></tbody>
                     <tfoot>
                         <tr class="table-light fw-bold">
-                            <td colspan="3" class="text-end">GRAND TOTAL:</td>
+                            <td colspan="4" class="text-end">GRAND TOTAL:</td>
                             <td id="totalQty">0</td>
                             <td></td>
                             <td id="totalAmount">0.0000 USD</td>
@@ -96,6 +97,15 @@
         </div>
     </form>
 </div>
+
+<style>
+    .po-create-items-table { min-width: 1350px; }
+    .po-create-items-table th { white-space: nowrap; vertical-align: middle; }
+    .po-create-items-table td { vertical-align: middle; }
+    .po-create-items-table th:nth-child(1), .po-create-items-table td:nth-child(1) { min-width: 250px; }
+    .po-create-items-table th:nth-child(2), .po-create-items-table td:nth-child(2) { min-width: 240px; }
+    .po-create-items-table th:nth-child(3), .po-create-items-table td:nth-child(3) { min-width: 130px; }
+</style>
 
 <script>
 let rowCount = 0;
@@ -139,6 +149,7 @@ function addRow(data = {}) {
                 <input type="hidden" name="items[${i}][mrp_suggestion_id]" value="${data.suggestionId || data.mrp_suggestion_id || ''}">
             </td>
             <td><input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-name" required readonly value="${data.name || data.material_name || ''}"></td>
+            <td><input type="text" class="form-control form-control-sm material-color" readonly value="${escapeSurchargeValue(data.color || '')}" placeholder="-" tabindex="-1"></td>
             <td>
                 <select name="items[${i}][unit]" class="form-select form-select-sm">
                     <option value="M">M</option><option value="YD">YD</option><option value="KG">KG</option>
@@ -189,6 +200,7 @@ function materialChanged(select) {
     );
     row.querySelector('.material-id').value = selected?.material_id || '';
     row.querySelector('.material-name').value = selected?.material_name || '';
+    row.querySelector('.material-color').value = selected?.color || '';
     row.querySelector('select[name$="[unit]"]').value = selected?.unit || 'M';
     row.querySelector('.price').value = selected ? Number(selected.unit_price || 0).toFixed(4) : '';
     calcTotal();

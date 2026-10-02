@@ -80,10 +80,10 @@
             <h6 class="mb-0 fw-bold"><i class="bi bi-list-check me-2"></i>PO Items</h6>
         </div>
         <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
+            <table class="table table-sm align-middle mb-0 po-items-table">
                 <thead class="table-light">
                     <tr>
-                        <th>Code</th><th>Name</th><th>Unit</th><th class="text-end">Qty</th>
+                        <th>Code</th><th>Name</th><th>Color</th><th>Unit</th><th class="text-end">Qty</th>
                         <th class="text-end">Received</th><th class="text-end">Pending</th><th class="text-end">Unit Price (USD)</th>
                         <th class="text-end">Total (USD)</th><th>Note</th><th>Status</th>
                     </tr>
@@ -93,6 +93,7 @@
                         <tr>
                             <td><code>{{ $item->material_code }}</code></td>
                             <td><small>{{ $item->material_name }}</small></td>
+                            <td>{{ $item->default_material_color ?: '-' }}</td>
                             <td>{{ $item->unit }}</td>
                             <td class="text-end">{{ number_format($item->quantity, 2) }}</td>
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
@@ -107,12 +108,12 @@
                         </tr>
                     @endforeach
                     @foreach($surcharges as $surcharge)
-                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format($surcharge->total_price, 4) }} USD</td><td>-</td><td>-</td></tr>
+                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>-</td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format($surcharge->total_price, 4) }} USD</td><td>-</td><td>-</td></tr>
                     @endforeach
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
-                        <td colspan="7" class="text-end">TOTAL:</td>
+                        <td colspan="8" class="text-end">TOTAL:</td>
                         <td class="text-end text-primary">{{ number_format($po->total_amount, 4) }} USD</td>
                         <td colspan="2"></td>
                     </tr>
@@ -158,6 +159,16 @@
     </div>
     @endif
 </div>
+
+<style>
+    .po-items-table { min-width: 1450px; }
+    .po-items-table th { white-space: nowrap; vertical-align: middle; }
+    .po-items-table td { vertical-align: middle; }
+    .po-items-table th:nth-child(1), .po-items-table td:nth-child(1) { min-width: 155px; }
+    .po-items-table th:nth-child(2), .po-items-table td:nth-child(2) { min-width: 260px; }
+    .po-items-table th:nth-child(3), .po-items-table td:nth-child(3) { min-width: 130px; }
+    .po-items-table th:nth-child(4), .po-items-table td:nth-child(4) { min-width: 75px; }
+</style>
 
 <style>
     #receipt-history .receipt-history-table { min-width: 1450px; table-layout: fixed; }

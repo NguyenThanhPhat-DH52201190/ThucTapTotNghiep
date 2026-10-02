@@ -205,7 +205,7 @@ class OCSController extends Controller
                     'Sname' => $request->Sname, 'Customer' => $request->Customer, 'customer_id' => $request->customer_id, 'Color' => $request->Color,
                     'ONum' => $request->ONum, 'CMT' => $request->CMT, 'Qty' => $request->Qty,
                     'order_type' => $request->order_type, 'material_ownership' => $request->material_ownership, 'unit_price' => $request->unit_price ?? 0,
-                    'status' => 'pending', 'bom_header_id' => null,
+                    'status' => 'confirmed', 'bom_header_id' => null,
                     'image_path' => $imagePath,
                     'expected_ship_date' => $request->expected_ship_date, 'priority' => $request->priority ?? 'medium',
                     'order_notes' => $request->order_notes, 'created_at' => now(), 'updated_at' => now(),
@@ -215,6 +215,20 @@ class OCSController extends Controller
                     'created_at' => now(), 'updated_at' => now(),
                 ])->all());
                 [, $mappingStatus] = $this->createOrderBom($orderId, $request->integer('bom_header_id') ?: null, $request->user()?->id);
+                $bomHeaderId = DB::table('ocs')->where('id', $orderId)->value('bom_header_id');
+                if ($bomHeaderId) {
+                    app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $orderId);
+                    DB::table('ocs')->where('id', $orderId)->update([
+                        'requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now(),
+                    ]);
+                    CreateRequisitionForCutsheet::dispatch((int) $orderId)->afterCommit();
+                } else {
+                    DB::table('ocs')->where('id', $orderId)->update([
+                        'requisition_job_status' => 'waiting_bom',
+                        'requisition_job_error' => 'Waiting for BOM assignment.',
+                        'updated_at' => now(),
+                    ]);
+                }
                 return [$orderId, $mappingStatus];
             });
             if ($request->filled('bom_header_id')) {

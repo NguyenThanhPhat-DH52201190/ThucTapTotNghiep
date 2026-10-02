@@ -82,7 +82,7 @@
                     <!-- New Order Management Fields -->
                     <div class="col-md-4">
                         <label class="form-label">Initial Status</label>
-                        <input class="form-control" value="Pending" readonly>
+                        <input class="form-control" value="Confirmed" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Priority</label>

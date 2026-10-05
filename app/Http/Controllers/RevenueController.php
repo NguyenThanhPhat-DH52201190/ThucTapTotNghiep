@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\RevenueMasterPlanSync;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -300,6 +301,8 @@ class RevenueController extends Controller
 
     private function getRevenues(Request $request): Collection
     {
+        app(RevenueMasterPlanSync::class)->syncReadyMasterPlans();
+
         $distributionByLine = $this->getDistributionByLineSubquery();
         $lineMeta = $this->getLineMetaSubquery();
         $lineCateMap = $this->getLineCateMap();

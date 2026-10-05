@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\RevenueMasterPlanSync;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -437,6 +438,8 @@ class MasterPlanController extends Controller
                 'updated_at' => now(),
             ]);
 
+            app(RevenueMasterPlanSync::class)->syncReadyMasterPlans();
+
             return redirect()->route('admin.masterplan.index')
                 ->with('success', 'Saved successfully');
         } catch (\Throwable $e) {
@@ -691,6 +694,8 @@ class MasterPlanController extends Controller
                 'mps_notes' => $request->mps_notes,
                 'updated_at' => now(),
             ]);
+
+            app(RevenueMasterPlanSync::class)->syncReadyMasterPlans();
 
             return redirect()->route('admin.masterplan.index', [
                 'role' => 'admin',

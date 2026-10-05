@@ -8,7 +8,9 @@ $canManage = auth()->user()->role === 'admin';
 $canEditFabric = $canManage;
 $isWarehouse = auth()->user()->role === 'warehouse';
 $isAccountant = auth()->user()->role === 'accountant';
+$isPpic = auth()->user()->role === 'ppic';
 $hidePpicCols = auth()->user()->role === 'accountant';
+$hidePpicExecShipCols = $isPpic;
 $hideMidCols = $isAccountant;
 @endphp
 
@@ -196,12 +198,21 @@ $hideMidCols = $isAccountant;
     .masterplan-table td {
         padding: 0.35rem 0.5rem;
         white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: keep-all;
         vertical-align: middle;
         font-size: 0.92rem;
     }
 
     .masterplan-table th {
         font-weight: 700;
+    }
+
+    .masterplan-table thead th {
+        white-space: nowrap !important;
+        overflow-wrap: normal !important;
+        word-break: keep-all;
+        min-width: max-content;
     }
 
     .masterplan-table .col-code {
@@ -431,8 +442,10 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-wide">3rd_PartyInspection</th>
             <th scope="col" class="col-date">ShipDate2</th>
             <th scope="col" class="col-wide">SoTK</th>
+            @unless($hidePpicExecShipCols)
             <th scope="col" class="col-number">ExQty</th>
             <th scope="col" class="col-number">ShipBalance</th>
+            @endunless
             @endunless
             <th scope="col" class="col-number">LT</th>
             <th scope="col" class="col-date">FirstOPT</th>
@@ -459,7 +472,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0);
+        $tableColspan = 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0);
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -538,8 +551,10 @@ $hideMidCols = $isAccountant;
             <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
             <td>{{ $item->ShipDate2 }}</td>
             <td>{{ $item->SoTK }}</td>
+            @unless($hidePpicExecShipCols)
             <td class="col-number">{{ $item->ExQty }}</td>
             <td class="col-number">{{ $item->ShipBalance }}</td>
+            @endunless
             @endunless
             <td class="col-number">{{ $item->lt }}</td>
             <td>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>

@@ -22,7 +22,7 @@ $hideMidCols = $isAccountant;
 @endif
 
 @if(session('success'))
-<div class="alert alert-success">
+<div class="alert alert-success py-2 px-3 mb-3" style="display: inline-block; max-width: 100%; font-size: .9rem;">
     {{ session('success') }}
 </div>
 @endif

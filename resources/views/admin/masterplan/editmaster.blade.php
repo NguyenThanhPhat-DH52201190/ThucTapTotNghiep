@@ -67,6 +67,11 @@
                 <div class="col-md-3"><label class="form-label">Norm Date</label><input type="date" name="Norm_date" class="form-control" value="{{ $dateValue('Norm_date') }}" {{ $readonly }}></div>
                 <div class="col-md-3"><label class="form-label">In-Warehouse Date</label><input type="date" name="inWHDate" class="form-control" value="{{ $dateValue('inWHDate') }}" {{ $readonly }}></div>
                 <div class="col-md-3"><label class="form-label">3rd Party Inspection</label><input type="text" name="3rd_PartyInspection" class="form-control" value="{{ old('3rd_PartyInspection', $plan->{'3rd_PartyInspection'} ?? '') }}" {{ $readonly }}></div>
+                <div class="col-md-3"><label class="form-label">QA/QC Inspection Date</label><input type="date" name="qa_inspection_date" class="form-control" value="{{ $dateValue('qa_inspection_date') }}" {{ $readonly }}></div>
+                <div class="col-md-3"><label class="form-label">QA/QC Status</label><select name="qa_status" class="form-select" {{ $fabricOnly ? 'disabled' : '' }}>
+                    <option value="not_approved" @selected(old('qa_status', $plan->qa_status ?? 'not_approved') === 'not_approved')>Not Approved</option>
+                    <option value="approved" @selected(old('qa_status', $plan->qa_status ?? '') === 'approved')>Approved</option>
+                </select></div>
                 <div class="col-md-3"><label class="form-label">Confirm Date</label><input type="date" name="Confirm_date" class="form-control" value="{{ $dateValue('Confirm_date') }}" {{ $readonly }}>@error('Confirm_date')<div class="text-danger">{{ $message }}</div>@enderror</div>
                 <div class="col-md-3"><label class="form-label">Planned Cut Start</label><input type="date" name="planned_cut_start" class="form-control" value="{{ $dateValue('planned_cut_start') }}" {{ $readonly }}></div>
                 <div class="col-md-3"><label class="form-label">Planned Cut End</label><input type="date" name="planned_cut_end" class="form-control" value="{{ $dateValue('planned_cut_end') }}" {{ $readonly }}></div>

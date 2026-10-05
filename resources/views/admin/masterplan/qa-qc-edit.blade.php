@@ -25,7 +25,11 @@
                     <div class="col-md-3"><label class="form-label">Required Date</label><input class="form-control" value="{{ $plan->Require_date }}" readonly></div>
                     <div class="col-md-3"><label class="form-label">Confirmed Date</label><input class="form-control" value="{{ $plan->Confirm_date }}" readonly></div>
                     <div class="col-md-3"><label class="form-label">Warehouse Date</label><input class="form-control" value="{{ $plan->inWHDate }}" readonly></div>
-                    <div class="col-md-3"><label class="form-label">Third-Party Inspection</label><input class="form-control" value="{{ $plan->{'3rd_PartyInspection'} }}" readonly></div>
+                    <div class="col-md-3">
+                        <label for="third_party_inspection" class="form-label">Third-Party Inspection</label>
+                        <input type="text" id="third_party_inspection" name="3rd_PartyInspection" maxlength="50" class="form-control @error('3rd_PartyInspection') is-invalid @enderror" value="{{ old('3rd_PartyInspection', $plan->{'3rd_PartyInspection'} ?? '') }}">
+                        @error('3rd_PartyInspection')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
 
                     <div class="col-md-3">
                         <label for="qa_inspection_date" class="form-label">Inspection Date</label>
@@ -45,7 +49,7 @@
         </div>
 
         <div class="d-flex gap-2 mb-4">
-            <a href="{{ route('masterplan.view') }}" class="btn btn-secondary px-4">Cancel</a>
+            <a href="{{ auth()->user()->role === 'admin' ? route('admin.masterplan.index') : route('masterplan.view') }}" class="btn btn-secondary px-4">Cancel</a>
             <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i>Save QA/QC</button>
         </div>
     </form>

@@ -80,11 +80,11 @@ Route::middleware('auth')->group(function () {
         ->name('masterplan.warehouse.update');
 
     Route::put('/master-plan/qa-qc/{id}', [MasterPlanController::class, 'updateQaQc'])
-        ->middleware('role:qa_qc')
+        ->middleware('role:admin,qa_qc')
         ->name('masterplan.qa-qc.update');
 
     Route::get('/master-plan/qa-qc/{id}/edit', [MasterPlanController::class, 'editQaQc'])
-        ->middleware('role:qa_qc')
+        ->middleware('role:admin,qa_qc')
         ->name('masterplan.qa-qc.edit');
 
     Route::get('/master-plan/ocs/{id}/image', [OCSController::class, 'image'])

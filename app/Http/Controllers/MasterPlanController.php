@@ -417,6 +417,8 @@ class MasterPlanController extends Controller
                 'Norm_date' => $this->nullableDate($request->Norm_date),
                 'inWHDate' => $this->nullableDate($request->inWHDate),
                 '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
+                'qa_inspection_date' => $this->nullableDate($request->qa_inspection_date),
+                'qa_status' => $request->qa_status ?? 'not_approved',
                 'ShipDate2' => $this->nullableDate($request->ShipDate2),
                 'SoTK' => filled($request->SoTK) ? $request->SoTK : null,
                 'ExQty' => $this->nullableInteger($request->ExQty),
@@ -559,14 +561,16 @@ class MasterPlanController extends Controller
 
     public function updateQaQc(Request $request, string $id)
     {
-        abort_unless($request->user()?->role === 'qa_qc', 403);
+        abort_unless(in_array($request->user()?->role, ['admin', 'qa_qc'], true), 403);
 
         $data = $request->validate([
+            '3rd_PartyInspection' => 'nullable|string|max:50',
             'qa_inspection_date' => 'nullable|date',
             'qa_status' => 'required|in:approved,not_approved',
         ]);
 
         $updated = DB::table('mtp')->where('id', $id)->update([
+            '3rd_PartyInspection' => filled($data['3rd_PartyInspection'] ?? null) ? $data['3rd_PartyInspection'] : null,
             'qa_inspection_date' => $this->nullableDate($data['qa_inspection_date'] ?? null),
             'qa_status' => $data['qa_status'],
             'updated_at' => now(),
@@ -620,6 +624,8 @@ class MasterPlanController extends Controller
                 },
             ],
             'lt' => 'nullable|integer|min:0',
+            'qa_inspection_date' => 'nullable|date',
+            'qa_status' => 'nullable|in:approved,not_approved',
             'FirstOPT' => [
                 'nullable',
                 'date',
@@ -676,6 +682,8 @@ class MasterPlanController extends Controller
                 'Norm_date' => $this->nullableDate($request->Norm_date),
                 'inWHDate' => $this->nullableDate($request->inWHDate),
                 '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
+                'qa_inspection_date' => $this->nullableDate($request->qa_inspection_date),
+                'qa_status' => $request->qa_status ?? 'not_approved',
                 'ShipDate2' => $this->nullableDate($request->ShipDate2),
                 'SoTK' => filled($request->SoTK) ? $request->SoTK : null,
                 'ExQty' => $this->nullableInteger($request->ExQty),

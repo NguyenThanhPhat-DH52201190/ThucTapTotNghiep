@@ -7,6 +7,7 @@
 $canManage = auth()->user()->role === 'admin';
 $canEditFabric = $canManage;
 $isWarehouse = auth()->user()->role === 'warehouse';
+$isQaQc = auth()->user()->role === 'qa_qc';
 $isAccountant = auth()->user()->role === 'accountant';
 $isPpic = auth()->user()->role === 'ppic';
 $hidePpicCols = auth()->user()->role === 'accountant';
@@ -208,11 +209,20 @@ $hideMidCols = $isAccountant;
         font-weight: 700;
     }
 
-    .masterplan-table thead th {
+    .masterplan-scroll .masterplan-table > thead > tr > th {
         white-space: nowrap !important;
         overflow-wrap: normal !important;
         word-break: keep-all;
-        min-width: max-content;
+        word-break: normal !important;
+    }
+
+    .masterplan-scroll .masterplan-table > thead > tr > th.col-qty {
+        min-width: 88px;
+    }
+
+    .masterplan-scroll .masterplan-table > thead > tr > th.col-date-sticky {
+        width: 120px;
+        min-width: 120px;
     }
 
     .masterplan-table .col-code {
@@ -348,8 +358,10 @@ $hideMidCols = $isAccountant;
             value="{{ request('style') }}">
     </div>
 
-    <input type="hidden" name="ship_balance_only" id="shipBalanceFilter" 
+    @unless($isQaQc)
+    <input type="hidden" name="ship_balance_only" id="shipBalanceFilter"
         value="{{ request('ship_balance_only', 1) }}">
+    @endunless
 
     <div class="col-lg-auto masterplan-filter-actions">
 
@@ -363,16 +375,20 @@ $hideMidCols = $isAccountant;
             Reset
         </a>
 
-        <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only', 1) ? 'btn-warning' : 'btn-outline-warning' }}" 
+        @unless($isQaQc)
+        <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only', 1) ? 'btn-warning' : 'btn-outline-warning' }}"
             id="toggleShipBalanceBtn" title="{{ request('ship_balance_only', 1) ? 'Hiding rows where ExQty is entered and ShipBalance = 0' : 'Showing all rows' }}">
             <i class="bi bi-funnel"></i> 
             {{ request('ship_balance_only', 1) ? 'Hide ' : 'Show all rows' }}
         </button>
+        @endunless
 
+        @unless($isQaQc)
         <a href="{{ route('masterplan.export', request()->query()) }}"
             class="btn btn-success">
             Export Excel
         </a>
+        @endunless
 
         @if($canManage)
         <a href="{{ route('admin.masterplan.create') }}" class="btn btn-primary">
@@ -387,7 +403,53 @@ $hideMidCols = $isAccountant;
     </div>
 </form>
 
-@if($isWarehouse)
+@if($isQaQc)
+<div class="table-responsive masterplan-scroll">
+    <table class="table masterplan-table">
+        <thead>
+            <tr>
+                <th scope="col" class="col-code sticky-col sticky-1">CU</th>
+                <th scope="col" class="col-line sticky-col sticky-2">Line</th>
+                <th scope="col" class="col-style sticky-col sticky-3">Style</th>
+                <th scope="col" class="col-po sticky-col sticky-4">PO</th>
+                <th scope="col" class="col-qty">Order Quantity</th>
+                <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Distributed Quantity</th>
+                <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Required Date</th>
+                <th scope="col" class="col-date col-date-sticky sticky-col sticky-7">Confirmed Date</th>
+                <th scope="col" class="col-date">Warehouse Date</th>
+                <th scope="col" class="col-wide" style="min-width: 170px">Third-Party Inspection</th>
+                <th scope="col" class="col-date">QA/QC Inspection Date</th>
+                <th scope="col" class="col-status">QA/QC Status</th>
+                <th scope="col" class="sticky-action sticky-action-edit">Edit</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($plan as $item)
+            <tr>
+                <td class="col-code sticky-col sticky-1">{{ $item->CU }}</td>
+                <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">{{ $item->Line }}</td>
+                <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
+                <td class="col-po sticky-col sticky-4">{{ $item->PO }}</td>
+                <td class="col-qty">{{ $item->Order_Qty }}</td>
+                <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
+                <td class="col-date col-date-sticky sticky-col sticky-6">{{ $item->Require_date ?? '' }}</td>
+                <td class="col-date col-date-sticky sticky-col sticky-7">{{ $item->Confirm_date ?? '' }}</td>
+                <td>{{ $item->inWHDate ?? '' }}</td>
+                <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
+                <td>{{ $item->qa_inspection_date ?? '' }}</td>
+                <td><span class="badge bg-{{ ($item->qa_status ?? 'not_approved') === 'approved' ? 'success' : 'secondary' }}">{{ ($item->qa_status ?? 'not_approved') === 'approved' ? 'Approved' : 'Not Approved' }}</span></td>
+                <td class="sticky-action sticky-action-edit"><a href="{{ route('masterplan.qa-qc.edit', $item->id) }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i> Edit</a></td>
+            </tr>
+            @empty
+            <tr><td colspan="13" class="text-center">No data</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+<div id="masterplanScrollProxy" class="masterplan-scrollbar-proxy" aria-hidden="true">
+    <div id="masterplanScrollProxyInner" class="masterplan-scrollbar-proxy-inner"></div>
+</div>
+@elseif($isWarehouse)
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2"></i>MPS Planning</h5></div>
     <div class="table-responsive masterplan-scroll">

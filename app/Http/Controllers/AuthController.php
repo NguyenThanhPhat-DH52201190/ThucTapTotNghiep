@@ -20,6 +20,7 @@ class AuthController extends Controller
             User::ROLE_ADMIN => 'admin.ocs.index',
             User::ROLE_DEVELOPMENT => 'admin.development-norms.index',
             User::ROLE_PPIC => 'masterplan.view',
+            User::ROLE_QA_QC => 'masterplan.view',
             User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_PROD, User::ROLE_ACCOUNTANT => 'masterplan.view',
             default => 'dashboard',
         };
@@ -51,6 +52,7 @@ class AuthController extends Controller
                     User::ROLE_PROD,
                     User::ROLE_ACCOUNTANT,
                     User::ROLE_DEVELOPMENT,
+                    User::ROLE_QA_QC,
                 ]),
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($value === User::ROLE_ADMIN && User::where('role', User::ROLE_ADMIN)->exists()) {

@@ -26,6 +26,7 @@
             <option value="prod" {{ old('role') === 'prod' ? 'selected' : '' }}>Production</option>
             <option value="accountant" {{ old('role') === 'accountant' ? 'selected' : '' }}>Accountant</option>
             <option value="development" {{ old('role') === 'development' ? 'selected' : '' }}>Development</option>
+            <option value="qa_qc" {{ old('role') === 'qa_qc' ? 'selected' : '' }}>QA/QC</option>
         </select>
     </div>
     

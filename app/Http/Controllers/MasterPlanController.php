@@ -192,7 +192,11 @@ class MasterPlanController extends Controller
         }
 
         // Default behavior: hide only rows that were processed and computed to zero.
-        $shipBalanceOnly = (int) $request->input('ship_balance_only', 1);
+        // QA/QC works from the complete Master Plan. The ship-balance filter is
+        // only a convenience for the planning views and must not hide MTP rows.
+        $shipBalanceOnly = $request->user()?->role === 'qa_qc'
+            ? 0
+            : (int) $request->input('ship_balance_only', 1);
         if ($shipBalanceOnly === 1) {
             $plan = $plan->filter(function ($item) {
                 if ($item->ExQty === null) {
@@ -548,6 +552,43 @@ class MasterPlanController extends Controller
         abort_unless($updated || DB::table('mtp')->where('id', $id)->exists(), 404);
 
         return redirect()->route('masterplan.view')->with('success', 'Warehouse planning updated.');
+    }
+
+    public function updateQaQc(Request $request, string $id)
+    {
+        abort_unless($request->user()?->role === 'qa_qc', 403);
+
+        $data = $request->validate([
+            'qa_inspection_date' => 'nullable|date',
+            'qa_status' => 'required|in:approved,not_approved',
+        ]);
+
+        $updated = DB::table('mtp')->where('id', $id)->update([
+            'qa_inspection_date' => $this->nullableDate($data['qa_inspection_date'] ?? null),
+            'qa_status' => $data['qa_status'],
+            'updated_at' => now(),
+        ]);
+
+        abort_unless($updated || DB::table('mtp')->where('id', $id)->exists(), 404);
+
+        return redirect()->route('masterplan.view')->with('success', 'QA/QC inspection updated.');
+    }
+
+    public function editQaQc(string $id)
+    {
+        $plan = DB::table('mtp')
+            ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
+            ->select(
+                'mtp.id', 'mtp.CU', 'mtp.Line', 'mtp.Qty_dis', 'mtp.Require_date', 'mtp.Confirm_date',
+                'mtp.inWHDate', 'mtp.3rd_PartyInspection', 'mtp.qa_inspection_date', 'mtp.qa_status',
+                'ocs.SNo as Style', 'ocs.ONum as PO', 'ocs.Qty as Order_Qty'
+            )
+            ->where('mtp.id', $id)
+            ->first();
+
+        abort_unless($plan, 404);
+
+        return view('admin.masterplan.qa-qc-edit', compact('plan'));
     }
 
     public function update(Request $request, string $id)

@@ -232,6 +232,11 @@
                 <i class="bi bi-rulers"></i>
                 Development Norms
             </a>
+            @elseif($role === 'qa_qc')
+            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('masterplan.view') ? 'active' : '' }}">
+                <i class="bi bi-clipboard-check"></i>
+                Master Plan QA/QC
+            </a>
             @elseif($role === 'development')
             <a href="{{ route('admin.development-norms.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.development-norms.*') ? 'active' : '' }}">
                 <i class="bi bi-rulers"></i>
@@ -263,7 +268,7 @@
                 Finance & Costing
             </a>
             @endif
-            @if($role !== 'admin')
+            @if(!in_array($role, ['admin', 'qa_qc'], true))
             <a href="{{ route('admin.bom.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.bom.*', 'bom.view') ? 'active' : '' }}">
                 <i class="bi bi-file-text"></i>
                 BOM

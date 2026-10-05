@@ -21,6 +21,7 @@ class User extends Authenticatable
     public const ROLE_PROD = 'prod';
     public const ROLE_ACCOUNTANT = 'accountant';
     public const ROLE_DEVELOPMENT = 'development';
+    public const ROLE_QA_QC = 'qa_qc';
     public const PPIC_TEAM_TRACK = 'track';
     public const PPIC_TEAM_CREATE = 'create';
     public const PPIC_TEAM_BOTH = 'both';

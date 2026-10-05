@@ -45,7 +45,8 @@
     /* Pinned columns must not cover the entire narrow viewport. */
     .app-content .masterplan-table .sticky-col,
     .app-content .masterplan-table .sticky-action { position: static !important; left: auto !important; right: auto !important; }
-    .app-content .masterplan-scrollbar-proxy { display: none !important; }
+    /* Keep the synced horizontal scrollbar available on narrower QA/QC screens too. */
+    .app-content .masterplan-scrollbar-proxy { display: block; }
     .app-content .masterplan-scroll { scrollbar-width: auto; max-height: 70vh; max-height: 70dvh; }
     .app-content .masterplan-scroll::-webkit-scrollbar { height: 10px; }
 }

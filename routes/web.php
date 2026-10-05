@@ -64,7 +64,7 @@ Route::middleware('auth')->group(function () {
         ->name('ordercutsheet.export');
 
     Route::get('/master-plan', [MasterPlanController::class, 'index'])
-        ->middleware('role:admin,ie,warehouse,ppic,prod,accountant')
+        ->middleware('role:admin,ie,warehouse,ppic,prod,accountant,qa_qc')
         ->name('masterplan.view');
 
     Route::get('/master-plan/export', [MasterPlanController::class, 'export'])
@@ -78,6 +78,14 @@ Route::middleware('auth')->group(function () {
     Route::put('/master-plan/warehouse/{id}', [MasterPlanController::class, 'updateWarehouse'])
         ->middleware('role:warehouse')
         ->name('masterplan.warehouse.update');
+
+    Route::put('/master-plan/qa-qc/{id}', [MasterPlanController::class, 'updateQaQc'])
+        ->middleware('role:qa_qc')
+        ->name('masterplan.qa-qc.update');
+
+    Route::get('/master-plan/qa-qc/{id}/edit', [MasterPlanController::class, 'editQaQc'])
+        ->middleware('role:qa_qc')
+        ->name('masterplan.qa-qc.edit');
 
     Route::get('/master-plan/ocs/{id}/image', [OCSController::class, 'image'])
         ->middleware('role:admin,ie,warehouse,ppic,prod,accountant')

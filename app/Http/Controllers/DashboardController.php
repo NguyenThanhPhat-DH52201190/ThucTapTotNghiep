@@ -20,6 +20,7 @@ class DashboardController extends Controller
         $route = match ($role) {
             User::ROLE_ADMIN => 'admin.ocs.index',
             User::ROLE_PPIC => 'admin.masterplan.index',
+            User::ROLE_QA_QC => 'masterplan.view',
             User::ROLE_IE => 'admin.bom.index',
             User::ROLE_WAREHOUSE => 'admin.inventory.index',
             User::ROLE_PROD => 'admin.shopfloor.dashboard',

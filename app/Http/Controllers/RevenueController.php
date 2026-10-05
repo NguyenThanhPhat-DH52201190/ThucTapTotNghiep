@@ -489,6 +489,9 @@ class RevenueController extends Controller
     {
         $ocs = DB::table('ocs')
             ->select('CS')
+            ->whereNotIn('CS', function ($query) {
+                $query->select('CS')->from('revenue');
+            })
             ->orderBy('CS')
             ->get();
 
@@ -499,7 +502,7 @@ class RevenueController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'CS' => 'required',
+            'CS' => 'required|exists:ocs,CS|unique:revenue,CS',
             'SewingLine' => 'required',
             'planout' => 'required|numeric',
             'sewingmp' => 'required|numeric',

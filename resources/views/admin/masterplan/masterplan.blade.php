@@ -795,6 +795,15 @@ $hideMidCols = $isAccountant;
 
         window.addEventListener('resize', syncProxyGeometry);
         window.addEventListener('load', syncProxyGeometry);
+        if ('ResizeObserver' in window) {
+            const proxyResizeObserver = new ResizeObserver(syncProxyGeometry);
+            proxyResizeObserver.observe(masterplanScroll);
+            const masterplanTable = masterplanScroll.querySelector('.masterplan-table');
+            if (masterplanTable) proxyResizeObserver.observe(masterplanTable);
+        }
+        if (document.fonts?.ready) {
+            document.fonts.ready.then(syncProxyGeometry);
+        }
         syncProxyGeometry();
     }
 

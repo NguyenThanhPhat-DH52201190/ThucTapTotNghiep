@@ -345,6 +345,8 @@ class MasterPlanController extends Controller
             'Line' => 'required',
             'LineColor' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{3}){1,2}$/'],
             'Norm_date' => 'nullable|date',
+            'fabric_issue_date' => 'nullable|date',
+            'trims_issue_date' => 'nullable|date',
             'inWHDate' => 'nullable|date',
             '3rd_PartyInspection' => 'nullable|string|max:50',
             'ShipDate2' => 'nullable|date',
@@ -415,6 +417,8 @@ class MasterPlanController extends Controller
                 'Line' => $request->Line,
                 'LineColor' => $request->LineColor,
                 'Norm_date' => $this->nullableDate($request->Norm_date),
+                'fabric_issue_date' => $this->nullableDate($request->fabric_issue_date),
+                'trims_issue_date' => $this->nullableDate($request->trims_issue_date),
                 'inWHDate' => $this->nullableDate($request->inWHDate),
                 '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
                 'qa_inspection_date' => $this->nullableDate($request->qa_inspection_date),
@@ -532,7 +536,9 @@ class MasterPlanController extends Controller
         ]);
 
         $plans = DB::table('mtp')
-            ->whereIn('id', $validated['ids'])
+            ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
+            ->select('mtp.*', 'ocs.SNo as Style')
+            ->whereIn('mtp.id', $validated['ids'])
             ->orderBy('Line')->orderBy('CU')->get();
 
         return view('admin.masterplan.bulk-edit', compact('plans'));
@@ -542,7 +548,7 @@ class MasterPlanController extends Controller
     {
         $fields = [
             'Require_date', 'Confirm_date', 'planned_cut_start', 'planned_cut_end',
-            'planned_sew_start', 'planned_sew_end', 'Norm_date', 'inWHDate',
+            'planned_sew_start', 'planned_sew_end', 'Norm_date', 'fabric_issue_date', 'trims_issue_date', 'inWHDate',
             '3rd_PartyInspection', 'ShipDate2', 'SoTK', 'ExQty', 'lt', 'FirstOPT',
         ];
         $rules = [
@@ -555,6 +561,8 @@ class MasterPlanController extends Controller
             'rows.*.planned_sew_start' => 'nullable|date',
             'rows.*.planned_sew_end' => 'nullable|date',
             'rows.*.Norm_date' => 'nullable|date',
+            'rows.*.fabric_issue_date' => 'nullable|date',
+            'rows.*.trims_issue_date' => 'nullable|date',
             'rows.*.inWHDate' => 'nullable|date',
             'rows.*.3rd_PartyInspection' => 'nullable|string|max:50',
             'rows.*.ShipDate2' => 'nullable|date',
@@ -681,6 +689,8 @@ class MasterPlanController extends Controller
             'Line' => 'required',
             'LineColor' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{3}){1,2}$/'],
             'Norm_date' => 'nullable|date',
+            'fabric_issue_date' => 'nullable|date',
+            'trims_issue_date' => 'nullable|date',
             'inWHDate' => 'nullable|date',
             '3rd_PartyInspection' => 'nullable|string|max:50',
             'ShipDate2' => 'nullable|date',
@@ -756,6 +766,8 @@ class MasterPlanController extends Controller
                 'Line' => $request->Line,
                 'LineColor' => $request->LineColor,
                 'Norm_date' => $this->nullableDate($request->Norm_date),
+                'fabric_issue_date' => $this->nullableDate($request->fabric_issue_date),
+                'trims_issue_date' => $this->nullableDate($request->trims_issue_date),
                 'inWHDate' => $this->nullableDate($request->inWHDate),
                 '3rd_PartyInspection' => filled($request->input('3rd_PartyInspection')) ? $request->input('3rd_PartyInspection') : null,
                 'qa_inspection_date' => $this->nullableDate($request->qa_inspection_date),

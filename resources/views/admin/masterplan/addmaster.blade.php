@@ -131,6 +131,16 @@
                         <input type="date" name="Norm_date" class="form-control" value="{{ old('Norm_date') }}">
                     </div>
                     <div class="col-md-3">
+                        <label class="form-label">Fabric Issue Date</label>
+                        <input type="date" name="fabric_issue_date" class="form-control" value="{{ old('fabric_issue_date') }}">
+                        @error('fabric_issue_date')<div class="text-danger">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Trims Issue Date</label>
+                        <input type="date" name="trims_issue_date" class="form-control" value="{{ old('trims_issue_date') }}">
+                        @error('trims_issue_date')<div class="text-danger">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">In-Warehouse Date</label>
                         <input type="date" name="inWHDate" class="form-control" value="{{ old('inWHDate') }}">
                     </div>

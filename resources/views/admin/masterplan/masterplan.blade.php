@@ -507,6 +507,10 @@ $hideMidCols = $isAccountant;
             @unless($hideMidCols)
             <th scope="col" class="col-date">Norm_date</th>
             @endunless
+            @if($canManage)
+            <th scope="col" class="col-date">Fabric Issue Date</th>
+            <th scope="col" class="col-date">Trims Issue Date</th>
+            @endif
             @if($isPpic)
             <th scope="col" class="col-date">Fabric Issue Date</th>
             <th scope="col" class="col-date">Trims Issue Date</th>
@@ -626,6 +630,10 @@ $hideMidCols = $isAccountant;
             @unless($hideMidCols)
             <td>{{ $item->Norm_date }}</td>
             @endunless
+            @if($canManage)
+            <td>{{ $item->fabric_issue_date ?? '' }}</td>
+            <td>{{ $item->trims_issue_date ?? '' }}</td>
+            @endif
             @if($isPpic)
             <td>{{ $item->fabric_issue_date ?? '' }}</td>
             <td>{{ $item->trims_issue_date ?? '' }}</td>

@@ -524,6 +524,82 @@ class MasterPlanController extends Controller
         return view('admin.masterplan.editmaster', compact('plan', 'fabricOnly', 'updateRoute', 'colors'));
     }
 
+    public function editBulk(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1|max:100',
+            'ids.*' => 'required|integer|distinct|exists:mtp,id',
+        ]);
+
+        $plans = DB::table('mtp')
+            ->whereIn('id', $validated['ids'])
+            ->orderBy('Line')->orderBy('CU')->get();
+
+        return view('admin.masterplan.bulk-edit', compact('plans'));
+    }
+
+    public function updateBulk(Request $request)
+    {
+        $fields = [
+            'Require_date', 'Confirm_date', 'planned_cut_start', 'planned_cut_end',
+            'planned_sew_start', 'planned_sew_end', 'Norm_date', 'inWHDate',
+            '3rd_PartyInspection', 'ShipDate2', 'SoTK', 'ExQty', 'lt', 'FirstOPT',
+        ];
+        $rules = [
+            'rows' => 'required|array|min:1|max:100',
+            'rows.*.id' => 'required|integer|distinct|exists:mtp,id',
+            'rows.*.Require_date' => 'nullable|date',
+            'rows.*.Confirm_date' => 'nullable|date',
+            'rows.*.planned_cut_start' => 'nullable|date',
+            'rows.*.planned_cut_end' => 'nullable|date',
+            'rows.*.planned_sew_start' => 'nullable|date',
+            'rows.*.planned_sew_end' => 'nullable|date',
+            'rows.*.Norm_date' => 'nullable|date',
+            'rows.*.inWHDate' => 'nullable|date',
+            'rows.*.3rd_PartyInspection' => 'nullable|string|max:50',
+            'rows.*.ShipDate2' => 'nullable|date',
+            'rows.*.SoTK' => 'nullable|string|max:50',
+            'rows.*.ExQty' => 'nullable|integer|min:0',
+            'rows.*.lt' => 'nullable|integer|min:0',
+            'rows.*.FirstOPT' => ['nullable', 'date', function ($attribute, $value, $fail) {
+                if ($value && Carbon::parse($value)->isSunday()) {
+                    $fail('FirstOPT cannot be on a Sunday. Please choose another date.');
+                }
+            }],
+        ];
+        $validated = $request->validate($rules);
+
+        foreach ($validated['rows'] as $index => $row) {
+            if (filled($row['ExQty'] ?? null)) {
+                $qtyDis = DB::table('mtp')->where('id', $row['id'])->value('Qty_dis');
+                if ($qtyDis !== null && (int) $row['ExQty'] > (int) $qtyDis) {
+                    return back()->withErrors([
+                        "rows.{$index}.ExQty" => 'ExQty cannot be greater than Qty_dis for this CU.',
+                    ])->withInput();
+                }
+            }
+        }
+
+        DB::transaction(function () use ($validated, $fields) {
+            foreach ($validated['rows'] as $row) {
+                $updates = ['updated_at' => now()];
+                foreach ($fields as $field) {
+                    $value = $row[$field] ?? null;
+                    $updates[$field] = in_array($field, ['ExQty', 'lt'], true)
+                        ? $this->nullableInteger($value)
+                        : ($field === '3rd_PartyInspection' || $field === 'SoTK'
+                            ? (filled($value) ? $value : null)
+                            : $this->nullableDate($value));
+                }
+                DB::table('mtp')->where('id', $row['id'])->update($updates);
+            }
+        });
+
+        app(RevenueMasterPlanSync::class)->syncReadyMasterPlans();
+
+        return redirect()->route('admin.masterplan.index')->with('success', 'Selected Master Plan rows updated successfully.');
+    }
+
     public function editWarehouse(string $id)
     {
         $plan = DB::table('mtp')

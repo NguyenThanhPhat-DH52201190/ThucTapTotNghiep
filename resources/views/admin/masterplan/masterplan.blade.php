@@ -391,6 +391,10 @@ $hideMidCols = $isAccountant;
         @endunless
 
         @if($canManage)
+        <form id="masterplanBulkSelect" method="GET" action="{{ route('admin.masterplan.bulk-edit') }}"></form>
+        <button type="submit" form="masterplanBulkSelect" class="btn btn-outline-primary" id="bulkEditButton" disabled>
+            <i class="bi bi-pencil-square"></i> Bulk edit (<span id="bulkEditCount">0</span>)
+        </button>
         <a href="{{ route('admin.masterplan.create') }}" class="btn btn-primary">
             Add
         </a>
@@ -482,6 +486,7 @@ $hideMidCols = $isAccountant;
 <table class="table masterplan-table">
     <thead>
         <tr>
+            @if($canManage)<th scope="col" style="min-width:48px"><input type="checkbox" id="selectAllMasterplan" aria-label="Select all rows"></th>@endif
             <th scope="col" class="col-code sticky-col sticky-1">CU</th>
             <th scope="col" class="col-line sticky-col sticky-2">Line</th>
             <th scope="col" class="col-style sticky-col sticky-3">Style</th>
@@ -545,7 +550,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = $isPpic ? 17 : 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0);
+        $tableColspan = $isPpic ? 17 : 25 + $actionCols + ($canManage ? 1 : 0) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0);
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -574,6 +579,7 @@ $hideMidCols = $isAccountant;
 
         @foreach($lineItems as $index => $item)
         <tr>
+            @if($canManage)<td><input type="checkbox" class="masterplan-row-select" name="ids[]" value="{{ $item->id }}" form="masterplanBulkSelect" aria-label="Select {{ $item->CU }}"></td>@endif
             <td class="col-code sticky-col sticky-1">@include('admin.partials.image-trigger', ['imageUrl' => !empty($item->ocs_image_path) ? route('masterplan.ocs-image', $item->image_ocs_id, false) : null, 'imageLabel' => $item->CU])</td>
             <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">
                 {{ $item->Line }}
@@ -713,7 +719,7 @@ $hideMidCols = $isAccountant;
         @endif
         @else
         <tr>
-            <td colspan="{{ $isPpic ? 17 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) }}" class="text-center">No data</td>
+            <td colspan="{{ $isPpic ? 17 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 2 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>
@@ -725,6 +731,26 @@ $hideMidCols = $isAccountant;
 @endif
 
 <script>
+    (function () {
+        const selectAll = document.getElementById('selectAllMasterplan');
+        const rows = Array.from(document.querySelectorAll('.masterplan-row-select'));
+        const button = document.getElementById('bulkEditButton');
+        const count = document.getElementById('bulkEditCount');
+        if (!selectAll || !button || !count) return;
+        const refresh = () => {
+            const selected = rows.filter((checkbox) => checkbox.checked).length;
+            count.textContent = selected;
+            button.disabled = selected === 0;
+            selectAll.checked = rows.length > 0 && selected === rows.length;
+            selectAll.indeterminate = selected > 0 && selected < rows.length;
+        };
+        selectAll.addEventListener('change', () => {
+            rows.forEach((checkbox) => { checkbox.checked = selectAll.checked; });
+            refresh();
+        });
+        rows.forEach((checkbox) => checkbox.addEventListener('change', refresh));
+    })();
+
     function calculate() {
         let firstOPT = document.querySelector('[name="FirstOPT"]').value;
         let lt = document.querySelector('[name="lt"]').value;

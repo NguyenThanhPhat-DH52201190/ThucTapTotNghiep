@@ -67,6 +67,8 @@
                 <div class="col-md-2"><small class="text-muted d-block">Phone</small><strong>{{ $po->phone ?? 'N/A' }}</strong></div>
                 <div class="col-md-2"><small class="text-muted d-block">Order Date</small><strong>{{ $po->order_date }}</strong></div>
                 <div class="col-md-2"><small class="text-muted d-block">Expected</small><strong>{{ $po->expected_delivery ?? 'N/A' }}</strong></div>
+                <div class="col-md-2"><small class="text-muted d-block">Currency / Exchange Rate</small><strong>{{ $po->currency ?? 'USD' }} / {{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</strong></div>
+                <div class="col-md-1"><small class="text-muted d-block">VAT</small><strong>{{ number_format((float) ($po->vat_percent ?? 0), 2) }}%</strong></div>
                 <div class="col-md-1">
                     <small class="text-muted d-block">Status</small>
                     @php $sc = match($po->status) { 'sent'=>'info', 'confirmed'=>'primary', 'received'=>'success', 'partial'=>'warning', 'closed'=>'dark', 'cancelled'=>'danger', default=>'secondary' } @endphp
@@ -86,8 +88,9 @@
                 <thead class="table-light">
                     <tr>
                         <th>Code</th><th>Name</th><th>Color</th><th>Unit</th><th class="text-end">Qty</th>
-                        <th class="text-end">Received</th><th class="text-end">Pending</th><th class="text-end">Unit Price (USD)</th>
-                        <th class="text-end">Total (USD)</th><th>Note</th><th>Status</th>
+                        <th class="text-end">Received</th><th class="text-end">Pending</th><th class="text-end">Unit Price (PO Currency: {{ $po->currency ?? 'USD' }})</th>
+                        <th class="text-end">Total ({{ $po->currency ?? 'USD' }}, incl. VAT)</th><th class="text-end">Exchange Rate</th>
+                        <th class="text-end">Note</th><th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -101,7 +104,8 @@
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
                             <td class="text-end fw-semibold {{ (float) $item->quantity - (float) $item->received_qty < 0 ? 'text-danger' : '' }}">{{ number_format((float) $item->quantity - (float) $item->received_qty, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
-                            <td class="text-end fw-bold">{{ number_format($item->total_price, 4) }} USD</td>
+                            <td class="text-end fw-bold">{{ number_format((float) $item->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td>
+                            <td class="text-end">{{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</td>
                             <td><small>{{ $item->notes ?? '-' }}</small></td>
                             <td>
                                 @php $sc = match($item->status) { 'partial'=>'warning', 'received'=>'success', 'cancelled'=>'danger', default=>'secondary' } @endphp
@@ -110,13 +114,14 @@
                         </tr>
                     @endforeach
                     @foreach($surcharges as $surcharge)
-                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>-</td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format($surcharge->total_price, 4) }} USD</td><td>-</td><td>-</td></tr>
+                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>-</td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format((float) $surcharge->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td><td class="text-end">{{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</td><td>-</td><td>-</td></tr>
                     @endforeach
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="8" class="text-end">TOTAL:</td>
-                        <td class="text-end text-primary">{{ number_format($po->total_amount, 4) }} USD</td>
+                        <td class="text-end text-primary">{{ number_format((float) $po->total_amount * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td>
+                        <td></td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
@@ -163,13 +168,18 @@
 </div>
 
 <style>
-    .po-items-table { min-width: 1450px; }
-    .po-items-table th { white-space: nowrap; vertical-align: middle; }
+    .po-items-table { min-width: 1900px; table-layout: auto; }
+    .po-items-table th { white-space: nowrap !important; word-break: keep-all; vertical-align: middle; min-width: 105px; }
     .po-items-table td { vertical-align: middle; }
     .po-items-table th:nth-child(1), .po-items-table td:nth-child(1) { min-width: 155px; }
     .po-items-table th:nth-child(2), .po-items-table td:nth-child(2) { min-width: 260px; }
     .po-items-table th:nth-child(3), .po-items-table td:nth-child(3) { min-width: 130px; }
     .po-items-table th:nth-child(4), .po-items-table td:nth-child(4) { min-width: 75px; }
+    .po-items-table th:nth-child(8), .po-items-table td:nth-child(8),
+    .po-items-table th:nth-child(9), .po-items-table td:nth-child(9) { min-width: 145px; }
+    .po-items-table th:nth-child(10), .po-items-table td:nth-child(10) { min-width: 150px; }
+    .po-items-table th:nth-child(11), .po-items-table td:nth-child(11) { min-width: 190px; }
+    .po-items-table th:nth-child(12), .po-items-table td:nth-child(12) { min-width: 100px; }
 </style>
 
 <style>

@@ -62,6 +62,9 @@ class ProcurementController extends Controller
             'vendor_id' => 'required|exists:suppliers,id',
             'suggestion_ids' => 'required|array|min:1',
             'suggestion_ids.*' => 'integer|exists:mrp_suggestions,id',
+            'currency' => 'nullable|in:VND,USD',
+            'exchange_rate' => 'nullable|numeric|decimal:0,6|gt:0',
+            'vat_percent' => 'nullable|numeric|decimal:0,2|between:0,100',
         ]);
         $vendor = DB::table('suppliers')->where('id', $request->vendor_id)->where('status', 'active')->first();
         if (!$vendor) return back()->with('error', 'Vendor is not active.');
@@ -75,7 +78,8 @@ class ProcurementController extends Controller
                 $number = 'PO-' . now()->format('YmdHisv') . '-' . Str::upper(Str::random(6));
                 $poId = DB::table('purchase_orders')->insertGetId([
                     'po_number' => $number, 'supplier_id' => $vendor->id, 'order_date' => today(),
-                    'expected_delivery' => $suggestions->max('required_date'), 'status' => 'draft', 'currency' => 'USD',
+                    'expected_delivery' => $suggestions->max('required_date'), 'status' => 'draft', 'currency' => $request->currency ?? 'USD',
+                    'exchange_rate' => $request->exchange_rate ?? 1, 'vat_percent' => $request->vat_percent ?? 0,
                     'total_amount' => 0, 'created_by' => $request->user()?->id, 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 foreach ($suggestions as $suggestion) {
@@ -282,7 +286,9 @@ class ProcurementController extends Controller
                 'order_date' => $request->order_date,
                 'expected_delivery' => $request->expected_delivery,
                 'status' => 'draft',
-                'currency' => 'USD',
+                'currency' => $data['currency'],
+                'exchange_rate' => $data['exchange_rate'],
+                'vat_percent' => $data['vat_percent'] ?? 0,
                 'total_amount' => $totalAmount,
                 'notes' => $request->notes,
                 'created_by' => $request->user()->id,
@@ -308,7 +314,7 @@ class ProcurementController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('PO creation failed: ' . $e->getMessage());
-            return back()->with('error', 'Failed to create PO: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Failed to create PO: ' . $e->getMessage());
         }
     }
 
@@ -556,7 +562,9 @@ class ProcurementController extends Controller
                 DB::table('purchase_orders')->where('id', $id)->update([
                     'supplier_id' => $data['supplier_id'], 'order_date' => $data['order_date'],
                     'expected_delivery' => $data['expected_delivery'] ?? null,
-                    'currency' => 'USD',
+                    'currency' => $data['currency'],
+                    'exchange_rate' => $data['exchange_rate'],
+                    'vat_percent' => $data['vat_percent'] ?? 0,
                     'total_amount' => $totalAmount, 'notes' => $data['notes'] ?? null, 'updated_at' => now(),
                 ]);
 
@@ -613,6 +621,9 @@ class ProcurementController extends Controller
         $data = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id', 'order_date' => 'required|date',
             'expected_delivery' => 'nullable|date|after_or_equal:order_date', 'notes' => 'nullable|string',
+            'currency' => 'required|in:VND,USD',
+            'exchange_rate' => 'required|numeric|decimal:0,6|gt:0',
+            'vat_percent' => 'nullable|numeric|decimal:0,2|between:0,100',
             'items' => 'required|array|min:1', 'items.*.po_item_id' => 'nullable|integer', 'items.*.material_code' => 'required|string|max:100',
             'items.*.material_name' => 'required|string|max:191', 'items.*.unit' => 'required|string|max:20',
             'items.*.quantity' => 'required|numeric|min:0.01',

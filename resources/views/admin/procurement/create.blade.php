@@ -3,6 +3,18 @@
 @section('content')
 
 <div class="container-fluid px-0">
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="alert alert-danger" role="alert">
+            <strong>PO was not saved. Please fix the following:</strong>
+            <ul class="mb-0 mt-1">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+        </div>
+    @endif
     <form method="POST" action="{{ isset($po) ? route('admin.procurement.update', $po->id) : route('admin.procurement.store') }}" id="poForm">
         @csrf
         @isset($po) @method('PUT') @endisset
@@ -35,6 +47,24 @@
                         <label class="form-label">Expected Delivery</label>
                         <input type="date" name="expected_delivery" class="form-control" value="{{ old('expected_delivery', $po->expected_delivery ?? '') }}">
                     </div>
+                    <div class="col-md-2">
+                        <label class="form-label">PO Currency</label>
+                        <select name="currency" id="poCurrency" class="form-select" required>
+                            <option value="USD" @selected(old('currency', $po->currency ?? 'USD') === 'USD')>USD</option>
+                            <option value="VND" @selected(old('currency', $po->currency ?? 'USD') === 'VND')>VND</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Exchange Rate</label>
+                        <input type="number" name="exchange_rate" id="exchangeRate" class="form-control @error('exchange_rate') is-invalid @enderror" min="0.000001" step="0.000001" value="{{ old('exchange_rate', $po->exchange_rate ?? '') }}" required>
+                        <div class="form-text">Enter the exchange rate for this PO.</div>
+                        @error('exchange_rate')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">VAT (%)</label>
+                        <input type="number" name="vat_percent" id="vatPercent" class="form-control @error('vat_percent') is-invalid @enderror" min="0" max="100" step="0.01" value="{{ old('vat_percent', $po->vat_percent ?? '0') }}">
+                        @error('vat_percent')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                     <div class="col-12">
                         <label class="form-label">Notes</label>
                         <textarea name="notes" class="form-control" rows="2">{{ old('notes', $po->notes ?? '') }}</textarea>
@@ -58,8 +88,9 @@
                             <th>Color</th>
                             <th>Unit</th>
                             <th>Quantity</th>
-                            <th>Unit Price (USD)</th>
-                            <th class="text-end">Total (USD)</th>
+                            <th>Unit Price (PO Currency: <span class="currency-label">{{ old('currency', $po->currency ?? 'USD') }}</span>)</th>
+                            <th class="text-end">Total (<span class="currency-label">{{ old('currency', $po->currency ?? 'USD') }}</span>, incl. VAT)</th>
+                            <th class="text-end">Exchange Rate</th>
                             <th>Note</th>
                             <th style="width:40px"></th>
                         </tr>
@@ -67,11 +98,11 @@
                     <tbody id="itemsBody"></tbody>
                     <tfoot>
                         <tr class="table-light fw-bold">
-                            <td colspan="4" class="text-end">GRAND TOTAL:</td>
+                            <td colspan="4" class="text-end">GRAND TOTAL (incl. VAT):</td>
                             <td id="totalQty">0</td>
                             <td></td>
                             <td id="totalAmount" class="text-end">0.0000 USD</td>
-                            <td colspan="2"></td>
+                            <td colspan="3"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -85,7 +116,7 @@
             </div>
             <div class="table-responsive">
                 <table class="table table-bordered mb-0">
-                    <thead class="table-light"><tr><th>Description</th><th style="width:130px">Quantity</th><th style="width:110px">Unit</th><th style="width:180px">Unit Price (USD)</th><th style="width:180px">Total (USD)</th><th style="width:50px"></th></tr></thead>
+                    <thead class="table-light"><tr><th>Description</th><th style="width:130px">Quantity</th><th style="width:110px">Unit</th><th style="width:180px">Unit Price (PO Currency: <span class="currency-label">{{ old('currency', $po->currency ?? 'USD') }}</span>)</th><th style="width:180px">Total (<span class="currency-label">{{ old('currency', $po->currency ?? 'USD') }}</span>, incl. VAT)</th><th style="width:50px"></th></tr></thead>
                     <tbody id="surchargeBody"></tbody>
                 </table>
             </div>
@@ -99,18 +130,21 @@
 </div>
 
 <style>
-    .po-create-items-table { min-width: 1350px; }
-    .po-create-items-table th { white-space: nowrap; vertical-align: middle; }
+    .po-create-items-table { min-width: 2050px; table-layout: auto; }
+    .po-create-items-table th { white-space: nowrap !important; word-break: keep-all; vertical-align: middle; min-width: 110px; }
     .po-create-items-table td { vertical-align: middle; }
     .po-create-items-table th:nth-child(1), .po-create-items-table td:nth-child(1) { min-width: 250px; }
     .po-create-items-table th:nth-child(2), .po-create-items-table td:nth-child(2) { min-width: 240px; }
     .po-create-items-table th:nth-child(3), .po-create-items-table td:nth-child(3) { min-width: 130px; }
-    .po-create-items-table th:nth-child(6), .po-create-items-table td:nth-child(6) { min-width: 180px; }
-    .po-create-items-table th:nth-child(7), .po-create-items-table td:nth-child(7) {
+    .po-create-items-table th:nth-child(6), .po-create-items-table td:nth-child(6),
+    .po-create-items-table th:nth-child(7), .po-create-items-table td:nth-child(7) { min-width: 155px; }
+    .po-create-items-table th:nth-child(8), .po-create-items-table td:nth-child(8) { min-width: 145px; }
+    .po-create-items-table th:nth-child(9), .po-create-items-table td:nth-child(9) { min-width: 180px; }
+    .po-create-items-table th:nth-child(10), .po-create-items-table td:nth-child(10) { min-width: 55px; }
+    .po-create-items-table td:nth-child(7) {
         min-width: 135px;
         white-space: nowrap;
     }
-    .po-create-items-table th:nth-child(8), .po-create-items-table td:nth-child(8) { min-width: 180px; }
 </style>
 
 <script>
@@ -163,8 +197,9 @@ function addRow(data = {}) {
                 </select>
             </td>
             <td><input type="number" step="0.01" name="items[${i}][quantity]" class="form-control form-control-sm qty" required min="0.01" value="${data.qty || data.quantity || ''}" onchange="calcTotal()"></td>
-            <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || data.unit_price || ''}" placeholder="0.0000" onchange="calcTotal()"></td>
-            <td class="row-total text-end fw-semibold">0.0000 USD</td>
+                        <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || data.unit_price || ''}" placeholder="0.0000" onchange="calcTotal()"></td>
+            <td class="row-total text-end fw-semibold">0.0000</td>
+            <td class="row-exchange-rate text-end">-</td>
             <td><input type="text" name="items[${i}][notes]" class="form-control form-control-sm" maxlength="1000" value="${escapeSurchargeValue(data.notes || '')}" placeholder="Add note"></td>
             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${i})" ${Number(data.received_qty || 0) > 0 ? 'disabled title="This item has received goods and cannot be removed"' : ''}><i class="bi bi-x"></i></button></td>
         </tr>`;
@@ -222,11 +257,16 @@ function removeRow(id) {
 
 function calcTotal() {
     let totalQty = 0, totalAmt = 0;
+    const currency = document.getElementById('poCurrency')?.value || 'USD';
+    const vatRate = parseFloat(document.getElementById('vatPercent')?.value || 0);
+    document.querySelectorAll('.currency-label').forEach(label => label.textContent = currency);
     document.querySelectorAll('#itemsBody tr').forEach(row => {
         const qty = parseFloat(row.querySelector('.qty')?.value || 0);
         const price = parseFloat(row.querySelector('.price')?.value || 0);
         const total = qty * price;
-        row.querySelector('.row-total').textContent = total.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' USD';
+        const totalInclVat = total * (1 + vatRate / 100);
+        row.querySelector('.row-total').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' ' + currency;
+        row.querySelector('.row-exchange-rate').textContent = document.getElementById('exchangeRate')?.value || '-';
         totalQty += qty;
         totalAmt += total;
     });
@@ -234,11 +274,13 @@ function calcTotal() {
         const qty = parseFloat(row.querySelector('.surcharge-qty')?.value || 0);
         const price = parseFloat(row.querySelector('.surcharge-price')?.value || 0);
         const total = qty * price;
-        row.querySelector('.surcharge-total').textContent = total.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' USD';
+        const totalInclVat = total * (1 + vatRate / 100);
+        row.querySelector('.surcharge-total').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' ' + currency;
         totalAmt += total;
     });
     document.getElementById('totalQty').textContent = totalQty.toFixed(2);
-    document.getElementById('totalAmount').textContent = totalAmt.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' USD';
+    const totalInclVat = totalAmt * (1 + vatRate / 100);
+    document.getElementById('totalAmount').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' ' + currency;
 }
 
 @php
@@ -273,6 +315,10 @@ if (initialItems.length) initialItems.forEach(addRow); else addRow();
 @endphp
 const initialSurcharges = @json($initialSurcharges);
 initialSurcharges.forEach(addSurchargeRow);
+document.getElementById('poCurrency')?.addEventListener('change', calcTotal);
+document.getElementById('exchangeRate')?.addEventListener('input', calcTotal);
+document.getElementById('vatPercent')?.addEventListener('input', calcTotal);
+document.querySelectorAll('.price, .qty').forEach(input => input.addEventListener('input', calcTotal));
 calcTotal();
 </script>
 @endsection

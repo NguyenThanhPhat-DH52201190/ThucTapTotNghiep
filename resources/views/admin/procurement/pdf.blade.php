@@ -29,23 +29,25 @@ td, th { vertical-align:top; overflow-wrap:break-word; }
 </table>
 <div><strong>Ref.</strong> &nbsp; {{ $settings['reference'] ?? '' }}</div>
 <table class="goods">
-<thead><tr><th style="width:49%">Description of goods</th><th style="width:16%">Colour</th><th style="width:6%">Qty</th><th style="width:6%">Unit</th><th style="width:10%">Unit Price<br><span class="red">{{ $po->currency ?: 'USD' }}</span></th><th style="width:13%">Total Amount<br><span class="red">{{ $po->currency ?: 'USD' }}</span></th></tr></thead>
+<thead><tr><th style="width:40%">Description of goods</th><th style="width:10%">Colour</th><th style="width:6%">Qty</th><th style="width:6%">Unit</th><th style="width:10%">Unit Price<br>({{ $po->currency ?: 'USD' }})</th><th style="width:12%">Total<br>({{ $po->currency ?: 'USD' }}, incl. VAT)</th><th style="width:10%">Exchange Rate</th><th style="width:6%">VAT %</th></tr></thead>
 <tbody>
 @foreach($items as $item)<tr>
 <td><div>{{ $item->material_code }}</div><div class="multiline">{{ $item->material_name }}</div>@if($item->master_size)<div>Size: {{ $item->master_size }}</div>@endif @if($item->notes)<div class="multiline">{{ $item->notes }}</div>@endif</td>
-<td class="center multiline">{{ $item->color ?: $item->master_color }}</td><td class="center red">{{ rtrim(rtrim(number_format($item->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $item->unit }}</td><td class="right">{{ number_format($item->unit_price, 4) }}</td><td class="right">{{ number_format($item->total_price, 2) }}</td>
+<td class="center multiline">{{ $item->color ?: $item->master_color }}</td><td class="center red">{{ rtrim(rtrim(number_format($item->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $item->unit }}</td><td class="right">{{ number_format($item->unit_price, 4) }}</td><td class="right">{{ number_format((float) $item->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 2) }}</td><td class="right">{{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</td><td class="right">{{ number_format((float) ($po->vat_percent ?? 0), 2) }}%</td>
 </tr>@endforeach
 @foreach($surcharges as $surcharge)<tr>
-<td class="red">{{ $surcharge->description }}</td><td></td><td class="center red">{{ rtrim(rtrim(number_format($surcharge->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $surcharge->unit }}</td><td class="right">{{ number_format($surcharge->unit_price, 4) }}</td><td class="right">{{ number_format($surcharge->total_price, 2) }}</td>
+<td class="red">{{ $surcharge->description }}</td><td></td><td class="center red">{{ rtrim(rtrim(number_format($surcharge->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $surcharge->unit }}</td><td class="right">{{ number_format($surcharge->unit_price, 4) }}</td><td class="right">{{ number_format((float) $surcharge->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 2) }}</td><td class="right">{{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</td><td class="right">{{ number_format((float) ($po->vat_percent ?? 0), 2) }}%</td>
 </tr>@endforeach
-@if(!empty($settings['freight_terms']))<tr><td class="red multiline">{{ $settings['freight_terms'] }}</td><td></td><td></td><td></td><td></td><td></td></tr>@endif
-<tr class="total"><td colspan="4"></td><td class="center">Total</td><td class="right">{{ number_format($po->total_amount, 2) }}</td></tr>
+@if(!empty($settings['freight_terms']))<tr><td class="red multiline">{{ $settings['freight_terms'] }}</td>@for($i = 0; $i < 7; $i++)<td></td>@endfor</tr>@endif
+<tr class="total"><td colspan="4"></td><td class="center">Total</td><td class="right">{{ number_format((float) $po->total_amount * (1 + (float) ($po->vat_percent ?? 0) / 100), 2) }}</td><td></td><td></td></tr>
 </tbody></table>
 <table class="details">
 <tr><td class="label">SHIPPING MARK</td><td class="multiline">{{ $settings['shipping_mark'] ?? '' }}</td></tr>
 <tr><td class="label">CONSIGNEE AND<br>DELIVER TO</td><td class="multiline">{{ $settings['consignee'] ?? '' }}</td></tr>
 <tr><td class="label">PAYMENT DETAILS</td><td class="multiline">{{ $settings['payment_details'] ?? '' }}</td></tr>
-<tr><td class="label">TOTAL PRICE {{ $po->currency ?: 'USD' }}</td><td><strong>{{ number_format($po->total_amount, 2) }}</strong></td></tr>
+<tr><td class="label">TOTAL PRICE {{ $po->currency ?: 'USD' }} (INCLUDING VAT)</td><td><strong>{{ number_format((float) $po->total_amount * (1 + (float) ($po->vat_percent ?? 0) / 100), 2) }}</strong></td></tr>
+<tr><td class="label">EXCHANGE RATE</td><td>{{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</td></tr>
+<tr><td class="label">VAT</td><td>{{ number_format((float) ($po->vat_percent ?? 0), 2) }}%</td></tr>
 <tr><td class="label">SHIPMENT DATE</td><td class="red multiline">{{ $settings['shipment_date'] ?? '' }}</td></tr>
 @if($po->notes)<tr><td class="label">NOTES</td><td class="multiline">{{ $po->notes }}</td></tr>@endif
 </table>

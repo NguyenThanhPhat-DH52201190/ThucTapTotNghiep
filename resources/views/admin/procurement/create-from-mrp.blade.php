@@ -8,7 +8,7 @@
             <h5 class="mb-0 fw-bold"><i class="bi bi-cart-plus me-2"></i>Create Purchase Order from MRP: {{ $mrp->mrp_code }}</h5>
         </div>
         <div class="card-body">
-            <p class="mb-0">Total materials needed: <strong>{{ $items->count() }}</strong> | Estimated total: <strong id="estimatedTotal">0.0000 USD</strong></p>
+            <p class="mb-0">Total materials needed: <strong>{{ $items->count() }}</strong> | Estimated total (incl. VAT): <strong id="estimatedTotal">0.0000 USD</strong></p>
         </div>
     </div>
 
@@ -40,6 +40,9 @@
                         <label class="form-label">Expected Delivery</label>
                         <input type="date" name="expected_delivery" class="form-control">
                     </div>
+                    <div class="col-md-2"><label class="form-label">PO Currency</label><select name="currency" id="poCurrency" class="form-select"><option value="USD">USD</option><option value="VND">VND</option></select></div>
+                    <div class="col-md-2"><label class="form-label">Exchange Rate</label><input type="number" name="exchange_rate" id="exchangeRate" class="form-control" min="0.000001" step="0.000001" required></div>
+                    <div class="col-md-2"><label class="form-label">VAT (%)</label><input type="number" name="vat_percent" id="vatPercent" class="form-control" min="0" max="100" step="0.01" value="0"></div>
                     <div class="col-12">
                         <textarea name="notes" class="form-control" rows="2" placeholder="Notes...">Created from MRP: {{ $mrp->mrp_code }}</textarea>
                     </div>
@@ -52,7 +55,7 @@
                 <h6 class="mb-0 fw-bold"><i class="bi bi-list-check me-2"></i>MRP Items to Order</h6>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
+                <table class="table table-sm align-middle mb-0 mrp-po-items-table">
                     <thead class="table-light">
                         <tr>
                             <th style="width:40px"><input type="checkbox" id="toggleAll" checked></th>
@@ -63,8 +66,9 @@
                             <th>Net Req.</th>
                             <th>Planned Order</th>
                             <th>Recommended Qty</th>
-                            <th>Unit Price (USD)</th>
-                            <th class="text-end">Amount</th>
+                            <th>Unit Price (<span class="currency-label">USD</span>)</th>
+                            <th class="text-end">Total (<span class="currency-label">USD</span>, incl. VAT)</th>
+                            <th class="text-end">Exchange Rate</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,6 +92,7 @@
                             </td>
                             <td><input type="number" step="0.0001" min="0.0001" name="items[{{ $i }}][unit_price]" class="form-control form-control-sm item-field item-price" placeholder="0.0000" required></td>
                             <td class="text-end fw-semibold item-total">0.0000 USD</td>
+                            <td class="text-end item-rate">-</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -106,12 +111,14 @@
 const vendorPrices = @json($vendorPrices);
 
 function money(value) {
-    return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' USD';
+    return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' ' + document.getElementById('poCurrency').value;
 }
 
 function updateRowTotal(row) {
-    const total = Number(row.querySelector('.item-qty').value || 0) * Number(row.querySelector('.item-price').value || 0);
-    row.querySelector('.item-total').textContent = money(total);
+    const net = Number(row.querySelector('.item-qty').value || 0) * Number(row.querySelector('.item-price').value || 0);
+    const vat = Number(document.getElementById('vatPercent').value || 0);
+    row.querySelector('.item-total').textContent = money(net * (1 + vat / 100));
+    row.querySelector('.item-rate').textContent = document.getElementById('exchangeRate').value || '-';
 }
 
 function updateTotal() {
@@ -121,8 +128,9 @@ function updateTotal() {
             total += Number(row.querySelector('.item-qty').value || 0) * Number(row.querySelector('.item-price').value || 0);
         }
     });
+    const vat = Number(document.getElementById('vatPercent').value || 0);
     const totalElement = document.getElementById('estimatedTotal');
-    if (totalElement) totalElement.textContent = money(total);
+    if (totalElement) totalElement.textContent = money(total * (1 + vat / 100));
 }
 
 function syncPricesFromSupplier() {
@@ -146,6 +154,15 @@ function updateVisibility() {
 }
 
 document.getElementById('supplierId').addEventListener('change', syncPricesFromSupplier);
+document.getElementById('poCurrency').addEventListener('change', () => {
+    document.querySelectorAll('.currency-label').forEach(label => label.textContent = document.getElementById('poCurrency').value);
+    document.querySelectorAll('tbody tr[data-material-id]').forEach(updateRowTotal);
+    updateTotal();
+});
+['exchangeRate', 'vatPercent'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+    document.querySelectorAll('tbody tr[data-material-id]').forEach(updateRowTotal);
+    updateTotal();
+}));
 document.getElementById('toggleAll').addEventListener('change', function () {
     document.querySelectorAll('.item-cb').forEach(cb => cb.checked = this.checked);
     updateVisibility();
@@ -157,4 +174,12 @@ document.querySelectorAll('.item-qty, .item-price').forEach(input => input.addEv
 }));
 syncPricesFromSupplier();
 </script>
+<style>
+    .mrp-po-items-table { min-width: 1750px; table-layout: auto; }
+    .mrp-po-items-table th { white-space: nowrap !important; word-break: keep-all; min-width: 110px; }
+    .mrp-po-items-table th:nth-child(3) { min-width: 220px; }
+    .mrp-po-items-table th:nth-child(9), .mrp-po-items-table th:nth-child(10) { min-width: 155px; }
+    .mrp-po-items-table th:nth-child(11) { min-width: 145px; }
+    .mrp-po-items-table th:nth-child(12) { min-width: 195px; }
+</style>
 @endsection

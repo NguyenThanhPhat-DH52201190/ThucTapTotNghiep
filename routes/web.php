@@ -186,7 +186,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('master-data/material-vendors/{id}', [MasterDataController::class, 'destroyMaterialVendor'])->name('master-data.material-vendors.destroy');
 
         // MasterPlan
-        Route::get('masterplan/bulk-edit', [MasterPlanController::class, 'editBulk'])->name('masterplan.bulk-edit');
+        Route::post('masterplan/bulk-edit', [MasterPlanController::class, 'editBulk'])->name('masterplan.bulk-edit');
         Route::put('masterplan/bulk-update', [MasterPlanController::class, 'updateBulk'])->name('masterplan.bulk-update');
         Route::resource('masterplan', MasterPlanController::class)->except(['show']);
 

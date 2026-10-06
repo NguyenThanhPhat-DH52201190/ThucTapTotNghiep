@@ -752,8 +752,13 @@ $hideMidCols = $isAccountant;
             const selected = rows.filter((checkbox) => checkbox.checked);
             if (!selected.length) return;
             const form = document.createElement('form');
-            form.method = 'GET';
+            form.method = 'POST';
             form.action = @json(route('admin.masterplan.bulk-edit'));
+            const token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_token';
+            token.value = @json(csrf_token());
+            form.appendChild(token);
             selected.forEach((checkbox) => {
                 const input = document.createElement('input');
                 input.type = 'hidden';

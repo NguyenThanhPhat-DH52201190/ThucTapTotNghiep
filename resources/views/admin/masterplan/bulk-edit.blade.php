@@ -6,7 +6,6 @@
         <h4 class="mb-1">Bulk Edit Master Plan</h4>
         <div class="text-muted">Edit the selected CU rows, then save all changes together.</div>
     </div>
-    <a href="{{ route('admin.masterplan.index') }}" class="btn btn-outline-secondary">Back</a>
 </div>
 
 @if($errors->any())
@@ -65,10 +64,6 @@ $fields = [
                 @endforeach
             </tbody>
         </table>
-    </div>
-    <div class="d-flex justify-content-end gap-2 mt-3">
-        <a href="{{ route('admin.masterplan.index') }}" class="btn btn-outline-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary" onclick="return confirm('Save changes to all selected Master Plan rows?')">Save all</button>
     </div>
 </form>
 <style>

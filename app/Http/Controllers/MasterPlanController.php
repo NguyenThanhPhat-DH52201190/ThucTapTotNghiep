@@ -527,7 +527,7 @@ class MasterPlanController extends Controller
     public function editBulk(Request $request)
     {
         $validated = $request->validate([
-            'ids' => 'required|array|min:1|max:100',
+            'ids' => 'required|array|min:1|max:500',
             'ids.*' => 'required|integer|distinct|exists:mtp,id',
         ]);
 
@@ -546,7 +546,7 @@ class MasterPlanController extends Controller
             '3rd_PartyInspection', 'ShipDate2', 'SoTK', 'ExQty', 'lt', 'FirstOPT',
         ];
         $rules = [
-            'rows' => 'required|array|min:1|max:100',
+            'rows' => 'required|array|min:1|max:500',
             'rows.*.id' => 'required|integer|distinct|exists:mtp,id',
             'rows.*.Require_date' => 'nullable|date',
             'rows.*.Confirm_date' => 'nullable|date',

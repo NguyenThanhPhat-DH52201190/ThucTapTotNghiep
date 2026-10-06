@@ -391,8 +391,7 @@ $hideMidCols = $isAccountant;
         @endunless
 
         @if($canManage)
-        <form id="masterplanBulkSelect" method="GET" action="{{ route('admin.masterplan.bulk-edit') }}"></form>
-        <button type="submit" form="masterplanBulkSelect" class="btn btn-outline-primary" id="bulkEditButton" disabled>
+        <button type="button" class="btn btn-outline-primary" id="bulkEditButton" disabled>
             <i class="bi bi-pencil-square"></i> Bulk edit (<span id="bulkEditCount">0</span>)
         </button>
         <a href="{{ route('admin.masterplan.create') }}" class="btn btn-primary">
@@ -579,7 +578,7 @@ $hideMidCols = $isAccountant;
 
         @foreach($lineItems as $index => $item)
         <tr>
-            @if($canManage)<td><input type="checkbox" class="masterplan-row-select" name="ids[]" value="{{ $item->id }}" form="masterplanBulkSelect" aria-label="Select {{ $item->CU }}"></td>@endif
+            @if($canManage)<td><input type="checkbox" class="masterplan-row-select" value="{{ $item->id }}" aria-label="Select {{ $item->CU }}"></td>@endif
             <td class="col-code sticky-col sticky-1">@include('admin.partials.image-trigger', ['imageUrl' => !empty($item->ocs_image_path) ? route('masterplan.ocs-image', $item->image_ocs_id, false) : null, 'imageLabel' => $item->CU])</td>
             <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">
                 {{ $item->Line }}
@@ -749,6 +748,22 @@ $hideMidCols = $isAccountant;
             refresh();
         });
         rows.forEach((checkbox) => checkbox.addEventListener('change', refresh));
+        button.addEventListener('click', () => {
+            const selected = rows.filter((checkbox) => checkbox.checked);
+            if (!selected.length) return;
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = @json(route('admin.masterplan.bulk-edit'));
+            selected.forEach((checkbox) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids[]';
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+            document.body.appendChild(form);
+            form.submit();
+        });
     })();
 
     function calculate() {

@@ -15,7 +15,8 @@ class DevelopmentNormController extends Controller
             ->leftJoin('ocs', 'ocs.id', '=', 'norm.cutsheet_id')
             ->select('norm.*', 'ocs.status as current_status')
             ->selectSub(DB::table('development_norm_items')->selectRaw('COUNT(*)')
-                ->whereColumn('development_norm_items.development_norm_id', 'norm.id'), 'item_count')
+                ->whereColumn('development_norm_items.development_norm_id', 'norm.id')
+                ->where('development_norm_items.is_hidden', false), 'item_count')
             ->orderByDesc('norm.copied_at')->paginate(30)->withQueryString();
 
         return view('admin.development-norms.index', compact('orders'));
@@ -25,10 +26,16 @@ class DevelopmentNormController extends Controller
     {
         $norm = DB::table('development_norms')->where('cutsheet_id', $cutsheetId)->first();
         abort_unless($norm, 404);
+        $isAdmin = auth()->user()?->role === 'admin';
         $sizes = DB::table('development_norm_sizes')->where('development_norm_id', $norm->id)
             ->orderBy('sort_order')->orderBy('id')->get();
         $items = DB::table('development_norm_items')->where('development_norm_id', $norm->id)
+            ->where('is_hidden', false)
             ->orderBy('sort_order')->orderBy('id')->get();
+        $hiddenItems = $isAdmin
+            ? DB::table('development_norm_items')->where('development_norm_id', $norm->id)->where('is_hidden', true)
+                ->orderBy('sort_order')->orderBy('id')->get()
+            : collect();
         $rates = DB::table('development_norm_item_sizes as rate')
             ->join('development_norm_sizes as size', 'size.id', '=', 'rate.development_norm_size_id')
             ->whereIn('rate.development_norm_item_id', $items->pluck('id'))
@@ -38,7 +45,21 @@ class DevelopmentNormController extends Controller
             $item->size_rates = ($rates[$item->id] ?? collect())->keyBy('size_id');
         }
 
-        return view('admin.development-norms.show', compact('norm', 'items', 'sizes'));
+        return view('admin.development-norms.show', compact('norm', 'items', 'hiddenItems', 'sizes', 'isAdmin'));
+    }
+
+    public function setItemVisibility(Request $request, int $cutsheetId, int $itemId): RedirectResponse
+    {
+        $data = $request->validate(['hidden' => 'required|boolean']);
+        $norm = DB::table('development_norms')->where('cutsheet_id', $cutsheetId)->first();
+        abort_unless($norm, 404);
+        $updated = DB::table('development_norm_items')
+            ->where('development_norm_id', $norm->id)->where('id', $itemId)
+            ->update(['is_hidden' => (bool) $data['hidden'], 'updated_at' => now()]);
+        abort_unless($updated, 404);
+
+        return redirect()->route('admin.development-norms.show', $cutsheetId)
+            ->with('success', $data['hidden'] ? 'Material hidden from this Development Norm.' : 'Material restored to this Development Norm.');
     }
 
     public function update(Request $request, int $cutsheetId): RedirectResponse

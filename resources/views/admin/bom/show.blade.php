@@ -3,7 +3,7 @@
 @section('content')
 @include('admin.partials.customer-style-selector')
 
-@php $canManage = in_array(auth()->user()->role, ['admin', 'ppic'], true); @endphp
+@php $canManage = auth()->user()->role === 'admin'; @endphp
 
 <div class="container-fluid px-0">
     <div class="card shadow-sm border-0 mb-4">
@@ -92,6 +92,7 @@
                         <th>#</th>
                         <th>Type</th>
                         <th>Code</th>
+                        <th>Old Code</th>
                         <th>Description</th>
                         <th>Colour</th>
                         <th>Material Size</th>
@@ -110,6 +111,7 @@
                             <td class="text-center">{{ $i + 1 }}</td>
                             <td><span class="badge bg-info">{{ $item->material_type }}</span></td>
                             <td><code>{{ $item->material_code }}</code></td>
+                            <td><code>{{ $item->material_old_code ?? '-' }}</code></td>
                             <td>{{ $item->material_name }}</td>
                             <td>{{ $item->colour ?? '-' }}</td>
                             <td>{{ $item->size ?? '-' }}</td>

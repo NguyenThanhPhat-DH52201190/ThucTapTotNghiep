@@ -325,7 +325,12 @@ class BOMController extends Controller
     {
         $bom = DB::table('bom_headers')->where('id', $id)->first();
         if (!$bom) abort(404);
-        $items = DB::table('bom_items')->where('bom_header_id', $id)->orderBy('sort_order')->get();
+        $items = DB::table('bom_items')
+            ->leftJoin('materials', 'materials.id', '=', 'bom_items.material_id')
+            ->where('bom_items.bom_header_id', $id)
+            ->select('bom_items.*', 'materials.old_code as material_old_code')
+            ->orderBy('bom_items.sort_order')
+            ->get();
         $styles = DB::table('ocs')->select('SNo', 'Sname', 'Customer')->distinct()->orderBy('SNo')->get();
         $customers = $this->customers();
         $itemSizeNames = DB::table('bom_item_customer_sizes')

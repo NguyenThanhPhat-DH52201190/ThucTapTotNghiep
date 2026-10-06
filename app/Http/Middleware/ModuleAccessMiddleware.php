@@ -35,7 +35,7 @@ class ModuleAccessMiddleware
         if ($segment === 'bom') {
             $readOnlyMethod = in_array($request->method(), ['GET', 'HEAD'], true);
             $managementPage = $request->routeIs('admin.bom.create', 'admin.bom.edit');
-            abort_unless($role === 'ppic' || ($readOnlyMethod && !$managementPage), 403);
+            abort_unless($readOnlyMethod && !$managementPage, 403);
         }
         // PPIC may plan/update a master plan, but only an administrator may remove it.
         if ($segment === 'masterplan' && $request->isMethod('DELETE')) abort(403);

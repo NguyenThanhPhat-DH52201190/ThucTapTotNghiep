@@ -202,6 +202,8 @@ Route::middleware('auth')->group(function () {
         Route::get('development-norms', [DevelopmentNormController::class, 'index'])->name('development-norms.index');
         Route::get('development-norms/{cutsheetId}', [DevelopmentNormController::class, 'show'])->name('development-norms.show');
         Route::put('development-norms/{cutsheetId}', [DevelopmentNormController::class, 'update'])->name('development-norms.update');
+        Route::patch('development-norms/{cutsheetId}/items/{itemId}/visibility', [DevelopmentNormController::class, 'setItemVisibility'])
+            ->middleware('role:admin')->name('development-norms.items.visibility');
         Route::get('norm/materials/{id}/replacements', [\App\Http\Controllers\NormMaterialReplacementController::class, 'index'])->name('norm.replacements');
         Route::post('norm/materials/{id}/replacements', [\App\Http\Controllers\NormMaterialReplacementController::class, 'store'])->name('norm.replacements.store');
         Route::get('norm/materials/{id}/delivery-bills', [\App\Http\Controllers\DeliveryBillController::class, 'index'])->name('norm.delivery-bills');

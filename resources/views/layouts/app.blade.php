@@ -85,6 +85,10 @@
 
     @php
     $role = auth()->user()->role;
+    // Temporarily hide these sidebar modules. Set a flag to true to show it again.
+    $showMrpModule = false;
+    $showShopFloorModule = false;
+    $showFinanceModule = false;
     @endphp
 
     <div class="d-flex app-shell">
@@ -153,11 +157,11 @@
                     Production Planning
                 </a>
 
-                <a href="{{ route('admin.mrp.index') }}"
+                @if($showMrpModule)<a href="{{ route('admin.mrp.index') }}"
                     class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-calculator"></i>
                     MRP
-                </a>
+                </a>@endif
 
                 <a href="{{ route('admin.procurement.index') }}"
                     class="d-flex align-items-center gap-2 mb-1">
@@ -183,17 +187,17 @@
                     </a>
                 </div>
 
-                <a href="{{ route('admin.shopfloor.dashboard') }}"
+                @if($showShopFloorModule)<a href="{{ route('admin.shopfloor.dashboard') }}"
                     class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-gear"></i>
                     Shop Floor
-                </a>
+                </a>@endif
 
-                <a href="{{ route('admin.finance.dashboard') }}"
+                @if($showFinanceModule)<a href="{{ route('admin.finance.dashboard') }}"
                     class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-graph-up-arrow"></i>
                     Finance & Costing
-                </a>
+                </a>@endif
 
                 <a href="{{ route('admin.revenue.index') }}"
                     class="d-flex align-items-center gap-2">
@@ -220,10 +224,10 @@
                 <i class="bi bi-people"></i>
                 Master Plan
             </a>
-            <a href="{{ route('admin.mrp.index') }}" class="d-flex align-items-center gap-2 mb-1">
+            @if($showMrpModule)<a href="{{ route('admin.mrp.index') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-calculator"></i>
                 MRP
-            </a>
+            </a>@endif
             <a href="{{ route('admin.procurement.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.procurement.*') ? 'active' : '' }}">
                 <i class="bi bi-cart3"></i>
                 Procurement / PO
@@ -244,10 +248,10 @@
             </a>
             @elseif($role === 'ie' || $role === 'prod')
             @if($role === 'prod')
-            <a href="{{ route('admin.shopfloor.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
+            @if($showShopFloorModule)<a href="{{ route('admin.shopfloor.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-gear"></i>
                 Shop Floor
-            </a>
+            </a>@endif
             <a href="{{ route('revenue.view') }}" class="d-flex align-items-center gap-2">
                 <i class="bi bi-bar-chart"></i>
                 Revenue
@@ -263,10 +267,10 @@
                 Inventory & Issue
             </a>
             @elseif($role === 'accountant')
-            <a href="{{ route('admin.finance.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
+            @if($showFinanceModule)<a href="{{ route('admin.finance.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-graph-up-arrow"></i>
                 Finance & Costing
-            </a>
+            </a>@endif
             @endif
             @if(!in_array($role, ['admin', 'qa_qc'], true))
             <a href="{{ route('admin.bom.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.bom.*', 'bom.view') ? 'active' : '' }}">

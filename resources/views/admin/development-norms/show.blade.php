@@ -21,11 +21,13 @@
                     <col style="width:180px"><col style="width:170px"><col style="width:260px"><col style="width:125px"><col style="width:175px"><col style="width:90px">
                     @foreach($sizes as $size)<col style="width:155px">@endforeach
                     <col style="width:175px"><col style="width:115px"><col style="width:175px"><col style="width:170px">
+                    @if($isAdmin)<col style="width:100px">@endif
                 </colgroup>
                 <thead class="table-light"><tr>
                     <th class="text-nowrap">Material Code</th><th class="text-nowrap">Old Code</th><th class="text-nowrap">Description</th><th class="text-nowrap">Type</th><th class="text-nowrap">Colour / BOM Size</th><th class="text-nowrap">Unit</th>
                     @foreach($sizes as $size)<th class="text-end text-nowrap">{{ $size->size_name }}<div class="small fw-normal text-muted">CU Qty {{ number_format($size->quantity, 0) }}</div></th>@endforeach
                     <th class="text-end text-nowrap">Weighted average</th><th class="text-end text-nowrap">Waste %</th><th class="text-end text-nowrap">Total incl. waste</th><th class="text-nowrap">Remark</th>
+                    @if($isAdmin)<th class="text-nowrap">Admin</th>@endif
                 </tr></thead>
                 <tbody>
                 @forelse($items as $item)
@@ -51,12 +53,37 @@
                         <td class="text-end fw-semibold" data-weighted-average>{{ number_format($average, 4) }}</td>
                         <td style="min-width:105px"><input type="number" name="items[{{ $item->id }}][waste_percent]" value="{{ $waste }}" min="0" max="100" step="0.01" class="form-control form-control-sm text-end" data-waste required aria-label="Development waste for {{ $item->material_code }}"></td>
                         <td class="text-end fw-bold" data-total>{{ number_format($average * (1 + (float) $waste / 100), 4) }}</td><td class="text-nowrap" style="min-width:150px">{{ $item->remark ?: '-' }}</td>
+                        @if($isAdmin)<td><button type="submit" form="hide-norm-item-{{ $item->id }}" class="btn btn-sm btn-outline-secondary">Hide</button></td>@endif
                     </tr>
                 @empty<tr><td colspan="{{ 10 + $sizes->count() }}" class="text-center text-muted py-4">This OCS has no BOM material rows.</td>@endforelse
                 </tbody>
             </table>
         </div><div class="card-footer d-flex justify-content-end"><button class="btn btn-primary" @disabled($items->isEmpty() || $sizes->isEmpty())><i class="bi bi-save me-1"></i>Save Development Norms</button></div></div>
     </form>
+    @if($isAdmin)
+        @foreach($items as $item)
+            <form id="hide-norm-item-{{ $item->id }}" method="POST" action="{{ route('admin.development-norms.items.visibility', [$norm->cutsheet_id, $item->id]) }}" class="d-none">
+                @csrf @method('PATCH')<input type="hidden" name="hidden" value="1">
+            </form>
+        @endforeach
+        @if($hiddenItems->isNotEmpty())
+            <details class="card shadow-sm border-0 mt-3">
+                <summary class="card-header bg-white fw-semibold">Hidden materials ({{ $hiddenItems->count() }}) — click to restore</summary>
+                <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                    <thead class="table-light"><tr><th>Material Code</th><th>Old Code</th><th>Description</th><th>Type</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach($hiddenItems as $item)
+                        <tr>
+                            <td><code>{{ $item->material_code }}</code></td><td><code>{{ $item->material_old_code ?: '-' }}</code></td>
+                            <td>{{ $item->material_name }}</td><td>{{ ucfirst($item->material_type ?: 'other') }}</td>
+                            <td><form method="POST" action="{{ route('admin.development-norms.items.visibility', [$norm->cutsheet_id, $item->id]) }}">@csrf @method('PATCH')<input type="hidden" name="hidden" value="0"><button class="btn btn-sm btn-outline-primary">Restore</button></form></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table></div>
+            </details>
+        @endif
+    @endif
     <div class="development-norm-scroll-proxy" id="developmentNormScrollProxy" aria-label="Scroll table horizontally" tabindex="0"><div></div></div>
 </div>
 <style>
@@ -92,9 +119,15 @@
         syncing = false;
     };
     const updateProxy = () => {
-        proxyContent.style.width = `${tableScroll.scrollWidth}px`;
         const rect = tableScroll.getBoundingClientRect();
-        proxy.classList.toggle('is-visible', tableScroll.scrollWidth > tableScroll.clientWidth + 1 && rect.top < window.innerHeight && rect.bottom > 0);
+        proxy.style.left = `${rect.left}px`;
+        proxy.style.right = `${Math.max(0, window.innerWidth - rect.right)}px`;
+        const isVisible = tableScroll.scrollWidth > tableScroll.clientWidth + 1 && rect.top < window.innerHeight && rect.bottom > 0;
+        proxy.classList.toggle('is-visible', isVisible);
+        if (isVisible) {
+            const tableMaxScroll = tableScroll.scrollWidth - tableScroll.clientWidth;
+            proxyContent.style.width = `${proxy.clientWidth + tableMaxScroll}px`;
+        }
         syncFromTable();
     };
     tableScroll.addEventListener('scroll', syncFromTable, { passive: true });

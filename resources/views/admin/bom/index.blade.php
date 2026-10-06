@@ -3,7 +3,7 @@
 @section('content')
 @include('admin.partials.image-popover')
 
-@php $canManage = in_array(auth()->user()->role, ['admin', 'ppic'], true); @endphp
+@php $canManage = auth()->user()->role === 'admin'; @endphp
 
 <div class="container-fluid px-0">
     @if(session('success'))

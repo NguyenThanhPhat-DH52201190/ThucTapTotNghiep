@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\OrderCostSnapshotService;
-use App\Jobs\CreateRequisitionForCutsheet;
 use App\Services\RequisitionService;
 use App\Services\OrderMaterialRequirementService;
 use App\Services\DevelopmentNormSnapshotService;
@@ -20,6 +19,23 @@ use App\Imports\OCSImport;
 
 class OCSController extends Controller
 {
+    private function createRequisitionImmediately(int $orderId, RequisitionService $requisitions): void
+    {
+        DB::table('ocs')->where('id', $orderId)->update([
+            'requisition_job_status' => 'processing',
+            'requisition_job_error' => null,
+            'updated_at' => now(),
+        ]);
+
+        $requisitions->createForCutsheet($orderId);
+
+        DB::table('ocs')->where('id', $orderId)->update([
+            'requisition_job_status' => 'completed',
+            'requisition_job_error' => null,
+            'updated_at' => now(),
+        ]);
+    }
+
     private function isLocked(object $order): bool
     {
         return in_array($order->status, ['confirmed', 'in_production', 'completed', 'released', 'closed'], true);
@@ -218,10 +234,7 @@ class OCSController extends Controller
                 $bomHeaderId = DB::table('ocs')->where('id', $orderId)->value('bom_header_id');
                 if ($bomHeaderId) {
                     app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $orderId);
-                    DB::table('ocs')->where('id', $orderId)->update([
-                        'requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now(),
-                    ]);
-                    CreateRequisitionForCutsheet::dispatch((int) $orderId)->afterCommit();
+                    $this->createRequisitionImmediately((int) $orderId, $requisitions);
                 } else {
                     DB::table('ocs')->where('id', $orderId)->update([
                         'requisition_job_status' => 'waiting_bom',
@@ -342,6 +355,11 @@ class OCSController extends Controller
                     ? DB::table('bom_headers')->find($currentOrder->bom_header_id) : null;
                 // Keep the order's customized BOM and item references when only order details change.
                 if ($assignedBom && (int) ($assignedBom->template_id ?: $assignedBom->id) === $request->integer('bom_header_id')) {
+                    if (in_array($currentOrder->status, ['confirmed', 'in_production', 'completed'], true)
+                        && ($currentOrder->requisition_job_status ?? 'none') !== 'completed') {
+                        app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $id);
+                        $this->createRequisitionImmediately((int) $id, $requisitions);
+                    }
                     return $assignedBom->mapping_status;
                 }
                 [, $mappingStatus] = $this->createOrderBom((int) $id, $request->integer('bom_header_id') ?: null, $request->user()?->id);
@@ -349,6 +367,11 @@ class OCSController extends Controller
                     $oldItemIds = DB::table('bom_items')->where('bom_header_id', $currentOrder->bom_header_id)->pluck('id');
                     DB::table('bom_item_customer_sizes')->whereIn('bom_item_id', $oldItemIds)->delete();
                     DB::table('bom_headers')->where('id', $currentOrder->bom_header_id)->where('bom_kind', 'order')->delete();
+                }
+                if (in_array($currentOrder->status, ['confirmed', 'in_production', 'completed'], true)
+                    && $request->filled('bom_header_id')) {
+                    app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $id);
+                    $this->createRequisitionImmediately((int) $id, $requisitions);
                 }
                 return $mappingStatus;
             });
@@ -596,11 +619,9 @@ class OCSController extends Controller
                     $bom = $order->bom_header_id ? DB::table('bom_headers')->find($order->bom_header_id) : null;
                     if ($bom) {
                         app(DevelopmentNormSnapshotService::class)->copyFromOrder((int) $id);
-                        DB::table('ocs')->where('id', $id)->update(['requisition_job_status' => 'queued', 'requisition_job_error' => null, 'updated_at' => now()]);
-                        CreateRequisitionForCutsheet::dispatch((int) $id)->afterCommit();
+                        $this->createRequisitionImmediately((int) $id, $requisitions);
                     } else {
-                        // Orders may be confirmed for planning before their BOM is ready.
-                        // Material requirements and reservations must wait until a BOM is assigned.
+                        // Material requirements and reservations wait until a BOM is assigned.
                         DB::table('ocs')->where('id', $id)->update([
                             'requisition_job_status' => 'waiting_bom',
                             'requisition_job_error' => 'Waiting for BOM assignment.',

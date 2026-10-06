@@ -490,20 +490,31 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Require_date</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-7">Confirm_date</th>
+            @unless($isPpic)
             <th scope="col" class="col-status">MPS Status</th>
+            @endunless
             <th scope="col" class="col-priority">Pri.</th>
+            @unless($isPpic)
             <th scope="col" class="col-date">Cut Start</th>
             <th scope="col" class="col-date">Cut End</th>
             <th scope="col" class="col-date">Sew Start</th>
             <th scope="col" class="col-date">Sew End</th>
+            @endunless
             @unless($hideMidCols)
             <th scope="col" class="col-date">Norm_date</th>
             @endunless
+            @if($isPpic)
+            <th scope="col" class="col-date">Fabric Issue Date</th>
+            <th scope="col" class="col-date">Trims Issue Date</th>
+            <th scope="col" class="col-date">In Warehouse Date</th>
+            @endif
             @unless($hidePpicCols)
+            @unless($isPpic)
             <th scope="col" class="col-date">inWHDate</th>
             <th scope="col" class="col-wide">3rd_PartyInspection</th>
             <th scope="col" class="col-date">ShipDate2</th>
             <th scope="col" class="col-wide">SoTK</th>
+            @endunless
             @unless($hidePpicExecShipCols)
             <th scope="col" class="col-number">ExQty</th>
             <th scope="col" class="col-number">ShipBalance</th>
@@ -534,7 +545,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0);
+        $tableColspan = $isPpic ? 17 : 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0);
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -573,6 +584,7 @@ $hideMidCols = $isAccountant;
             <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
             <td class="col-date col-date-sticky sticky-col sticky-6">{{ $item->Require_date ?? '' }}</td>
             <td class="col-date col-date-sticky sticky-col sticky-7">{{ $item->Confirm_date ?? '' }}</td>
+            @unless($isPpic)
             <td class="col-status">
                 @php
                     $statusColor = match($item->mps_status ?? 'planned') {
@@ -605,14 +617,22 @@ $hideMidCols = $isAccountant;
             <td>{{ $item->planned_cut_end ?? '' }}</td>
             <td>{{ $item->planned_sew_start ?? '' }}</td>
             <td>{{ $item->planned_sew_end ?? '' }}</td>
+            @endunless
             @unless($hideMidCols)
             <td>{{ $item->Norm_date }}</td>
             @endunless
+            @if($isPpic)
+            <td>{{ $item->fabric_issue_date ?? '' }}</td>
+            <td>{{ $item->trims_issue_date ?? '' }}</td>
+            <td>{{ $item->inWHDate ?? '' }}</td>
+            @endif
             @unless($hidePpicCols)
+            @unless($isPpic)
             <td>{{ $item->inWHDate }}</td>
             <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
             <td>{{ $item->ShipDate2 }}</td>
             <td>{{ $item->SoTK }}</td>
+            @endunless
             @unless($hidePpicExecShipCols)
             <td class="col-number">{{ $item->ExQty }}</td>
             <td class="col-number">{{ $item->ShipBalance }}</td>
@@ -693,7 +713,7 @@ $hideMidCols = $isAccountant;
         @endif
         @else
         <tr>
-            <td colspan="{{ 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) }}" class="text-center">No data</td>
+            <td colspan="{{ $isPpic ? 17 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>

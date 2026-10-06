@@ -2,7 +2,8 @@
 @section('title', 'NORM - Materials')
 @section('content')
 @include('admin.partials.image-popover')
-@php($editingNorm = request()->boolean('edit'))
+@php($canManageNorm = in_array(auth()->user()->role, ['admin', 'ppic'], true))
+@php($editingNorm = $canManageNorm && request()->boolean('edit'))
 <style>
 .norm-materials-table{table-layout:fixed;min-width:1150px;font-size:.875rem}
 .norm-materials-table th,.norm-materials-table td{padding:.4rem .5rem;line-height:1.25;vertical-align:middle;overflow-wrap:anywhere}
@@ -40,6 +41,7 @@
     <div class="mb-3"><span class="text-muted">BOM:</span> @include('admin.partials.image-trigger', ['imageUrl' => $order->bom_image_id ? route('admin.bom.image', $order->bom_image_id, false) : null, 'imageLabel' => $order->bom_style . ' / ' . $order->bom_version])</div>
     <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
         <a href="{{ route('admin.norm.materials.images', $order->id) }}" class="btn btn-outline-dark"><i class="bi bi-images me-1"></i>All Images</a>
+        @if($canManageNorm)
         <a href="{{ route('admin.norm.replacements', $order->id) }}" class="btn btn-outline-primary">Replace material</a>
         <a href="{{ route('admin.norm.defects', $order->id) }}" class="btn btn-outline-danger">Material defects</a>
         <a href="{{ route('admin.norm.delivery-bills', $order->id) }}" class="btn btn-success">Export Excel &amp; Confirm Issue</a>
@@ -54,6 +56,7 @@
             </form>
         @else
             <a href="{{ route('admin.norm.materials.show', ['id' => $order->id, 'page' => request('page', 1), 'edit' => 1]) }}" class="btn btn-primary">Edit NORM</a>
+        @endif
         @endif
     </div>
     <div class="card shadow-sm border-0"><div class="table-responsive"><table class="table table-sm table-bordered table-hover align-middle mb-0 norm-materials-table">

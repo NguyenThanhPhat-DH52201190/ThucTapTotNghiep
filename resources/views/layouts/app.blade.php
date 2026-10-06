@@ -236,6 +236,16 @@
                 <i class="bi bi-rulers"></i>
                 Development Norms
             </a>
+            <a class="d-flex justify-content-between align-items-center gap-2 mb-1 {{ request()->routeIs('admin.norm.*') ? 'active' : '' }}"
+                data-bs-toggle="collapse" href="#ppicNormMenu" role="button" aria-expanded="{{ request()->routeIs('admin.norm.*') ? 'true' : 'false' }}" aria-controls="ppicNormMenu">
+                <span class="d-flex align-items-center gap-2"><i class="bi bi-rulers"></i>NORM</span>
+                <i class="bi bi-chevron-down small"></i>
+            </a>
+            <div class="collapse ps-3 {{ request()->routeIs('admin.norm.*') ? 'show' : '' }}" id="ppicNormMenu">
+                <a href="{{ route('admin.norm.materials') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.norm.materials*') ? 'active' : '' }}">
+                    <i class="bi bi-box-seam"></i>Materials
+                </a>
+            </div>
             @elseif($role === 'qa_qc')
             <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('masterplan.view') ? 'active' : '' }}">
                 <i class="bi bi-clipboard-check"></i>
@@ -322,6 +332,8 @@
                         $moduleBack = ['route' => 'admin.masterplan.index', 'label' => 'Master Plan'];
                     } elseif (request()->routeIs('admin.development-norms.*') && !request()->routeIs('admin.development-norms.index')) {
                         $moduleBack = ['route' => 'admin.development-norms.index', 'label' => 'Development Norms'];
+                    } elseif (request()->routeIs('admin.norm.*') && !request()->routeIs('admin.norm.materials')) {
+                        $moduleBack = ['route' => 'admin.norm.materials', 'label' => 'NORM Materials'];
                     } elseif (request()->routeIs('masterplan.fabric.*')) {
                         $moduleBack = ['route' => 'masterplan.view', 'label' => 'Master Plan'];
                     } elseif (request()->routeIs('admin.mrp.*') && !request()->routeIs('admin.mrp.index')) {

@@ -20,9 +20,11 @@ class ModuleAccessMiddleware
             'masterplan' => ['ppic'],
             'mps-schedules' => ['ppic'],
             'work-orders' => ['ppic'],
+            'ocs' => ['ppic'],
             'mrp' => ['ppic'],
             'procurement' => ['ppic'],
             'bom' => ['user', 'warehouse', 'ppic', 'ie', 'prod', 'accountant', 'development'],
+            'norm' => ['ppic'],
             'development-norms' => ['development', 'ppic'],
             'shopfloor' => ['prod'],
             'inventory' => ['warehouse'],
@@ -36,6 +38,9 @@ class ModuleAccessMiddleware
             $readOnlyMethod = in_array($request->method(), ['GET', 'HEAD'], true);
             $managementPage = $request->routeIs('admin.bom.create', 'admin.bom.edit');
             abort_unless($readOnlyMethod && !$managementPage, 403);
+        }
+        if ($segment === 'ocs' && $role === 'ppic') {
+            abort_unless($request->routeIs('admin.ocs.image') && in_array($request->method(), ['GET', 'HEAD'], true), 403);
         }
         // PPIC may plan/update a master plan, but only an administrator may remove it.
         if ($segment === 'masterplan' && $request->isMethod('DELETE')) abort(403);

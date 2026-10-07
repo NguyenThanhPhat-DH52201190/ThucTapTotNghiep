@@ -49,16 +49,18 @@
                 </div>
                 <hr>
                 <h6 class="fw-bold mb-3">Customs item data</h6>
+                <div class="alert alert-warning py-2">You can correct the received quantity here. The system will post a stock correction and recalculate the PO received quantity. Reductions are blocked if the lot has already been issued or reserved. Give a reason for every quantity correction.</div>
+                <div class="mb-3"><label class="form-label" for="quantityCorrectionReason">Quantity correction reason</label><textarea id="quantityCorrectionReason" class="form-control" name="quantity_correction_reason" maxlength="1000" rows="2" placeholder="Required only when changing received quantities">{{ old('quantity_correction_reason') }}</textarea></div>
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle mb-0">
-                        <thead class="table-light"><tr><th>PO material code</th><th>Lot No</th><th>Roll No</th><th>Customs material code</th><th>Customs unit price</th><th class="text-end">Received qty</th></tr></thead>
+                        <thead class="table-light"><tr><th>PO material code</th><th>Lot No</th><th>Roll No</th><th>Customs material code</th><th>Customs unit price</th><th style="min-width:150px">Received qty</th></tr></thead>
                         <tbody>
                             @foreach($items as $index => $item)
                             <tr>
                                 <td>{{ $item->material_code }}</td><td>{{ $item->lot_no ?: '-' }}</td><td>{{ $item->roll_no ?: '-' }}</td>
                                 <td><input type="hidden" name="items[{{ $index }}][id]" value="{{ $item->id }}"><input class="form-control form-control-sm" name="items[{{ $index }}][customs_material_code]" maxlength="100" value="{{ old("items.$index.customs_material_code", $item->customs_material_code) }}"></td>
                                 <td><input class="form-control form-control-sm text-end" type="number" min="0" step="0.0001" name="items[{{ $index }}][customs_unit_price]" value="{{ old("items.$index.customs_unit_price", $item->customs_unit_price) }}"></td>
-                                <td class="text-end">{{ number_format((float) $item->quantity_received, 4) }}</td>
+                                <td><input class="form-control form-control-sm text-end" type="number" min="0" step="0.0001" name="items[{{ $index }}][quantity_received]" value="{{ old("items.$index.quantity_received", $item->quantity_received) }}" required></td>
                             </tr>
                             @endforeach
                         </tbody>

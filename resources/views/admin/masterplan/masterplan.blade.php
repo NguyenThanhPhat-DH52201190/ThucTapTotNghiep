@@ -340,6 +340,79 @@ $hideMidCols = $isAccountant;
         overflow: hidden;
         text-overflow: ellipsis;
     }
+
+    /* Leave more room for data columns on laptops by freezing fewer identifiers. */
+    @media (max-width: 1400px) {
+        .masterplan-table {
+            --sticky-col-1: 94px;
+            --sticky-col-2: 100px;
+            --sticky-col-3: 110px;
+            --sticky-col-4: 75px;
+            --sticky-col-5: 70px;
+            --sticky-col-6: 95px;
+            --sticky-col-7: 95px;
+        }
+
+        .masterplan-table tbody td.sticky-4,
+        .masterplan-table tbody td.sticky-5,
+        .masterplan-table tbody td.sticky-6,
+        .masterplan-table tbody td.sticky-7 {
+            position: static !important;
+            left: auto !important;
+            z-index: auto !important;
+            background: #fff;
+            box-shadow: none !important;
+        }
+
+        .masterplan-table thead th.sticky-4,
+        .masterplan-table thead th.sticky-5,
+        .masterplan-table thead th.sticky-6,
+        .masterplan-table thead th.sticky-7 {
+            left: auto !important;
+            z-index: 1 !important;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .masterplan-table tbody td.sticky-3 {
+            position: static !important;
+            left: auto !important;
+            z-index: auto !important;
+            background: #fff;
+            box-shadow: none !important;
+        }
+
+        .masterplan-table thead th.sticky-3 {
+            left: auto !important;
+            z-index: 1 !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .masterplan-table {
+            --sticky-col-1: 78px;
+            --sticky-col-2: 84px;
+        }
+
+        .masterplan-table tbody td.sticky-2 {
+            position: static !important;
+            left: auto !important;
+            z-index: auto !important;
+            background: #fff;
+            box-shadow: none !important;
+        }
+
+        .masterplan-table thead th.sticky-2 {
+            left: auto !important;
+            z-index: 1 !important;
+        }
+
+        .masterplan-table th,
+        .masterplan-table td {
+            padding: 0.25rem 0.35rem;
+            font-size: 0.8rem;
+        }
+    }
 </style>
 
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4 masterplan-filter" id="filterForm">

@@ -43,7 +43,9 @@ class MaterialImagesTest extends TestCase
             $table->timestamps();
         });
         Schema::create('material_vendors', function (Blueprint $table) {
-            $table->id(); $table->unsignedBigInteger('material_id'); $table->unsignedBigInteger('vendor_id'); $table->boolean('is_default_vendor')->default(false);
+            $table->id(); $table->unsignedBigInteger('material_id'); $table->unsignedBigInteger('vendor_id');
+            $table->string('supplier_description', 500)->nullable(); $table->string('supplier_color_code', 100)->nullable();
+            $table->boolean('is_default_vendor')->default(false);
         });
         Schema::create('suppliers', function (Blueprint $table) {
             $table->id(); $table->string('code'); $table->string('name'); $table->string('status');

@@ -180,6 +180,9 @@ function removeSurchargeRow(id) {
 function addRow(data = {}) {
     rowCount++;
     const i = rowCount;
+    const selectedUnit = String(data.unit || '');
+    const unitOptions = @json($units);
+    const unitSelectOptions = unitOptions.map(unit => `<option value="${escapeSurchargeValue(unit)}" ${String(unit) === selectedUnit ? 'selected' : ''}>${escapeSurchargeValue(unit)}</option>`).join('');
     const html = `
         <tr id="row${i}">
             <td>
@@ -191,10 +194,7 @@ function addRow(data = {}) {
             <td><input type="text" name="items[${i}][material_name]" class="form-control form-control-sm material-name" required readonly value="${data.name || data.material_name || ''}"></td>
             <td><input type="text" class="form-control form-control-sm material-color" readonly value="${escapeSurchargeValue(data.color || '')}" placeholder="-" tabindex="-1"></td>
             <td>
-                <select name="items[${i}][unit]" class="form-select form-select-sm">
-                    <option value="M">M</option><option value="YD">YD</option><option value="KG">KG</option>
-                    <option value="PCS">PCS</option><option value="SET">SET</option><option value="ROLL">ROLL</option>
-                </select>
+                <select name="items[${i}][unit]" class="form-select form-select-sm">${unitSelectOptions}</select>
             </td>
             <td><input type="number" step="0.01" name="items[${i}][quantity]" class="form-control form-control-sm qty" required min="0.01" value="${data.qty || data.quantity || ''}" onchange="calcTotal()"></td>
                         <td><input type="number" step="0.0001" min="0" name="items[${i}][unit_price]" class="form-control form-control-sm price" value="${data.price || data.unit_price || ''}" placeholder="0.0000" onchange="calcTotal()"></td>
@@ -204,7 +204,7 @@ function addRow(data = {}) {
             <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${i})" ${Number(data.received_qty || 0) > 0 ? 'disabled title="This item has received goods and cannot be removed"' : ''}><i class="bi bi-x"></i></button></td>
         </tr>`;
     document.getElementById('itemsBody').insertAdjacentHTML('beforeend', html);
-    document.querySelector(`#row${i} select[name$="[unit]"]`).value = data.unit || 'M';
+    document.querySelector(`#row${i} select[name$="[unit]"]`).value = selectedUnit;
     populateMaterialSelect(document.querySelector(`#row${i} .material-code`), data.materialId || data.material_id || '');
     if (data.price !== undefined || data.unit_price !== undefined) {
         document.querySelector(`#row${i} .price`).value = data.price ?? data.unit_price ?? '';

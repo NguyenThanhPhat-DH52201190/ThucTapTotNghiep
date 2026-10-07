@@ -683,6 +683,12 @@ class RevenueController extends Controller
         $line = $request->line === null ? '' : trim((string) $request->line);
         $line = $line === '' ? '' : mb_convert_case($line, MB_CASE_TITLE, "UTF-8");
         $month = $request->input('month', now()->format('Y-m'));
+        $availableLines = DB::table('revenue')
+            ->whereNotNull('SewingLine')
+            ->where('SewingLine', '!=', '')
+            ->distinct()
+            ->orderBy('SewingLine')
+            ->pluck('SewingLine');
         $distributionByLine = $this->getDistributionByLineSubquery();
         $lineMeta = $this->getLineMetaSubquery();
         $monthlyActualOut = $this->getMonthlyActualOutSubquery($month);
@@ -765,7 +771,7 @@ class RevenueController extends Controller
             $dailyActualRevenue[$day] = round($dayActualRev, 2);
         }
 
-        return view('admin.revenue.daily_revenue', compact('line', 'month', 'monthLabel', 'revenues', 'days', 'dailyMatrix', 'holidaySet', 'totalQty', 'totalPlanRevenue', 'totalAmount', 'dailyTotals', 'dailyPlanRevenue', 'dailyActualRevenue'));
+        return view('admin.revenue.daily_revenue', compact('line', 'availableLines', 'month', 'monthLabel', 'revenues', 'days', 'dailyMatrix', 'holidaySet', 'totalQty', 'totalPlanRevenue', 'totalAmount', 'dailyTotals', 'dailyPlanRevenue', 'dailyActualRevenue'));
     }
 
     public function dailyRevenueSummary(Request $request)
@@ -1041,32 +1047,36 @@ class RevenueController extends Controller
 
         $planBuckets = [];
         foreach ($planRevenues as $item) {
-            $monthNo = null;
             $firstOPT = $item->calc_FirstOPT ?? null;
             $finishSEW = $item->calc_Finish_SEW ?? null;
-
-            if ($firstOPT instanceof Carbon && (int) $firstOPT->format('Y') === $year) {
-                $monthNo = (int) $firstOPT->format('n');
-            } elseif ($finishSEW instanceof Carbon && (int) $finishSEW->format('Y') === $year) {
-                $monthNo = (int) $finishSEW->format('n');
-            }
-
-            if (!$monthNo || $monthNo < 1 || $monthNo > 12) {
+            if (!$firstOPT instanceof Carbon || !$finishSEW instanceof Carbon || $finishSEW->lt($firstOPT)) {
                 continue;
             }
 
-            if (!isset($planBuckets[$monthNo])) {
-                $planBuckets[$monthNo] = (object) [
-                    'gsv_plan' => 0.0,
-                    'subcon_plan' => 0.0,
-                ];
-            }
-
             $planAmount = ((float) ($item->planout ?? 0)) * ((float) ($item->cmp ?? 0));
-            if (strtoupper((string) ($item->line_cate ?? 'SUBCON')) === 'GSV') {
-                $planBuckets[$monthNo]->gsv_plan += $planAmount;
-            } else {
-                $planBuckets[$monthNo]->subcon_plan += $planAmount;
+            // A plan window may cross a calendar month. Split its planned revenue
+            // by the number of calendar days in each month so the whole plan is
+            // represented across the window without counting it twice.
+            $totalWindowDays = $firstOPT->diffInDays($finishSEW) + 1;
+            $cursor = $firstOPT->copy()->startOfMonth();
+            while ($cursor->lte($finishSEW)) {
+                if ((int) $cursor->format('Y') === $year) {
+                    $monthNo = (int) $cursor->format('n');
+                    $overlapStart = $cursor->copy()->max($firstOPT);
+                    $overlapEnd = $cursor->copy()->endOfMonth()->min($finishSEW);
+                    $monthShare = ($overlapStart->diffInDays($overlapEnd) + 1) / $totalWindowDays;
+
+                    if (!isset($planBuckets[$monthNo])) {
+                        $planBuckets[$monthNo] = (object) ['gsv_plan' => 0.0, 'subcon_plan' => 0.0];
+                    }
+
+                    if (strtoupper((string) ($item->line_cate ?? 'SUBCON')) === 'GSV') {
+                        $planBuckets[$monthNo]->gsv_plan += $planAmount * $monthShare;
+                    } else {
+                        $planBuckets[$monthNo]->subcon_plan += $planAmount * $monthShare;
+                    }
+                }
+                $cursor->addMonth();
             }
         }
 

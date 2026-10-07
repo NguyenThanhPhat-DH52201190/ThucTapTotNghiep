@@ -9,6 +9,8 @@
                 <div class="col-12"><label class="form-label" for="editMappingMaterial">Material *</label><select id="editMappingMaterial" name="material_id" class="form-select" required>@foreach($mappingMaterials as $material)<option value="{{ $material->id }}">{{ $material->internal_code }} — {{ $material->material_name }}</option>@endforeach</select></div>
                 <div class="col-12"><label class="form-label" for="editMappingSupplier">Supplier *</label><select id="editMappingSupplier" name="vendor_id" class="form-select" required>@foreach($suppliers as $supplier)<option value="{{ $supplier->id }}">{{ $supplier->code }} — {{ $supplier->name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label" for="editMappingCode">Supplier item code</label><input id="editMappingCode" name="vendor_item_code" maxlength="191" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label" for="editMappingDescription">Product Description</label><input id="editMappingDescription" name="supplier_description" maxlength="500" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label" for="editMappingColorCode">Color code</label><input id="editMappingColorCode" name="supplier_color_code" maxlength="100" class="form-control"></div>
                 <div class="col-md-6"><label class="form-label" for="editMappingPrice">Unit price *</label><input id="editMappingPrice" name="unit_price" type="number" min="0" max="9999999999.9999" step="0.0001" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label" for="editMappingLead">Lead time (days) *</label><input id="editMappingLead" name="lead_time_days" type="number" min="0" max="65535" step="1" class="form-control" required></div>
                 <div class="col-md-6 d-flex align-items-end"><div class="form-check mb-2"><input id="editMappingDefault" name="is_default_vendor" type="checkbox" value="1" class="form-check-input"><label for="editMappingDefault" class="form-check-label">Default supplier</label></div></div>
@@ -30,7 +32,7 @@ function editMaterialMapping(mapping) {
         const option = new Option(mapping.supplier_name ? `${mapping.supplier_code} — ${mapping.supplier_name}` : `Supplier #${mapping.vendor_id}`, mapping.vendor_id);
         option.dataset.extraSupplier = '1'; supplier.add(option);
     }
-    for (const key of ['material_id', 'vendor_id', 'vendor_item_code', 'unit_price', 'lead_time_days']) form.elements[key].value = mapping[key] ?? '';
+    for (const key of ['material_id', 'vendor_id', 'vendor_item_code', 'supplier_description', 'supplier_color_code', 'unit_price', 'lead_time_days']) form.elements[key].value = mapping[key] ?? '';
     form.elements.is_default_vendor.checked = Number(mapping.is_default_vendor) === 1;
     bootstrap.Modal.getOrCreateInstance(document.getElementById('editMappingModal')).show();
 }

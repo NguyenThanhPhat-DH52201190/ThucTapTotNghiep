@@ -16,15 +16,23 @@ class PurchaseOrderPdfController extends Controller
         abort_unless($po, 404);
         $settings = $request->validate([
             'reference' => 'nullable|string|max:500', 'shipping_mark' => 'nullable|string|max:500',
-            'consignee' => 'nullable|string|max:3000', 'payment_details' => 'nullable|string|max:1500',
+            'buyer' => 'nullable|string|max:3000', 'consignee' => 'nullable|string|max:3000',
+            'payment_details' => 'nullable|string|max:1500',
             'freight_terms' => 'nullable|string|max:1000', 'shipment_date' => 'nullable|string|max:500',
             'revised' => 'nullable|boolean',
         ]);
         $settings['revised'] = $request->boolean('revised');
         $supplier = DB::table('suppliers')->find($po->supplier_id);
-        $items = DB::table('po_items')->leftJoin('materials', 'materials.id', '=', 'po_items.material_id')
+        $items = DB::table('po_items')
+            ->leftJoin('materials', 'materials.id', '=', 'po_items.material_id')
+            ->leftJoin('material_vendors', function ($join) use ($po) {
+                $join->on('material_vendors.material_id', '=', 'po_items.material_id')
+                    ->where('material_vendors.vendor_id', '=', $po->supplier_id);
+            })
             ->where('po_items.po_id', $id)
-            ->select('po_items.*', 'materials.color as master_color', 'materials.size as master_size')
+            ->select('po_items.*', 'materials.color as master_color', 'materials.size as master_size',
+                'material_vendors.vendor_item_code', 'material_vendors.supplier_description',
+                'material_vendors.supplier_color_code')
             ->orderBy('po_items.id')->get();
         $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
         $options = new Options();
@@ -33,7 +41,7 @@ class PurchaseOrderPdfController extends Controller
         $options->set('isPhpEnabled', false);
         $options->set('isJavascriptEnabled', false);
         $pdf = new Dompdf($options);
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper('A4', 'landscape');
         $pdf->loadHtml(view('admin.procurement.pdf', compact('po', 'supplier', 'items', 'surcharges', 'settings'))->render(), 'UTF-8');
         $pdf->render();
         $bytes = $pdf->output();

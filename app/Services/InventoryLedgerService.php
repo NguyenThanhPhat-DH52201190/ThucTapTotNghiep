@@ -200,4 +200,61 @@ class InventoryLedgerService
             ]);
         });
     }
+
+    /** Correct a posted receipt line without deleting its original ledger movement. */
+    public function correctReceiptQuantity(array $data): void
+    {
+        $difference = (float) $data['quantity_delta'];
+        if (abs($difference) < 0.00001) return;
+
+        if ($difference > 0) {
+            $this->receive([
+                'reference_type' => 'PO_RECEIPT_CORRECTION', 'reference_id' => $data['receipt_item_id'],
+                'reference_doc' => $data['reference_doc'], 'transaction_date' => $data['transaction_date'],
+                'material_id' => $data['material_id'], 'material_code' => $data['material_code'],
+                'color' => $data['color'], 'size' => $data['size'], 'quantity' => $difference,
+                'unit' => $data['unit'], 'warehouse_id' => $data['warehouse_id'],
+                'location_id' => $data['location_id'], 'lot_roll_no' => $data['lot_roll_no'],
+                'lot_no' => $data['lot_no'], 'roll_no' => $data['roll_no'],
+                'unit_cost' => $data['unit_cost'], 'notes' => $data['notes'], 'user_id' => $data['user_id'],
+            ]);
+            return;
+        }
+
+        DB::transaction(function () use ($data, $difference): void {
+            $query = DB::table('inventory_balances')
+                ->where('material_id', $data['material_id'])
+                ->where('warehouse_id', $data['warehouse_id'])
+                ->where('material_color', $data['color'])
+                ->where('material_size', $data['size'])
+                ->where('lot_roll_no', $data['lot_roll_no'])
+                ->where('lot_no', $data['lot_no'])
+                ->where('roll_no', $data['roll_no']);
+            $data['location_id'] === null ? $query->whereNull('location_id') : $query->where('location_id', $data['location_id']);
+            $balance = $query->lockForUpdate()->first();
+            if (!$balance) throw new RuntimeException('The original stock lot no longer exists. Quantity cannot be reduced.');
+
+            $reduction = abs($difference);
+            $availableToCorrect = (float) $balance->balance_qty - (float) $balance->reserved_qty;
+            if ($reduction > $availableToCorrect + 0.00001) {
+                throw new RuntimeException('Cannot reduce received quantity: some of this lot has already been issued or reserved.');
+            }
+
+            DB::table('inventory_balances')->where('id', $balance->id)->update([
+                'balance_qty' => round((float) $balance->balance_qty + $difference, 4), 'updated_at' => now(),
+            ]);
+            DB::table('inventory_transactions')->insert([
+                'transaction_type' => 'ADJUSTMENT', 'reference_type' => 'PO_RECEIPT_CORRECTION',
+                'reference_id' => $data['receipt_item_id'], 'reference_doc' => $data['reference_doc'],
+                'transaction_date' => $data['transaction_date'], 'material_id' => $data['material_id'],
+                'material_code' => $data['material_code'], 'material_color' => $data['color'],
+                'material_size' => $data['size'], 'lot_roll_no' => $data['lot_roll_no'],
+                'lot_no' => $data['lot_no'], 'roll_no' => $data['roll_no'],
+                'location_id' => $data['location_id'], 'to_warehouse_id' => $data['warehouse_id'],
+                'quantity' => $difference, 'unit' => $data['unit'], 'unit_cost' => $data['unit_cost'],
+                'total_cost' => $difference * (float) $data['unit_cost'], 'notes' => $data['notes'],
+                'created_by' => $data['user_id'], 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        });
+    }
 }

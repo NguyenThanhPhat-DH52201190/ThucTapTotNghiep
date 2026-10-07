@@ -22,6 +22,11 @@ class PurchaseOrderPdfTest extends TestCase
             foreach (['name', 'address', 'contact_person', 'phone', 'email'] as $key) $table->string($key)->nullable();
         });
         Schema::create('materials', function (Blueprint $table) { $table->id(); $table->string('color')->nullable(); $table->string('size')->nullable(); });
+        Schema::create('material_vendors', function (Blueprint $table) {
+            $table->id(); $table->unsignedBigInteger('material_id'); $table->unsignedBigInteger('vendor_id');
+            $table->string('vendor_item_code')->nullable(); $table->string('supplier_description', 500)->nullable();
+            $table->string('supplier_color_code', 100)->nullable();
+        });
         Schema::create('purchase_orders', function (Blueprint $table) {
             $table->id(); $table->unsignedBigInteger('supplier_id'); $table->string('po_number'); $table->date('order_date');
             $table->string('currency'); $table->decimal('total_amount', 14, 4); $table->text('notes')->nullable(); $table->string('status'); $table->timestamps();
@@ -59,7 +64,7 @@ class PurchaseOrderPdfTest extends TestCase
     {
         $item = (array) DB::table('po_items')->first(); unset($item['id']);
         for ($i = 0; $i < 40; $i++) DB::table('po_items')->insert($item);
-        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PPIC]));
+        $this->actingAs($this->createUserRecord(['role' => User::ROLE_PPIC, 'ppic_team' => User::PPIC_TEAM_BOTH]));
         $response = $this->post(route('admin.procurement.pdf', 1), ['consignee' => 'Delivery address'])->assertOk();
         $this->assertGreaterThan(1, preg_match_all('/\/Type\s*\/Page\b/', $response->getContent()));
         $this->post(route('admin.procurement.pdf', 1), ['reference' => str_repeat('x', 501)])->assertSessionHasErrors('reference');

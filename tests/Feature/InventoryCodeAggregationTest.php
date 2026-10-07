@@ -24,7 +24,7 @@ class InventoryCodeAggregationTest extends TestCase
         });
         Schema::create('inventory_balances', function (Blueprint $table): void {
             $table->id(); $table->unsignedBigInteger('material_id'); $table->unsignedBigInteger('warehouse_id')->nullable();
-            $table->unsignedBigInteger('location_id')->nullable(); $table->string('location')->nullable();
+            $table->unsignedBigInteger('location_id')->nullable(); $table->string('custom_code')->nullable(); $table->string('location')->nullable();
             $table->string('lot_roll_no')->nullable(); $table->decimal('balance_qty', 14, 4)->default(0);
             $table->decimal('reserved_qty', 14, 4)->default(0); $table->decimal('min_stock_level', 14, 4)->default(0);
             $table->decimal('reorder_point', 14, 4)->default(0); $table->decimal('unit_cost', 14, 4)->default(0); $table->timestamps();

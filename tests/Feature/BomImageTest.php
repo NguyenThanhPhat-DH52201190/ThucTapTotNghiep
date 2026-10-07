@@ -43,7 +43,7 @@ class BomImageTest extends TestCase
         });
         Schema::create('materials', function (Blueprint $table) {
             $table->id(); $table->unsignedBigInteger('category_id');
-            foreach (['internal_code', 'material_name', 'material_type', 'color', 'size', 'unit'] as $name) $table->string($name)->nullable();
+            foreach (['internal_code', 'old_code', 'material_name', 'material_type', 'color', 'size', 'unit'] as $name) $table->string($name)->nullable();
         });
         Schema::create('material_vendors', function (Blueprint $table) {
             $table->id(); $table->unsignedBigInteger('material_id'); $table->boolean('is_default_vendor'); $table->decimal('unit_price');

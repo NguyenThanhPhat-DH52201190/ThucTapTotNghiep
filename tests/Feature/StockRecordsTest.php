@@ -194,7 +194,7 @@ class StockRecordsTest extends TestCase
         Schema::table('mrp_items', function ($t) { $t->unsignedBigInteger('material_id')->nullable(); $t->string('material_color')->nullable(); });
         Schema::table('bom_items', fn ($t) => $t->decimal('unit_cost', 14, 4)->default(1));
         Schema::table('mtp', function ($t) { $t->string('mps_status')->default('planned'); $t->date('planned_cut_start')->nullable(); });
-        Schema::create('purchase_orders', function ($t) { $t->id(); $t->string('status'); });
+        Schema::create('purchase_orders', function ($t) { $t->id(); $t->string('status'); $t->timestamp('deleted_at')->nullable(); });
         Schema::create('po_items', function ($t) { $t->id(); $t->unsignedBigInteger('po_id'); $t->string('material_code'); $t->string('color')->nullable(); $t->decimal('quantity'); $t->decimal('received_qty'); });
         Schema::create('mrp_suggestions', function ($t) {
             $t->id(); $t->unsignedBigInteger('mrp_header_id'); $t->unsignedBigInteger('cutsheet_id'); $t->unsignedBigInteger('material_id');

@@ -104,6 +104,8 @@ class NormController extends Controller
         $service->sync($id);
         $request = request()->merge(['cutsheet_id' => $id]);
         $rows = $this->query($request)
+            ->whereNotNull('norm.material_size')
+            ->whereRaw("TRIM(norm.material_size) <> ''")
             ->leftJoin('materials as material', 'material.id', '=', 'norm.material_id')
             ->addSelect('material.id as image_material_id', 'material.image_path as material_image_path')
             ->paginate(50)->withQueryString();

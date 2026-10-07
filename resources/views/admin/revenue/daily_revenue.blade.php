@@ -20,7 +20,14 @@
 @endif
 
 <form method="GET" action="{{ route('revenue.daily.line') }}" class="row g-3 mb-3">
-    <input type="hidden" name="line" value="{{ $line }}">
+    <div class="col-md-3">
+        <label>Line</label>
+        <select name="line" class="form-select" required>
+            @foreach($availableLines as $availableLine)
+                <option value="{{ $availableLine }}" @selected(strcasecmp(trim((string) $availableLine), $line) === 0)>{{ $availableLine }}</option>
+            @endforeach
+        </select>
+    </div>
 
     <div class="col-md-3">
         <label>Month</label>

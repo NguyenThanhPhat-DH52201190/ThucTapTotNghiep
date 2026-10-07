@@ -125,8 +125,6 @@ class MRPController extends Controller
                 ->join('purchase_orders', 'po_items.po_id', '=', 'purchase_orders.id')
                 ->whereIn('purchase_orders.status', ['draft', 'sent', 'confirmed', 'partial'])
                 ->whereNull('purchase_orders.deleted_at')
-                ->whereNull('purchase_orders.deleted_at')
-                ->whereNull('purchase_orders.deleted_at')
                 ->select('po_items.material_code', 'po_items.color',
                     DB::raw('SUM(po_items.quantity - po_items.received_qty) as pending_qty'))
                 ->groupBy('po_items.material_code', 'po_items.color')

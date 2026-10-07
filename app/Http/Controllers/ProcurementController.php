@@ -193,7 +193,8 @@ class ProcurementController extends Controller
     {
         $suppliers = DB::table('suppliers')->where('status', 'active')->orderBy('name')->get();
         $vendorMaterials = $this->vendorMaterials($suppliers->pluck('id')->all());
-        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials'));
+        $units = DB::table('materials')->whereNotNull('unit')->whereRaw("TRIM(unit) <> ''")->distinct()->orderBy('unit')->pluck('unit');
+        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials', 'units'));
     }
 
     public function edit($id)
@@ -206,8 +207,9 @@ class ProcurementController extends Controller
             ->where(fn ($query) => $query->where('status', 'active')->orWhere('id', $po->supplier_id))
             ->orderBy('name')->get();
         $vendorMaterials = $this->vendorMaterials($suppliers->pluck('id')->all());
+        $units = DB::table('materials')->whereNotNull('unit')->whereRaw("TRIM(unit) <> ''")->distinct()->orderBy('unit')->pluck('unit');
 
-        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials', 'po', 'items', 'surcharges'));
+        return view('admin.procurement.create', compact('suppliers', 'vendorMaterials', 'units', 'po', 'items', 'surcharges'));
     }
 
     public function createFromMrp($mrpId)
@@ -378,13 +380,16 @@ class ProcurementController extends Controller
             'items.*.id' => 'required|integer',
             'items.*.customs_material_code' => 'nullable|string|max:100',
             'items.*.customs_unit_price' => 'nullable|numeric|decimal:0,4|min:0',
+            'items.*.quantity_received' => 'nullable|numeric|min:0|decimal:0,4',
+            'quantity_correction_reason' => 'nullable|string|max:1000',
         ]);
 
         try {
             $before = null;
-            DB::transaction(function () use ($id, $receiptId, $data, &$before) {
+            DB::transaction(function () use ($id, $receiptId, $data, &$before, $request) {
                 $receipt = DB::table('po_receipts')->where('po_id', $id)->where('id', $receiptId)->lockForUpdate()->first();
                 if (!$receipt) abort(404);
+                $po = DB::table('purchase_orders')->where('id', $id)->lockForUpdate()->firstOrFail();
                 $before = (array) $receipt;
                 $before['items'] = DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)->get()->toArray();
 
@@ -399,17 +404,87 @@ class ProcurementController extends Controller
                 ]);
 
                 foreach ($data['items'] ?? [] as $item) {
-                    $updated = DB::table('po_receipt_items')
-                        ->where('po_receipt_id', $receiptId)
-                        ->where('id', $item['id'])
-                        ->update([
-                            'customs_material_code' => $item['customs_material_code'] ?? null,
-                            'customs_unit_price' => $item['customs_unit_price'] ?? null,
-                            'updated_at' => now(),
-                        ]);
-                    if (!$updated && !DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)->where('id', $item['id'])->exists()) {
-                        throw new \RuntimeException('A receipt item does not belong to this receipt.');
+                    $receiptItem = DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)
+                        ->where('id', $item['id'])->lockForUpdate()->first();
+                    if (!$receiptItem) throw new \RuntimeException('A receipt item does not belong to this receipt.');
+
+                    $changes = [
+                        'customs_material_code' => $item['customs_material_code'] ?? null,
+                        'customs_unit_price' => $item['customs_unit_price'] ?? null,
+                        'updated_at' => now(),
+                    ];
+                    if (array_key_exists('quantity_received', $item) && $item['quantity_received'] !== null) {
+                        $newQuantity = (float) $item['quantity_received'];
+                        $oldQuantity = (float) $receiptItem->quantity_received;
+                        $difference = round($newQuantity - $oldQuantity, 4);
+                        if (abs($difference) >= 0.00001) {
+                            if (trim((string) ($data['quantity_correction_reason'] ?? '')) === '') {
+                                throw \Illuminate\Validation\ValidationException::withMessages([
+                                    'quantity_correction_reason' => 'A reason is required when changing a received quantity.',
+                                ]);
+                            }
+                            $poItem = DB::table('po_items')->where('id', $receiptItem->po_item_id)->lockForUpdate()->firstOrFail();
+                            $receivedForPoItem = (float) DB::table('po_receipt_items')->where('po_item_id', $poItem->id)->sum('quantity_received');
+                            if ($receivedForPoItem + $difference > (float) $poItem->quantity + 0.00001) {
+                                throw \Illuminate\Validation\ValidationException::withMessages([
+                                    "items.{$item['id']}.quantity_received" => 'Corrected received quantity cannot exceed the PO item quantity.',
+                                ]);
+                            }
+
+                            $material = $receiptItem->material_id
+                                ? DB::table('materials')->where('id', $receiptItem->material_id)->first()
+                                : DB::table('materials')->where('internal_code', $receiptItem->material_code)->first();
+                            if (!$material) throw new \RuntimeException('The material for this receipt line no longer exists.');
+                            $sourceTransaction = DB::table('inventory_transactions')->where('reference_type', 'PO_RECEIPT')
+                                ->where('reference_id', $receiptId)->where('material_id', $material->id)
+                                ->where('material_color', $receiptItem->material_color)->where('material_size', $receiptItem->material_size)
+                                ->where('lot_roll_no', $receiptItem->batch_no)->where('lot_no', $receiptItem->lot_no)
+                                ->where('roll_no', $receiptItem->roll_no)->where('to_warehouse_id', $receiptItem->warehouse_id)
+                                ->when($receiptItem->location_id === null, fn ($query) => $query->whereNull('location_id'), fn ($query) => $query->where('location_id', $receiptItem->location_id))
+                                ->orderBy('id')->first();
+                            $unitCost = (float) ($sourceTransaction->unit_cost ?? $poItem->unit_price);
+                            if (!$sourceTransaction) {
+                                $unitCost *= 1 + (float) ($po->vat_percent ?? 0) / 100;
+                                if (strtoupper((string) ($po->currency ?? 'USD')) === 'VND') {
+                                    $exchangeRate = (float) ($po->exchange_rate ?? 0);
+                                    if ($exchangeRate <= 0) throw new \RuntimeException('A valid VND to USD exchange rate is required.');
+                                    $unitCost /= $exchangeRate;
+                                }
+                            }
+                            $materialColor = $receiptItem->material_color;
+                            $materialSize = $receiptItem->material_size;
+                            $lotRollNo = $receiptItem->batch_no;
+                            app(InventoryLedgerService::class)->correctReceiptQuantity([
+                                'receipt_item_id' => $receiptItem->id, 'reference_doc' => $receipt->receipt_number,
+                                'transaction_date' => $receipt->received_date, 'material_id' => $material->id,
+                                'material_code' => $receiptItem->material_code, 'color' => $materialColor,
+                                'size' => $materialSize, 'quantity_delta' => $difference, 'unit' => $poItem->unit,
+                                'warehouse_id' => $receiptItem->warehouse_id, 'location_id' => $receiptItem->location_id,
+                                'lot_roll_no' => $lotRollNo, 'lot_no' => $receiptItem->lot_no,
+                                'roll_no' => $receiptItem->roll_no, 'unit_cost' => round($unitCost, 4),
+                                'notes' => 'PO receipt quantity correction. Reason: '.$data['quantity_correction_reason'],
+                                'user_id' => $request->user()->id,
+                            ]);
+                            $changes['quantity_received'] = $newQuantity;
+
+                            DB::table('po_items')->where('id', $poItem->id)->update([
+                                'received_qty' => round($receivedForPoItem + $difference, 4),
+                                'status' => $receivedForPoItem + $difference + 0.00001 >= (float) $poItem->quantity
+                                    ? 'received' : (($receivedForPoItem + $difference) > 0 ? 'partial' : 'pending'),
+                                'updated_at' => now(),
+                            ]);
+                        }
                     }
+                    DB::table('po_receipt_items')->where('id', $receiptItem->id)->update($changes);
+                }
+
+                if (!in_array($po->status, ['closed', 'cancelled'], true)) {
+                    $poItems = DB::table('po_items')->where('po_id', $id)->get();
+                    $activeItems = $poItems->where('status', '!=', 'cancelled');
+                    $status = $activeItems->isNotEmpty() && $activeItems->every(fn ($line) => $line->status === 'received')
+                        ? 'received'
+                        : ($activeItems->contains(fn ($line) => (float) $line->received_qty > 0) ? 'partial' : 'confirmed');
+                    DB::table('purchase_orders')->where('id', $id)->update(['status' => $status, 'updated_at' => now()]);
                 }
             });
 
@@ -417,9 +492,9 @@ class ProcurementController extends Controller
             $afterData = (array) $after;
             $afterData['items'] = DB::table('po_receipt_items')->where('po_receipt_id', $receiptId)->get()->toArray();
             $audit->record('receipt_history_updated', 'po_receipt', (int) $receiptId, $request->user()?->id,
-                $before ?? [], $afterData, $after->reference_number ?? null);
+                $before ?? [], $afterData, $data['quantity_correction_reason'] ?? $after->reference_number ?? null);
 
-            return redirect()->route('admin.procurement.receipts.show', [$id, $receiptId])->with('success', 'Receipt history updated. Inventory quantities were not changed.');
+            return redirect()->route('admin.procurement.receipts.show', [$id, $receiptId])->with('success', 'Receipt updated. Inventory corrections, PO received quantities, and PO status were synchronized.');
         } catch (\Throwable $e) {
             Log::warning('Receipt history update rejected', ['po_id' => $id, 'receipt_id' => $receiptId, 'message' => $e->getMessage()]);
             return back()->withInput()->with('error', 'Could not update receipt history: ' . $e->getMessage());
@@ -831,6 +906,11 @@ class ProcurementController extends Controller
     private function receiveToInventory($poId, array $meta)
     {
         $po = DB::table('purchase_orders')->where('id', $poId)->lockForUpdate()->first();
+        $exchangeRate = (float) ($po->exchange_rate ?? 1);
+        if (strtoupper((string) ($po->currency ?? 'USD')) === 'VND' && $exchangeRate <= 0) {
+            throw new \RuntimeException('A valid VND to USD exchange rate is required before receiving this PO.');
+        }
+        $vatMultiplier = 1 + (float) ($po->vat_percent ?? 0) / 100;
         $items = DB::table('po_items')->where('po_id', $poId)->lockForUpdate()->get()->keyBy('id');
         $entries = collect($meta['items']);
         foreach ($entries->groupBy('po_item_id') as $itemId => $rows) {
@@ -856,6 +936,12 @@ class ProcurementController extends Controller
                 : DB::table('materials')->where('internal_code', $item->material_code)->first();
             if (!$material) throw new \RuntimeException("Material {$item->material_code} was not found in Material Master.");
             $qty = (float) $entry['quantity'];
+            // Inventory costs are stored in USD: add VAT, then convert VND using
+            // the PO rate expressed as VND per USD.
+            $unitCostUsd = (float) $item->unit_price * $vatMultiplier;
+            if (strtoupper((string) ($po->currency ?? 'USD')) === 'VND') {
+                $unitCostUsd /= $exchangeRate;
+            }
             $lot = isset($entry['lot_no']) ? trim($entry['lot_no']) : null;
             $roll = isset($entry['roll_no']) ? trim($entry['roll_no']) : null;
             $label = $lot !== null && $roll !== null ? $lot . ' / ' . $roll : ($entry['lot_roll_no'] ?? null);
@@ -876,7 +962,7 @@ class ProcurementController extends Controller
                 'material_id' => $material->id, 'material_code' => $material->internal_code, 'color' => $color, 'size' => $size,
                 'quantity' => $qty, 'unit' => $item->unit, 'warehouse_id' => $meta['warehouse_id'],
                 'location_id' => $meta['location_id'], 'lot_roll_no' => $label, 'lot_no' => $lot, 'roll_no' => $roll,
-                'unit_cost' => $item->unit_price, 'notes' => "Received from PO #{$po->po_number}",
+                'unit_cost' => round($unitCostUsd, 4), 'notes' => "Received from PO #{$po->po_number}",
                 'user_id' => request()->user()->id,
             ]);
             $item->received_qty = round($item->received_qty + $qty, 4);

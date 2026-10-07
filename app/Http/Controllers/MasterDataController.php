@@ -289,11 +289,11 @@ class MasterDataController extends Controller
 
     public function storeMaterialVendor(Request $request)
     {
-        $data = $request->validate(['material_id' => 'required|exists:materials,id', 'vendor_id' => 'required|exists:suppliers,id', 'vendor_item_code' => 'nullable|string|max:191', 'unit_price' => 'required|numeric|decimal:0,4|min:0', 'lead_time_days' => 'required|integer|min:0', 'is_default_vendor' => 'nullable|boolean']);
+        $data = $request->validate(['material_id' => 'required|exists:materials,id', 'vendor_id' => 'required|exists:suppliers,id', 'vendor_item_code' => 'nullable|string|max:191', 'supplier_description' => 'nullable|string|max:500', 'supplier_color_code' => 'nullable|string|max:100', 'unit_price' => 'required|numeric|decimal:0,4|min:0', 'lead_time_days' => 'required|integer|min:0', 'is_default_vendor' => 'nullable|boolean']);
         DB::transaction(function () use ($data) {
             DB::table('materials')->where('id', $data['material_id'])->lockForUpdate()->firstOrFail();
             if (!empty($data['is_default_vendor'])) DB::table('material_vendors')->where('material_id', $data['material_id'])->update(['is_default_vendor' => false, 'updated_at' => now()]);
-            DB::table('material_vendors')->updateOrInsert(['material_id' => $data['material_id'], 'vendor_id' => $data['vendor_id']], ['vendor_item_code' => $data['vendor_item_code'] ?? null, 'unit_price' => $data['unit_price'], 'lead_time_days' => $data['lead_time_days'], 'is_default_vendor' => !empty($data['is_default_vendor']), 'updated_at' => now(), 'created_at' => now()]);
+            DB::table('material_vendors')->updateOrInsert(['material_id' => $data['material_id'], 'vendor_id' => $data['vendor_id']], ['vendor_item_code' => $data['vendor_item_code'] ?? null, 'supplier_description' => $data['supplier_description'] ?? null, 'supplier_color_code' => $data['supplier_color_code'] ?? null, 'unit_price' => $data['unit_price'], 'lead_time_days' => $data['lead_time_days'], 'is_default_vendor' => !empty($data['is_default_vendor']), 'updated_at' => now(), 'created_at' => now()]);
         });
         return back()->with('success', 'Material–supplier mapping saved.');
     }
@@ -305,6 +305,8 @@ class MasterDataController extends Controller
             'material_id' => 'required|integer|exists:materials,id',
             'vendor_id' => 'required|integer|exists:suppliers,id',
             'vendor_item_code' => 'nullable|string|max:191',
+            'supplier_description' => 'nullable|string|max:500',
+            'supplier_color_code' => 'nullable|string|max:100',
             'unit_price' => 'required|numeric|decimal:0,4|min:0|max:9999999999.9999',
             'lead_time_days' => 'required|integer|min:0|max:65535',
             'is_default_vendor' => 'nullable|boolean',

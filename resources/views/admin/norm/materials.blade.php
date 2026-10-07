@@ -7,6 +7,7 @@
 <style>
 .norm-materials-table{table-layout:fixed;min-width:1150px;font-size:.875rem}
 .norm-materials-table th,.norm-materials-table td{padding:.4rem .5rem;line-height:1.25;vertical-align:middle;overflow-wrap:anywhere}
+.norm-materials-table th.yield-confirmed-heading{white-space:nowrap;overflow-wrap:normal}
 .norm-materials-table th{font-size:.82rem}
 .norm-materials-table code{white-space:normal;overflow-wrap:anywhere}
 .norm-materials-table .form-control{min-width:0;padding:.3rem .4rem;font-size:.82rem}
@@ -60,8 +61,8 @@
         @endif
     </div>
     <div class="card shadow-sm border-0"><div class="table-responsive"><table class="table table-sm table-bordered table-hover align-middle mb-0 norm-materials-table">
-        <colgroup><col style="width:8%"><col style="width:12%"><col style="width:7%"><col style="width:13%"><col style="width:7%"><col style="width:9%"><col style="width:5%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup>
-        <thead class="table-light"><tr><th>Material</th><th>PO</th><th>Old Code</th><th>Description</th><th>Type</th><th>Colour / Size</th><th>Unit</th><th class="text-end">Yield plan</th><th class="text-end">Yield confirmed</th><th class="text-end">watse confirmed</th><th class="text-end text-nowrap">Required</th><th class="text-end text-nowrap">Available</th><th class="text-end text-nowrap">Shortage</th></tr></thead>
+        <colgroup><col style="width:8%"><col style="width:12%"><col style="width:7%"><col style="width:12%"><col style="width:7%"><col style="width:9%"><col style="width:5%"><col style="width:6%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup>
+        <thead class="table-light"><tr><th>Material</th><th>PO</th><th>Old Code</th><th>Description</th><th>Type</th><th>Colour / Size</th><th>Unit</th><th class="text-end">Yield plan</th><th class="text-end yield-confirmed-heading"><span>Yield</span><br><span>confirmed</span></th><th class="text-end">watse confirmed</th><th class="text-end text-nowrap">Required</th><th class="text-end text-nowrap">Available</th><th class="text-end text-nowrap">Shortage</th></tr></thead>
         <tbody>@forelse($rows as $row)<tr>
             <td>@if($row->replacement_id)<span class="badge bg-secondary d-block mb-1">Replacement #{{ $row->replacement_id }}</span>@endif<code>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_code])</code></td>
             <td class="po-column">@if($row->purchase_orders->isNotEmpty())<div class="po-list">@foreach($row->purchase_orders as $po)<a class="po-link" href="{{ route('admin.procurement.show', $po->id) }}" title="{{ ucfirst($po->status) }}">{{ $po->po_number }}</a>@endforeach</div>@else<span class="text-muted">-</span>@endif</td>

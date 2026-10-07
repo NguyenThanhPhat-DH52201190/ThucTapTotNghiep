@@ -161,10 +161,12 @@ class RevenueController extends Controller
 
     private function getMasterPlanWindowsByLine(string $line, array $holidays): Collection
     {
+        $lineCate = $this->getLineCateMap()[strtolower(trim($line))] ?? 'SUBCON';
+        $isGsvLine = strtoupper($lineCate) === 'GSV';
+
         $masterPlans = DB::table('mtp')
             ->where('Line', $line)
             ->select('id', 'CU', 'FirstOPT', 'lt')
-            ->orderByRaw('FirstOPT IS NULL ASC')
             ->orderBy('FirstOPT')
             ->orderBy('id')
             ->get();
@@ -173,24 +175,26 @@ class RevenueController extends Controller
         $previousFinish = null;
 
         foreach ($masterPlans as $masterPlan) {
-            if (!$previousFinish) {
+            if (!$isGsvLine || !$previousFinish) {
                 $currentFirstOPT = $masterPlan->FirstOPT ? Carbon::parse($masterPlan->FirstOPT) : null;
             } else {
                 $currentFirstOPT = $this->calcExFact($previousFinish, 1, $holidays);
             }
 
-            if (!$currentFirstOPT || !$masterPlan->lt) {
-                continue;
+            $currentFinish = null;
+            if ($currentFirstOPT && $masterPlan->lt) {
+                $currentFinish = $this->calcFinishSew($currentFirstOPT, (int) $masterPlan->lt, $holidays);
             }
-
-            $currentFinish = $this->calcFinishSew($currentFirstOPT, (int) $masterPlan->lt, $holidays);
 
             $windows->push((object) [
                 'CU' => (string) $masterPlan->CU,
                 'firstOPT' => $currentFirstOPT,
                 'finishSEW' => $currentFinish,
             ]);
-            $previousFinish = $currentFinish;
+
+            if ($isGsvLine && $currentFinish) {
+                $previousFinish = $currentFinish;
+            }
         }
 
         return $windows;
@@ -257,13 +261,8 @@ class RevenueController extends Controller
         return $revenues
             ->filter(function ($item) use ($month) {
                 $firstOPT = $item->calc_FirstOPT ?? null;
-                $finishSEW = $item->calc_Finish_SEW ?? null;
 
                 if ($firstOPT instanceof Carbon && $firstOPT->format('Y-m') === $month) {
-                    return true;
-                }
-
-                if ($finishSEW instanceof Carbon && $finishSEW->format('Y-m') === $month) {
                     return true;
                 }
 

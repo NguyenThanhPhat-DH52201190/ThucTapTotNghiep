@@ -21,8 +21,6 @@
                     <div class="col-md-3"><label class="form-label">Style</label><input class="form-control" value="{{ $plan->Style }}" readonly></div>
                     <div class="col-md-3"><label class="form-label">PO</label><input class="form-control" value="{{ $plan->PO }}" readonly></div>
                     <div class="col-md-3"><label class="form-label">Order Quantity</label><input class="form-control" value="{{ $plan->Order_Qty }}" readonly></div>
-                    <div class="col-md-3"><label class="form-label">Distributed Quantity</label><input class="form-control" value="{{ $plan->Qty_dis }}" readonly></div>
-                    <div class="col-md-3"><label class="form-label">Required Date</label><input class="form-control" value="{{ $plan->Require_date }}" readonly></div>
                     <div class="col-md-3"><label class="form-label">Confirmed Date</label><input class="form-control" value="{{ $plan->Confirm_date }}" readonly></div>
                     <div class="col-md-3"><label class="form-label">Warehouse Date</label><input class="form-control" value="{{ $plan->inWHDate }}" readonly></div>
                     <div class="col-md-3">

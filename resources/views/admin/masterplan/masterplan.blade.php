@@ -407,6 +407,11 @@ $hideMidCols = $isAccountant;
 </form>
 
 @if($isQaQc)
+@php
+    $qaQcGroups = collect($plan)->groupBy(fn ($item) => filled($item->Confirm_date)
+        ? substr((string) $item->Confirm_date, 0, 7)
+        : 'undated');
+@endphp
 <div class="table-responsive masterplan-scroll">
     <table class="table masterplan-table">
         <thead>
@@ -416,9 +421,7 @@ $hideMidCols = $isAccountant;
                 <th scope="col" class="col-style sticky-col sticky-3">Style</th>
                 <th scope="col" class="col-po sticky-col sticky-4">PO</th>
                 <th scope="col" class="col-qty">Order Quantity</th>
-                <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Distributed Quantity</th>
-                <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Required Date</th>
-                <th scope="col" class="col-date col-date-sticky sticky-col sticky-7">Confirmed Date</th>
+                <th scope="col" class="col-date col-date-sticky sticky-col sticky-5">Confirmed Date</th>
                 <th scope="col" class="col-date">Warehouse Date</th>
                 <th scope="col" class="col-wide" style="min-width: 170px">Third-Party Inspection</th>
                 <th scope="col" class="col-date">QA/QC Inspection Date</th>
@@ -427,24 +430,27 @@ $hideMidCols = $isAccountant;
             </tr>
         </thead>
         <tbody>
-            @forelse($plan as $item)
+            @forelse($qaQcGroups as $month => $items)
+            <tr class="table-warning">
+                <th colspan="11" class="text-start">{{ $month === 'undated' ? 'Chưa có Confirmed Date' : 'Tháng ' . substr($month, 5, 2) . '/' . substr($month, 0, 4) }}</th>
+            </tr>
+            @foreach($items as $item)
             <tr>
                 <td class="col-code sticky-col sticky-1">{{ $item->CU }}</td>
                 <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">{{ $item->Line }}</td>
                 <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
                 <td class="col-po sticky-col sticky-4">{{ $item->PO }}</td>
                 <td class="col-qty">{{ $item->Order_Qty }}</td>
-                <td class="col-qty col-gap-right sticky-col sticky-5">{{ $item->Qty_dis }}</td>
-                <td class="col-date col-date-sticky sticky-col sticky-6">{{ $item->Require_date ?? '' }}</td>
-                <td class="col-date col-date-sticky sticky-col sticky-7">{{ $item->Confirm_date ?? '' }}</td>
+                <td class="col-date col-date-sticky sticky-col sticky-5">{{ $item->Confirm_date ?? '' }}</td>
                 <td>{{ $item->inWHDate ?? '' }}</td>
                 <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
                 <td>{{ $item->qa_inspection_date ?? '' }}</td>
                 <td><span class="badge bg-{{ ($item->qa_status ?? 'not_approved') === 'approved' ? 'success' : 'secondary' }}">{{ ($item->qa_status ?? 'not_approved') === 'approved' ? 'Approved' : 'Not Approved' }}</span></td>
                 <td class="sticky-action sticky-action-edit"><a href="{{ route('masterplan.qa-qc.edit', $item->id) }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i> Edit</a></td>
             </tr>
+            @endforeach
             @empty
-            <tr><td colspan="13" class="text-center">No data</td></tr>
+            <tr><td colspan="11" class="text-center">No data</td></tr>
             @endforelse
         </tbody>
     </table>

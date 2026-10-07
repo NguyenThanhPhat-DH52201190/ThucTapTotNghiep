@@ -215,6 +215,14 @@ class MasterPlanController extends Controller
     {
         $plan = $this->getMasterPlan($request);
 
+        if ($request->user()?->role === 'qa_qc') {
+            // Put upcoming shipment dates first, in calendar order. Rows without
+            // a Confirmed Date remain visible at the end of the QA/QC list.
+            $plan = $plan->sortBy(fn ($item) => filled($item->Confirm_date)
+                ? (string) $item->Confirm_date
+                : '9999-12-31')->values();
+        }
+
         return view('admin.masterplan.masterplan', compact('plan'));
     }
 

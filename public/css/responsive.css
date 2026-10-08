@@ -42,7 +42,7 @@
     .app-content { padding: 1rem !important; }
     .topbar { padding-inline: 1rem !important; }
     /* Tablets and small laptops keep table columns readable and scroll each table locally. */
-    .table-responsive .table { width: max-content; min-width: 100%; }
+    .table-responsive .table { width: 100%; min-width: max-content; }
     .table-responsive .table > :not(caption) > * > * { white-space: nowrap; }
     .table-responsive td[colspan] { white-space: normal; }
     .app-content .table-responsive { margin-bottom: 1rem; }
@@ -105,7 +105,7 @@
     .app-content .table { font-size: .875rem; }
     /* Let columns keep their natural width instead of squeezing codes and names
        into tall, uneven rows. The surrounding region handles horizontal scroll. */
-    .table-responsive .table { width: max-content; min-width: 100%; }
+    .table-responsive .table { width: 100%; min-width: max-content; }
     .table-responsive .table > :not(caption) > * > * {
         padding: .75rem; white-space: nowrap; vertical-align: middle;
     }

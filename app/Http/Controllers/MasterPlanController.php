@@ -60,12 +60,6 @@ class MasterPlanController extends Controller
         $plan = DB::table('mtp')
             ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
             ->leftJoin('bom_headers', 'ocs.bom_header_id', '=', 'bom_headers.id')
-            ->when($request->filled('cu'), function ($query) use ($request) {
-                $query->where('mtp.CU', 'like', '%' . $request->cu . '%');
-            })
-            ->when($request->filled('style'), function ($query) use ($request) {
-                $query->where('ocs.SNo', 'like', '%' . $request->style . '%');
-            })
             ->when($request->filled('mps_status'), function ($query) use ($request) {
                 $query->where('mtp.mps_status', $request->mps_status);
             })
@@ -209,23 +203,32 @@ class MasterPlanController extends Controller
             });
         }
 
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $plan = $plan->filter(function ($item) use ($search) {
+                foreach (get_object_vars($item) as $value) {
+                    if ($value instanceof \DateTimeInterface) {
+                        $value = $value->format('Y-m-d');
+                    } elseif (!is_scalar($value)) {
+                        continue;
+                    }
+
+                    if (mb_stripos((string) $value, $search) !== false) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })->values();
+        }
+
         return $plan;
     }
 
     public function index(Request $request)
     {
         $plan = $this->getMasterPlan($request);
-        $confirmDateSort = $request->input('confirm_date_sort');
-
-        if (in_array($confirmDateSort, ['asc', 'desc'], true)) {
-            $plan = $confirmDateSort === 'desc'
-                ? $plan->sortByDesc(fn ($item) => filled($item->Confirm_date)
-                    ? (string) $item->Confirm_date
-                    : '0000-00-00')->values()
-                : $plan->sortBy(fn ($item) => filled($item->Confirm_date)
-                    ? (string) $item->Confirm_date
-                    : '9999-12-31')->values();
-        } elseif (in_array($request->user()?->role, ['qa_qc', 'accountant'], true)) {
+        if (in_array($request->user()?->role, ['qa_qc', 'accountant'], true)) {
             // Put upcoming shipment dates first, in calendar order. Rows without
             // a Confirmed Date remain visible at the end of these grouped views.
             $plan = $plan->sortBy(fn ($item) => filled($item->Confirm_date)
@@ -234,6 +237,50 @@ class MasterPlanController extends Controller
         }
 
         return view('admin.masterplan.masterplan', compact('plan'));
+    }
+
+    public function confirmDate(Request $request)
+    {
+        $period = $request->validate([
+            'period' => ['nullable', Rule::in(['day', 'month', 'year'])],
+        ])['period'] ?? 'month';
+
+        $valueRule = match ($period) {
+            'day' => 'required|date_format:Y-m-d',
+            'year' => 'required|integer|min:1900|max:2200',
+            default => 'required|date_format:Y-m',
+        };
+        $value = $request->input('value') ?? match ($period) {
+            'day' => now()->format('Y-m-d'),
+            'year' => now()->format('Y'),
+            default => now()->format('Y-m'),
+        };
+        $request->merge(['value' => $value]);
+        $value = $request->validate(['value' => $valueRule])['value'];
+
+        $plan = $this->getMasterPlan($request)
+            ->filter(function ($item) use ($period, $value) {
+                if (!filled($item->Confirm_date)) {
+                    return false;
+                }
+
+                $confirmDate = (string) $item->Confirm_date;
+                return match ($period) {
+                    'day' => $confirmDate === $value,
+                    'year' => substr($confirmDate, 0, 4) === (string) $value,
+                    default => substr($confirmDate, 0, 7) === $value,
+                };
+            })
+            ->sortBy(fn ($item) => (string) $item->Confirm_date)
+            ->values();
+
+        $periodValues = [
+            'day' => $period === 'day' ? $value : now()->format('Y-m-d'),
+            'month' => $period === 'month' ? $value : now()->format('Y-m'),
+            'year' => $period === 'year' ? (string) $value : now()->format('Y'),
+        ];
+
+        return view('admin.masterplan.confirm-date', compact('plan', 'period', 'value', 'periodValues'));
     }
 
     public function export(Request $request)
@@ -658,7 +705,8 @@ class MasterPlanController extends Controller
 
         abort_unless($updated || DB::table('mtp')->where('id', $id)->exists(), 404);
 
-        return redirect()->route('masterplan.view')->with('success', 'Warehouse planning updated.');
+        return redirect()->route('masterplan.view', $request->query())
+            ->with('success', 'Warehouse planning updated.');
     }
 
     public function updateAccountantNote(Request $request, string $id)

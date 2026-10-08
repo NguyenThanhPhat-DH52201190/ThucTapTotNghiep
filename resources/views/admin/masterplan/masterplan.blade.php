@@ -91,7 +91,7 @@ $hideMidCols = $isAccountant;
         table-layout: auto;
         border-collapse: separate;
         border-spacing: 0;
-        width: max-content;
+        width: 100%;
         min-width: max-content;
         --sticky-col-1: 110px;
         --sticky-col-2: 120px;
@@ -336,9 +336,42 @@ $hideMidCols = $isAccountant;
     }
 
     #warehouseMasterplanTable .warehouse-notes-cell {
-        max-width: 260px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        width: 300px;
+        min-width: 220px;
+        max-width: 360px;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+    }
+
+    #warehouseMasterplanTable .warehouse-inline-input {
+        min-width: 145px;
+    }
+
+    #warehouseMasterplanTable .warehouse-note-input {
+        min-width: 220px;
+    }
+
+    /* Keep the warehouse table's horizontal scrollbar available at every viewport size. */
+    .warehouse-masterplan-scroll {
+        scrollbar-width: auto;
+        scrollbar-color: rgba(100, 116, 139, .75) #f1f5f9;
+    }
+
+    .warehouse-masterplan-scroll::-webkit-scrollbar {
+        height: 12px;
+    }
+
+    .warehouse-masterplan-scroll::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+
+    .warehouse-masterplan-scroll::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, .75);
+        border-radius: 999px;
+    }
+
+    .warehouse-masterplan-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(71, 85, 105, .9);
     }
 
     /* Leave more room for data columns on laptops by freezing fewer identifiers. */
@@ -417,18 +450,11 @@ $hideMidCols = $isAccountant;
 
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4 masterplan-filter" id="filterForm">
 
-    <div class="col-auto">
-        <label>CU</label>
-        <input type="text" name="cu" class="form-control"
-            placeholder="Fill CU"
-            value="{{ request('cu') }}">
-    </div>
-
-    <div class="col-auto">
-        <label>Style</label>
-        <input type="text" name="style" class="form-control"
-            placeholder="Fill Style"
-            value="{{ request('style') }}">
+    <div class="col-12 col-lg-4">
+        <label for="masterplanSearch" class="form-label">Search Master Plan</label>
+        <input id="masterplanSearch" type="search" name="search" class="form-control"
+            placeholder="Search CU, line, style, PO, dates, status..."
+            value="{{ request('search') }}">
     </div>
 
     @unless($isQaQc || $isAccountant)
@@ -443,17 +469,14 @@ $hideMidCols = $isAccountant;
             Search
         </button>
 
-        @php
-            $nextConfirmDateSort = request('confirm_date_sort') === 'asc' ? 'desc' : 'asc';
-        @endphp
-        <a href="{{ request()->fullUrlWithQuery(['confirm_date_sort' => $nextConfirmDateSort]) }}"
-            class="btn btn-outline-primary" title="Sort rows by Confirm Date">
-            <i class="bi bi-sort-down"></i> Confirm Date {{ request('confirm_date_sort') === 'asc' ? '↑' : (request('confirm_date_sort') === 'desc' ? '↓' : '') }}
-        </a>
-
         <a href="{{ request()->url() }}"
             class="btn btn-outline-secondary">
             Reset
+        </a>
+
+        <a href="{{ route('masterplan.confirm-date', request()->only(['search', 'ship_balance_only'])) }}"
+            class="btn btn-outline-primary" title="View rows by Confirm Date">
+            <i class="bi bi-calendar-date"></i> Confirm Date
         </a>
 
         @unless($isQaQc || $isAccountant)
@@ -560,7 +583,7 @@ $hideMidCols = $isAccountant;
 @elseif($isWarehouse)
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2"></i>MPS Planning</h5></div>
-    <div class="table-responsive masterplan-scroll">
+    <div class="table-responsive masterplan-scroll warehouse-masterplan-scroll">
     <table id="warehouseMasterplanTable" class="table table-hover align-middle mb-0 masterplan-table">
         <thead class="table-light"><tr>
             <th>CU</th><th>Line</th><th>Style</th><th>PO</th><th>Order Qty</th><th>Qty Dis</th>
@@ -571,12 +594,18 @@ $hideMidCols = $isAccountant;
         @forelse($plan as $item)
             <tr>
                 <td>{{ $item->CU }}</td><td class="line-color-cell" data-line-color="{{ preg_match('/^#(?:[A-Fa-f0-9]{3}){1,2}$/', (string) $item->LineColor) ? $item->LineColor : '#808080' }}" style="background-color: {{ preg_match('/^#(?:[A-Fa-f0-9]{3}){1,2}$/', (string) $item->LineColor) ? $item->LineColor : '#808080' }}">{{ $item->Line }}</td><td>{{ $item->Style }}</td><td>{{ $item->PO }}</td>
-                <td>{{ $item->Order_Qty }}</td><td>{{ $item->Qty_dis }}</td><td>{{ $item->Confirm_date }}</td><td>{{ $item->Norm_date }}</td>
-                <td>{{ $item->fabric_issue_date ?? '' }}</td><td>{{ $item->trims_issue_date ?? '' }}</td><td>{{ $item->lt }}</td>
+                <td>{{ $item->Order_Qty }}</td><td>{{ $item->Qty_dis }}</td><td>{{ $item->Confirm_date }}</td>
+                <td><input form="warehouse-plan-{{ $item->id }}" type="date" name="Norm_date" class="form-control form-control-sm warehouse-inline-input" value="{{ $item->Norm_date ? \Carbon\Carbon::parse($item->Norm_date)->format('Y-m-d') : '' }}" aria-label="Norm date for {{ $item->CU }}"></td>
+                <td><input form="warehouse-plan-{{ $item->id }}" type="date" name="fabric_issue_date" class="form-control form-control-sm warehouse-inline-input" value="{{ $item->fabric_issue_date ? \Carbon\Carbon::parse($item->fabric_issue_date)->format('Y-m-d') : '' }}" aria-label="Fabric issue date for {{ $item->CU }}"></td>
+                <td><input form="warehouse-plan-{{ $item->id }}" type="date" name="trims_issue_date" class="form-control form-control-sm warehouse-inline-input" value="{{ $item->trims_issue_date ? \Carbon\Carbon::parse($item->trims_issue_date)->format('Y-m-d') : '' }}" aria-label="Trims issue date for {{ $item->CU }}"></td><td>{{ $item->lt }}</td>
                 <td>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>
                 <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
-                <td>{{ $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '' }}</td><td class="warehouse-notes-cell" title="{{ $item->mps_notes ?? '' }}">{{ $item->mps_notes }}</td>
-                <td><a class="btn btn-warning btn-sm" href="{{ route('masterplan.warehouse.edit', $item->id) }}"><i class="bi bi-pencil-square"></i> Edit</a></td>
+                <td>{{ $item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : '' }}</td>
+                <td class="warehouse-notes-cell"><input form="warehouse-plan-{{ $item->id }}" type="text" name="mps_notes" class="form-control form-control-sm warehouse-note-input" value="{{ $item->mps_notes ?? '' }}" maxlength="5000" aria-label="Notes for {{ $item->CU }}"></td>
+                <td class="text-nowrap"><form id="warehouse-plan-{{ $item->id }}" method="POST" action="{{ route('masterplan.warehouse.update', array_merge(request()->query(), ['id' => $item->id])) }}" class="d-inline">
+                    @csrf @method('PUT')
+                    <button type="submit" class="btn btn-warning btn-sm">Save</button>
+                </form> <a class="btn btn-outline-secondary btn-sm" href="{{ route('masterplan.warehouse.edit', $item->id) }}">Edit</a></td>
             </tr>
         @empty
             <tr><td colspan="16" class="text-center">No data</td></tr>

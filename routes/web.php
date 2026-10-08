@@ -67,6 +67,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie,warehouse,ppic,prod,accountant,qa_qc')
         ->name('masterplan.view');
 
+    Route::get('/master-plan/confirm-date', [MasterPlanController::class, 'confirmDate'])
+        ->middleware('role:admin,ie,warehouse,ppic,prod,accountant,qa_qc')
+        ->name('masterplan.confirm-date');
+
     Route::put('/master-plan/accountant/{id}/note', [MasterPlanController::class, 'updateAccountantNote'])
         ->middleware('role:accountant')
         ->name('masterplan.accountant.note.update');

@@ -236,6 +236,8 @@ $hideMidCols = $isAccountant;
         padding-left: .35rem;
         padding-right: .25rem;
         font-size: .78rem;
+        background-color: #ffffff;
+        color: #111827;
     }
     .masterplan-table .masterplan-inline-input.masterplan-inline-notes {
         width: 180px;
@@ -500,6 +502,12 @@ $hideMidCols = $isAccountant;
     }
 </style>
 
+@if($canManage)
+<form id="masterplan-save-all-form" method="POST" action="{{ route('admin.masterplan.inline-bulk-update', request()->query()) }}" class="d-none">
+    @csrf @method('PUT')
+</form>
+@endif
+
 <form method="GET" action="{{ url()->current() }}" class="row g-3 mb-4 masterplan-filter" id="filterForm">
 
     <div class="col-12 col-lg-2">
@@ -553,6 +561,9 @@ $hideMidCols = $isAccountant;
         @endif
 
         @if($canManage)
+        <button type="submit" form="masterplan-save-all-form" class="btn btn-success" id="masterplanSaveAllButton" disabled>
+            <i class="bi bi-save"></i> Save changes (<span id="masterplanDirtyCount">0</span>)
+        </button>
         <button type="button" class="btn btn-outline-primary" id="bulkEditButton" disabled>
             <i class="bi bi-pencil-square"></i> Bulk edit (<span id="bulkEditCount">0</span>)
         </button>
@@ -739,7 +750,6 @@ $hideMidCols = $isAccountant;
             @if($canEditFabric && !$canManage)
             <th scope="col" class="sticky-action sticky-action-edit {{ $canManage ? 'sticky-action-before-delete' : '' }}">Edit</th>
             @endif
-            @if($canManage)<th scope="col" class="sticky-action sticky-action-edit sticky-action-before-delete">Save</th>@endif
             @if($canManage)
             <th scope="col" class="sticky-action sticky-action-delete">Delete</th>
             @endif
@@ -757,8 +767,8 @@ $hideMidCols = $isAccountant;
         $totalSubconQty = collect($plan)->filter(function ($item) {
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
-        $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = $canManage ? 34 : ($isPpic ? 17 : 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0));
+        $actionCols = $canEditFabric ? 1 : 0;
+        $tableColspan = $canManage ? 33 : ($isPpic ? 17 : 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0));
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -794,7 +804,11 @@ $hideMidCols = $isAccountant;
             @if($canManage)<td><input type="checkbox" class="masterplan-row-select" value="{{ $item->id }}" aria-label="Select {{ $item->CU }}"></td>@endif
             <td class="col-code sticky-col sticky-1">
                 @include('admin.partials.image-trigger', ['imageUrl' => !empty($item->ocs_image_path) ? route('masterplan.ocs-image', $item->image_ocs_id, false) : null, 'imageLabel' => $item->CU])
-                @if($canManage)<input type="hidden" form="{{ $inlineFormId }}" name="CU" value="{{ $item->CU }}">@endif
+                @if($canManage)
+                <form id="{{ $inlineFormId }}" class="d-none" onsubmit="return false">
+                    <input type="hidden" id="masterplan-line-color-{{ $item->id }}" name="LineColor" value="{{ $inlineLineColor }}">
+                </form>
+                @endif
             </td>
             <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">
                 @if($canManage)
@@ -906,13 +920,6 @@ $hideMidCols = $isAccountant;
                 <option value="approved" @selected(($item->qa_status ?? '') === 'approved')>Approved</option>
             </select></td>
             <td><input form="{{ $inlineFormId }}" type="text" name="mps_notes" class="form-control form-control-sm masterplan-inline-input masterplan-inline-notes" maxlength="5000" value="{{ $item->mps_notes ?? '' }}" aria-label="Notes for {{ $item->CU }}"></td>
-            <td class="sticky-action sticky-action-edit sticky-action-before-delete">
-                <form id="{{ $inlineFormId }}" method="POST" action="{{ route('admin.masterplan.update', array_merge(request()->query(), ['masterplan' => $item->id])) }}" class="d-inline">
-                    @csrf @method('PUT')
-                    <input type="hidden" id="masterplan-line-color-{{ $item->id }}" name="LineColor" value="{{ $inlineLineColor }}">
-                    <button type="submit" class="btn btn-success btn-sm">Save</button>
-                </form>
-            </td>
             @elseif($canEditFabric)
             <td class="sticky-action sticky-action-edit {{ $canManage ? 'sticky-action-before-delete' : '' }}">
                 <a href="{{ route('masterplan.fabric.edit', $item->id) }}" class="btn btn-warning btn-sm">
@@ -983,7 +990,7 @@ $hideMidCols = $isAccountant;
         @endif
         @else
         <tr>
-            <td colspan="{{ $canManage ? 34 : ($isPpic ? 17 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 2 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0)) }}" class="text-center">No data</td>
+            <td colspan="{{ $canManage ? 33 : ($isPpic ? 17 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 2 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0)) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>
@@ -995,15 +1002,102 @@ $hideMidCols = $isAccountant;
 @endif
 
 <script>
+    function applyMasterplanLineSelectColor(select) {
+        const color = select.selectedOptions[0]?.dataset.hex || '';
+        if (!/^#(?:[A-Fa-f0-9]{3}){1,2}$/.test(color)) return;
+
+        const colorInput = document.getElementById(select.dataset.colorInput);
+        if (colorInput) colorInput.value = color;
+
+        const cell = select.closest('td');
+        if (cell) cell.style.backgroundColor = color;
+
+        // Fill the dropdown with the selected line color and keep its label readable.
+        const normalized = color.length === 4
+            ? '#' + color.slice(1).split('').map((digit) => digit + digit).join('')
+            : color;
+        const red = parseInt(normalized.slice(1, 3), 16);
+        const green = parseInt(normalized.slice(3, 5), 16);
+        const blue = parseInt(normalized.slice(5, 7), 16);
+        const luminance = 0.299 * red + 0.587 * green + 0.114 * blue;
+        select.style.backgroundColor = color;
+        select.style.color = luminance > 150 ? '#111827' : '#ffffff';
+        select.style.borderColor = color;
+        select.style.setProperty('--masterplan-line-color', color);
+    }
+
     document.querySelectorAll('.masterplan-line-select').forEach((select) => {
-        select.addEventListener('change', function () {
-            const color = this.selectedOptions[0]?.dataset.hex || '';
-            const colorInput = document.getElementById(this.dataset.colorInput);
-            if (!colorInput || !/^#(?:[A-Fa-f0-9]{3}){1,2}$/.test(color)) return;
-            colorInput.value = color;
-            this.closest('td').style.backgroundColor = color;
+        applyMasterplanLineSelectColor(select);
+        select.addEventListener('change', () => applyMasterplanLineSelectColor(select));
+    });
+
+    document.querySelectorAll('.masterplan-line-select').forEach((select) => {
+        select.addEventListener('focus', function () {
+            this.style.boxShadow = '0 0 0 .2rem color-mix(in srgb, var(--masterplan-line-color, #0d6efd) 25%, transparent)';
+        });
+        select.addEventListener('blur', function () {
+            this.style.boxShadow = '';
         });
     });
+
+    (function () {
+        const batchForm = document.getElementById('masterplan-save-all-form');
+        const saveButton = document.getElementById('masterplanSaveAllButton');
+        const dirtyCount = document.getElementById('masterplanDirtyCount');
+        if (!batchForm || !saveButton || !dirtyCount) return;
+
+        const rowForms = Array.from(document.querySelectorAll('form[id^="masterplan-row-"]'));
+        const initialValues = new Map(rowForms.map((form) => [
+            form.id.slice('masterplan-row-'.length),
+            JSON.stringify(Array.from(new FormData(form).entries())),
+        ]));
+
+        const changedForms = () => rowForms.filter((form) => {
+            const id = form.id.slice('masterplan-row-'.length);
+            return JSON.stringify(Array.from(new FormData(form).entries())) !== initialValues.get(id);
+        });
+        const refreshButton = () => {
+            const changed = changedForms().length;
+            dirtyCount.textContent = changed;
+            saveButton.disabled = changed === 0;
+        };
+
+        document.querySelectorAll('.masterplan-inline-input').forEach((input) => {
+            input.addEventListener('input', refreshButton);
+            input.addEventListener('change', refreshButton);
+        });
+
+        batchForm.addEventListener('submit', (event) => {
+            const changed = changedForms();
+            if (!changed.length) {
+                event.preventDefault();
+                return;
+            }
+
+            batchForm.querySelectorAll('[data-batch-entry]').forEach((input) => input.remove());
+            changed.forEach((form) => {
+                const id = form.id.slice('masterplan-row-'.length);
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = `rows[${id}][id]`;
+                idInput.value = id;
+                idInput.dataset.batchEntry = 'true';
+                batchForm.appendChild(idInput);
+
+                for (const [name, value] of new FormData(form).entries()) {
+                    if (['_token', '_method', 'CU'].includes(name)) continue;
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = `rows[${id}][${name}]`;
+                    input.value = value;
+                    input.dataset.batchEntry = 'true';
+                    batchForm.appendChild(input);
+                }
+            });
+        });
+
+        refreshButton();
+    })();
 
     (function () {
         const selectAll = document.getElementById('selectAllMasterplan');

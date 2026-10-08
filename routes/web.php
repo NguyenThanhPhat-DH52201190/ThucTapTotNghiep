@@ -196,6 +196,7 @@ Route::middleware('auth')->group(function () {
         // MasterPlan
         Route::post('masterplan/bulk-edit', [MasterPlanController::class, 'editBulk'])->name('masterplan.bulk-edit');
         Route::put('masterplan/bulk-update', [MasterPlanController::class, 'updateBulk'])->name('masterplan.bulk-update');
+        Route::put('masterplan/inline-bulk-update', [MasterPlanController::class, 'updateInlineBulk'])->middleware('role:admin')->name('masterplan.inline-bulk-update');
         Route::resource('masterplan', MasterPlanController::class)->except(['show']);
 
         Route::get('ocs/export', [OCSController::class, 'export'])->name('ocs.export');
@@ -279,6 +280,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('mrp', MRPController::class)->except(['store', 'edit', 'update']);
 
         // Procurement
+        Route::post('procurement/{id}/excel', [\App\Http\Controllers\PurchaseOrderExcelController::class, 'export'])->middleware('ppic.team:view')->name('procurement.excel');
         Route::post('procurement/{id}/pdf', [\App\Http\Controllers\PurchaseOrderPdfController::class, 'export'])->middleware('ppic.team:view')->name('procurement.pdf');
         Route::get('procurement/suppliers', [ProcurementController::class, 'suppliers'])->middleware('role:admin')->name('procurement.suppliers');
         Route::post('procurement/suppliers', [ProcurementController::class, 'suppliersStore'])->middleware('role:admin')->name('procurement.suppliers.store');

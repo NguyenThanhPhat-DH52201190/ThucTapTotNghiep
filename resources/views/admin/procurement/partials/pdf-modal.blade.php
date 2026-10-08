@@ -9,11 +9,11 @@
     ];
 @endphp
 <div class="modal fade" id="poPdfModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><form method="POST" action="{{ route('admin.procurement.pdf', $po->id) }}" class="modal-content">@csrf
-<div class="modal-header"><h5 class="modal-title">Export Purchase Order PDF</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal-header"><h5 class="modal-title">Export Purchase Order</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
 <div class="modal-body"><div class="row g-3">
 @foreach(['reference' => 'Ref.', 'shipping_mark' => 'Shipping Mark', 'buyer' => 'Buyer', 'consignee' => 'Consignee', 'payment_details' => 'Payment Details', 'freight_terms' => 'Freight Terms', 'shipment_date' => 'Shipment Date'] as $key => $label)
 <div class="{{ in_array($key, ['buyer', 'consignee'], true) ? 'col-12' : 'col-md-6' }}"><label for="pdf_{{ $key }}" class="form-label">{{ $label }}</label><textarea id="pdf_{{ $key }}" name="{{ $key }}" class="form-control" rows="{{ in_array($key, ['buyer', 'consignee'], true) ? 4 : 2 }}">{{ old($key, $pdfSettings[$key] ?? $pdfDefaults[$key]) }}</textarea></div>
 @endforeach
 <div class="col-12"><div class="form-check"><input type="checkbox" name="revised" value="1" id="pdfRevised" class="form-check-input" @checked(old('revised', $pdfSettings['revised'] ?? false))><label for="pdfRevised" class="form-check-label">Show REVISED</label></div></div>
-</div></div><div class="modal-footer"><button class="btn btn-danger"><i class="bi bi-file-earmark-pdf"></i> Save &amp; download PDF</button></div>
+</div></div><div class="modal-footer"><button class="btn btn-outline-success" formaction="{{ route('admin.procurement.excel', $po->id) }}" formmethod="POST"><i class="bi bi-file-earmark-spreadsheet"></i> Save &amp; download Excel</button><button class="btn btn-danger"><i class="bi bi-file-earmark-pdf"></i> Save &amp; download PDF</button></div>
 </form></div></div>

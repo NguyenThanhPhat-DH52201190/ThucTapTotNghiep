@@ -603,6 +603,106 @@ class MasterPlanController extends Controller
         return view('admin.masterplan.bulk-edit', compact('plans'));
     }
 
+    public function updateInlineBulk(Request $request)
+    {
+        abort_unless($request->user()?->role === 'admin', 403);
+
+        $dateFields = [
+            'Confirm_date', 'planned_cut_start', 'planned_cut_end', 'planned_sew_start', 'planned_sew_end',
+            'Norm_date', 'fabric_issue_date', 'trims_issue_date', 'inWHDate', 'ShipDate2',
+            'FirstOPT', 'qa_inspection_date',
+        ];
+        $rules = [
+            'rows' => 'required|array|min:1|max:3000',
+            'rows.*.id' => 'required|integer|distinct|exists:mtp,id',
+            'rows.*.Line' => 'required|string|max:100',
+            'rows.*.LineColor' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{3}){1,2}$/'],
+            'rows.*.Qty_dis' => 'nullable|integer|min:0',
+            'rows.*.mps_status' => 'nullable|in:planned,in_production,completed,on_hold',
+            'rows.*.mps_priority' => 'nullable|in:low,medium,high,urgent',
+            'rows.*.3rd_PartyInspection' => 'nullable|string|max:50',
+            'rows.*.SoTK' => 'nullable|string|max:50',
+            'rows.*.ExQty' => 'nullable|integer|min:0',
+            'rows.*.lt' => 'nullable|integer|min:0',
+            'rows.*.daily_target_qty' => 'nullable|integer|min:0',
+            'rows.*.qa_status' => 'nullable|in:approved,not_approved',
+            'rows.*.mps_notes' => 'nullable|string|max:5000',
+        ];
+        foreach ($dateFields as $field) {
+            $rules['rows.*.' . $field] = ['nullable', 'date'];
+        }
+        $rules['rows.*.FirstOPT'][] = function ($attribute, $value, $fail) {
+            if ($value && Carbon::parse($value)->isSunday()) {
+                $fail('FirstOPT cannot be on a Sunday. Please choose another date.');
+            }
+        };
+
+        $validated = $request->validate($rules);
+        $rows = $validated['rows'];
+        $ids = collect($rows)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $existingPlans = DB::table('mtp')->whereIn('id', $ids)->get()->keyBy('id');
+
+        foreach ($rows as $index => $row) {
+            $qtyDis = $row['Qty_dis'] ?? null;
+            $exQty = $row['ExQty'] ?? null;
+            if (filled($exQty) && filled($qtyDis) && (int) $exQty > (int) $qtyDis) {
+                return back()->withErrors([
+                    "rows.{$index}.ExQty" => 'ExQty cannot be greater than Qty_dis for this CU.',
+                ])->withInput();
+            }
+        }
+
+        $qtyChangesByCu = [];
+        foreach ($rows as $row) {
+            $existing = $existingPlans->get((int) $row['id']);
+            if (!$existing) continue;
+            $cu = (string) $existing->CU;
+            $qtyChangesByCu[$cu] = ($qtyChangesByCu[$cu] ?? 0)
+                + (int) ($row['Qty_dis'] ?? 0) - (int) ($existing->Qty_dis ?? 0);
+        }
+        foreach ($qtyChangesByCu as $cu => $qtyChange) {
+            if ($qtyChange <= 0) continue;
+            $ocsQty = DB::table('ocs')->where('CS', $cu)->value('Qty');
+            $currentTotal = (int) DB::table('mtp')->where('CU', $cu)->sum('Qty_dis');
+            if ($ocsQty !== null && $currentTotal + $qtyChange > (int) $ocsQty) {
+                return back()->withErrors([
+                    'rows' => "Total distributed quantity for {$cu} would exceed its OCS quantity ({$ocsQty}).",
+                ])->withInput();
+            }
+        }
+
+        DB::transaction(function () use ($rows, $dateFields) {
+            foreach ($rows as $row) {
+                $updates = [
+                    'Line' => $row['Line'],
+                    'LineColor' => $row['LineColor'],
+                    'Qty_dis' => $this->nullableInteger($row['Qty_dis'] ?? null),
+                    'mps_status' => $row['mps_status'] ?? 'planned',
+                    'mps_priority' => $row['mps_priority'] ?? 'medium',
+                    '3rd_PartyInspection' => filled($row['3rd_PartyInspection'] ?? null) ? $row['3rd_PartyInspection'] : null,
+                    'SoTK' => filled($row['SoTK'] ?? null) ? $row['SoTK'] : null,
+                    'ExQty' => $this->nullableInteger($row['ExQty'] ?? null),
+                    'lt' => $this->nullableInteger($row['lt'] ?? null),
+                    'daily_target_qty' => $this->nullableInteger($row['daily_target_qty'] ?? null),
+                    'qa_status' => $row['qa_status'] ?? 'not_approved',
+                    'mps_notes' => $row['mps_notes'] ?? null,
+                    'updated_at' => now(),
+                ];
+                foreach ($dateFields as $field) {
+                    $updates[$field] = $this->nullableDate($row[$field] ?? null);
+                }
+                DB::table('mtp')->where('id', $row['id'])->update($updates);
+            }
+        });
+
+        app(RevenueMasterPlanSync::class)->syncReadyMasterPlans();
+
+        return redirect()->route('admin.masterplan.index', array_merge($request->query(), [
+            'role' => 'admin',
+            'page' => 'masterplan',
+        ]))->with('success', count($rows) . ' Master Plan row(s) saved successfully.');
+    }
+
     public function updateBulk(Request $request)
     {
         $fields = [

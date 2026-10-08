@@ -23,7 +23,10 @@
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold"><i class="bi bi-receipt me-2"></i>{{ $po->po_number }}</h5>
             <div class="d-flex gap-2">
-                @if($canExportPo)<button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>@endif
+                @if($canExportPo)
+                    <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-spreadsheet"></i> Export Excel</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#poPdfModal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+                @endif
                 @if($canManagePo)
                     <a href="{{ route('admin.procurement.edit', $po->id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Edit</a>
                 @endif
@@ -88,8 +91,8 @@
                 <thead class="table-light">
                     <tr>
                         <th>Code</th><th>Name</th><th>Color</th><th>Unit</th><th class="text-end">Qty</th>
-                        <th class="text-end">Received</th><th class="text-end">Pending</th><th class="text-end">Unit Price (PO Currency: {{ $po->currency ?? 'USD' }})</th>
-                        <th class="text-end">Total ({{ $po->currency ?? 'USD' }}, incl. VAT)</th><th class="text-end">Exchange Rate</th>
+                        <th class="text-end">Received</th><th class="text-end">Pending</th><th class="text-end">Unit Price</th>
+                        <th class="text-end">Total</th>
                         <th class="text-end">Note</th><th>Status</th>
                     </tr>
                 </thead>
@@ -105,7 +108,6 @@
                             <td class="text-end fw-semibold {{ (float) $item->quantity - (float) $item->received_qty < 0 ? 'text-danger' : '' }}">{{ number_format((float) $item->quantity - (float) $item->received_qty, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
                             <td class="text-end fw-bold">{{ number_format((float) $item->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td>
-                            <td class="text-end">{{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</td>
                             <td><small>{{ $item->notes ?? '-' }}</small></td>
                             <td>
                                 @php $sc = match($item->status) { 'partial'=>'warning', 'received'=>'success', 'cancelled'=>'danger', default=>'secondary' } @endphp
@@ -114,14 +116,13 @@
                         </tr>
                     @endforeach
                     @foreach($surcharges as $surcharge)
-                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>-</td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format((float) $surcharge->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td><td class="text-end">{{ number_format((float) ($po->exchange_rate ?? 1), 6) }}</td><td>-</td><td>-</td></tr>
+                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>-</td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format((float) $surcharge->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td><td>-</td><td>-</td></tr>
                     @endforeach
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="8" class="text-end">TOTAL:</td>
                         <td class="text-end text-primary">{{ number_format((float) $po->total_amount * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td>
-                        <td></td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
@@ -138,7 +139,7 @@
         <div class="table-responsive" id="receipt-history">
             <table class="table table-sm mb-0 receipt-history-table">
                 <thead class="table-light">
-                    <tr><th>Receipt#</th><th>Receipt date</th><th>Declaration date</th><th>Declaration No.</th><th>Contract No.</th><th>Customs material / unit price</th><th>Reference</th><th>Notes</th></tr>
+                    <tr><th>Receipt#</th><th>Receipt date</th><th>Declaration date</th><th>Declaration No.</th><th>Contract No.</th><th>Customs material /<br>unit price</th><th>Reference</th><th>Notes</th></tr>
                 </thead>
                 <tbody>
                     @foreach($receipts as $r)
@@ -184,7 +185,7 @@
 
 <style>
     #receipt-history .receipt-history-table { min-width: 1450px; table-layout: fixed; }
-    #receipt-history .receipt-history-table th { white-space: nowrap; vertical-align: middle; }
+    #receipt-history .receipt-history-table th { white-space: normal; overflow-wrap: break-word; vertical-align: middle; line-height: 1.25; }
     #receipt-history .receipt-history-table td { vertical-align: middle; }
     #receipt-history .receipt-history-table th:nth-child(1), #receipt-history .receipt-history-table td:nth-child(1) { min-width: 260px; }
     #receipt-history .receipt-history-table th:nth-child(2), #receipt-history .receipt-history-table td:nth-child(2) { min-width: 120px; }

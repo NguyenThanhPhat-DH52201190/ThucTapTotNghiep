@@ -32,25 +32,26 @@ td, th { vertical-align:top; overflow-wrap:break-word; }
     $vatRate = (float) ($po->vat_percent ?? 0);
     $vatFactor = $vatRate / 100;
     $currency = $po->currency ?: 'USD';
+    $showVatColumns = strtoupper(trim($currency)) === 'VND';
     $lineNo = 0;
     $vatTotal = (float) $po->total_amount * $vatFactor;
 @endphp
 <table class="goods">
 <thead><tr>
-<th style="width:3%">No.</th><th style="width:9%">Supplier Item<br>Code</th><th style="width:16%">Description</th><th style="width:7%">Color Code</th><th style="width:6%">Color</th><th style="width:9%">GSV Code</th><th style="width:5%">Qty</th><th style="width:4%">UOM</th><th style="width:6%">Size</th><th style="width:7%">Unit Price<br>({{ $currency }})</th><th style="width:7%">Amount<br>({{ $currency }})</th><th style="width:5%">VAT Rate</th><th style="width:7%">VAT Amount<br>({{ $currency }})</th><th style="width:9%">Total Amount<br>({{ $currency }})</th>
+<th style="width:3%">No.</th><th style="width:8%">Supplier Item<br>Code</th><th style="width:13%">Description</th><th style="width:7%">Note</th><th style="width:6%">Color Code</th><th style="width:5%">Color</th><th style="width:8%">GSV Code</th><th style="width:5%">Qty</th><th style="width:4%">UOM</th><th style="width:6%">Size</th><th style="width:{{ $showVatColumns ? '7%' : '10%' }}">Unit Price<br>({{ $currency }})</th><th style="width:{{ $showVatColumns ? '7%' : '10%' }}">Amount<br>({{ $currency }})</th>@if($showVatColumns)<th style="width:5%">VAT Rate</th><th style="width:7%">VAT Amount<br>({{ $currency }})</th>@endif<th style="width:{{ $showVatColumns ? '9%' : '15%' }}">Total Amount<br>({{ $currency }})</th>
 </tr></thead>
 <tbody>
 @foreach($items as $item)<tr>
 @php($amount = (float) $item->quantity * (float) $item->unit_price)
 @php($lineVat = $amount * $vatFactor)
-<td class="center">{{ ++$lineNo }}</td><td>{{ $item->vendor_item_code ?: '' }}</td><td class="multiline">{{ $item->supplier_description ?: $item->material_name }}@if($item->notes)<br>{{ $item->notes }}@endif</td><td>{{ $item->supplier_color_code ?: '' }}</td><td>{{ $item->color ?: $item->master_color }}</td><td>{{ $item->material_code }}</td><td class="center red">{{ rtrim(rtrim(number_format($item->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $item->unit }}</td><td>{{ $item->master_size ?: '' }}</td><td class="right">{{ number_format($item->unit_price, 4) }}</td><td class="right">{{ number_format($amount, 2) }}</td><td class="center">{{ $vatRate > 0 ? number_format($vatRate, 2).'%' : '-' }}</td><td class="right">{{ $vatRate > 0 ? number_format($lineVat, 2) : '-' }}</td><td class="right">{{ number_format($amount + $lineVat, 2) }}</td>
+<td class="center">{{ ++$lineNo }}</td><td>{{ $item->vendor_item_code ?: '' }}</td><td class="multiline">{{ $item->supplier_description ?: $item->material_name }}</td><td class="multiline">{{ $item->notes ?: '' }}</td><td>{{ $item->supplier_color_code ?: '' }}</td><td>{{ $item->color ?: $item->master_color }}</td><td>{{ $item->material_code }}</td><td class="center red">{{ rtrim(rtrim(number_format($item->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $item->unit }}</td><td>{{ $item->master_size ?: '' }}</td><td class="right">{{ number_format($item->unit_price, 4) }}</td><td class="right">{{ number_format($amount, 2) }}</td>@if($showVatColumns)<td class="center">{{ $vatRate > 0 ? number_format($vatRate, 2).'%' : '-' }}</td><td class="right">{{ $vatRate > 0 ? number_format($lineVat, 2) : '-' }}</td>@endif<td class="right">{{ number_format($amount + $lineVat, 2) }}</td>
 </tr>@endforeach
 @foreach($surcharges as $surcharge)<tr>
 @php($amount = (float) $surcharge->quantity * (float) $surcharge->unit_price)
 @php($lineVat = $amount * $vatFactor)
-<td class="center">{{ ++$lineNo }}</td><td></td><td class="red multiline">{{ $surcharge->description }}</td><td></td><td></td><td></td><td class="center red">{{ rtrim(rtrim(number_format($surcharge->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $surcharge->unit }}</td><td></td><td class="right">{{ number_format($surcharge->unit_price, 4) }}</td><td class="right">{{ number_format($amount, 2) }}</td><td class="center">{{ $vatRate > 0 ? number_format($vatRate, 2).'%' : '-' }}</td><td class="right">{{ $vatRate > 0 ? number_format($lineVat, 2) : '-' }}</td><td class="right">{{ number_format($amount + $lineVat, 2) }}</td>
+<td class="center">{{ ++$lineNo }}</td><td></td><td class="red multiline">{{ $surcharge->description }}</td><td></td><td></td><td></td><td></td><td class="center red">{{ rtrim(rtrim(number_format($surcharge->quantity, 4, '.', ','), '0'), '.') }}</td><td class="center">{{ $surcharge->unit }}</td><td></td><td class="right">{{ number_format($surcharge->unit_price, 4) }}</td><td class="right">{{ number_format($amount, 2) }}</td>@if($showVatColumns)<td class="center">{{ $vatRate > 0 ? number_format($vatRate, 2).'%' : '-' }}</td><td class="right">{{ $vatRate > 0 ? number_format($lineVat, 2) : '-' }}</td>@endif<td class="right">{{ number_format($amount + $lineVat, 2) }}</td>
 </tr>@endforeach
-<tr class="total"><td colspan="10" class="right">TOTAL</td><td class="right">{{ number_format((float) $po->total_amount, 2) }}</td><td></td><td class="right">{{ $vatRate > 0 ? number_format($vatTotal, 2) : '-' }}</td><td class="right">{{ number_format((float) $po->total_amount + $vatTotal, 2) }}</td></tr>
+<tr class="total"><td colspan="11" class="right">TOTAL</td><td class="right">{{ number_format((float) $po->total_amount, 2) }}</td>@if($showVatColumns)<td></td><td class="right">{{ $vatRate > 0 ? number_format($vatTotal, 2) : '-' }}</td>@endif<td class="right">{{ number_format((float) $po->total_amount + $vatTotal, 2) }}</td></tr>
 </tbody></table>
 <table class="details">
 <tr><td class="label">SHIPPING MARK</td><td class="multiline">{{ $settings['shipping_mark'] ?? '' }}</td></tr>

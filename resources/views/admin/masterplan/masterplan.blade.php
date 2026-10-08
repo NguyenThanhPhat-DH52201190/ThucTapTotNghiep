@@ -431,7 +431,7 @@ $hideMidCols = $isAccountant;
             value="{{ request('style') }}">
     </div>
 
-    @unless($isQaQc)
+    @unless($isQaQc || $isAccountant)
     <input type="hidden" name="ship_balance_only" id="shipBalanceFilter"
         value="{{ request('ship_balance_only', 1) }}">
     @endunless
@@ -443,12 +443,20 @@ $hideMidCols = $isAccountant;
             Search
         </button>
 
+        @php
+            $nextConfirmDateSort = request('confirm_date_sort') === 'asc' ? 'desc' : 'asc';
+        @endphp
+        <a href="{{ request()->fullUrlWithQuery(['confirm_date_sort' => $nextConfirmDateSort]) }}"
+            class="btn btn-outline-primary" title="Sort rows by Confirm Date">
+            <i class="bi bi-sort-down"></i> Confirm Date {{ request('confirm_date_sort') === 'asc' ? '↑' : (request('confirm_date_sort') === 'desc' ? '↓' : '') }}
+        </a>
+
         <a href="{{ request()->url() }}"
             class="btn btn-outline-secondary">
             Reset
         </a>
 
-        @unless($isQaQc)
+        @unless($isQaQc || $isAccountant)
         <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only', 1) ? 'btn-warning' : 'btn-outline-warning' }}"
             id="toggleShipBalanceBtn" title="{{ request('ship_balance_only', 1) ? 'Hiding rows where ExQty is entered and ShipBalance = 0' : 'Showing all rows' }}">
             <i class="bi bi-funnel"></i> 
@@ -456,7 +464,7 @@ $hideMidCols = $isAccountant;
         </button>
         @endunless
 
-        @unless($isQaQc)
+        @unless($isQaQc || $isAccountant)
         <a href="{{ route('masterplan.export', request()->query()) }}"
             class="btn btn-success">
             Export Excel
@@ -479,7 +487,7 @@ $hideMidCols = $isAccountant;
     </div>
 </form>
 
-@if($isQaQc)
+@if($isQaQc || $isAccountant)
 @php
     $qaQcGroups = collect($plan)->groupBy(fn ($item) => filled($item->Confirm_date)
         ? substr((string) $item->Confirm_date, 0, 7)
@@ -496,16 +504,23 @@ $hideMidCols = $isAccountant;
                 <th scope="col" class="col-qty">Order Quantity</th>
                 <th scope="col" class="col-date col-date-sticky sticky-col sticky-5">Confirmed Date</th>
                 <th scope="col" class="col-date">Warehouse Date</th>
+                @if($isQaQc)
                 <th scope="col" class="col-wide" style="min-width: 170px">Third-Party Inspection</th>
                 <th scope="col" class="col-date">QA/QC Inspection Date</th>
                 <th scope="col" class="col-status">QA/QC Status</th>
+                @else
+                <th scope="col" class="col-qty">CMT</th>
+                <th scope="col" style="min-width: 220px">Note</th>
+                @endif
+                @if($isQaQc)
                 <th scope="col" class="sticky-action sticky-action-edit">Edit</th>
+                @endif
             </tr>
         </thead>
         <tbody>
             @forelse($qaQcGroups as $month => $items)
             <tr class="table-warning">
-                <th colspan="11" class="text-start">{{ $month === 'undated' ? 'Chưa có Confirmed Date' : 'Tháng ' . substr($month, 5, 2) . '/' . substr($month, 0, 4) }}</th>
+                <th colspan="{{ $isQaQc ? 11 : 9 }}" class="text-start">{{ $month === 'undated' ? 'Chưa có Confirmed Date' : 'Tháng ' . substr($month, 5, 2) . '/' . substr($month, 0, 4) }}</th>
             </tr>
             @foreach($items as $item)
             <tr>
@@ -516,14 +531,25 @@ $hideMidCols = $isAccountant;
                 <td class="col-qty">{{ $item->Order_Qty }}</td>
                 <td class="col-date col-date-sticky sticky-col sticky-5">{{ $item->Confirm_date ?? '' }}</td>
                 <td>{{ $item->inWHDate ?? '' }}</td>
+                @if($isQaQc)
                 <td>{{ $item->{'3rd_PartyInspection'} ?? '' }}</td>
                 <td>{{ $item->qa_inspection_date ?? '' }}</td>
                 <td><span class="badge bg-{{ ($item->qa_status ?? 'not_approved') === 'approved' ? 'success' : 'secondary' }}">{{ ($item->qa_status ?? 'not_approved') === 'approved' ? 'Approved' : 'Not Approved' }}</span></td>
                 <td class="sticky-action sticky-action-edit"><a href="{{ route('masterplan.qa-qc.edit', $item->id) }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i> Edit</a></td>
+                @else
+                <td>{{ $item->CMT ?? '' }}</td>
+                <td>
+                    <form method="POST" action="{{ route('masterplan.accountant.note.update', array_merge(['id' => $item->id], request()->query())) }}" class="d-flex gap-1">
+                        @csrf @method('PUT')
+                        <input type="text" name="mps_notes" class="form-control form-control-sm" value="{{ $item->mps_notes ?? '' }}" maxlength="5000" aria-label="Note for {{ $item->CU }}">
+                        <button type="submit" class="btn btn-warning btn-sm">Save</button>
+                    </form>
+                </td>
+                @endif
             </tr>
             @endforeach
             @empty
-            <tr><td colspan="11" class="text-center">No data</td></tr>
+            <tr><td colspan="{{ $isQaQc ? 11 : 9 }}" class="text-center">No data</td></tr>
             @endforelse
         </tbody>
     </table>

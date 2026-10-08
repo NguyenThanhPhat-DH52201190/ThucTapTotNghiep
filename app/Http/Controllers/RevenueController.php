@@ -260,9 +260,11 @@ class RevenueController extends Controller
     {
         return $revenues
             ->filter(function ($item) use ($month) {
-                $firstOPT = $item->calc_FirstOPT ?? null;
+                // Revenue belongs to the month sewing finishes, matching the
+                // monthly Revenue list. FirstOPT can be in the previous month.
+                $finishSEW = $item->calc_Finish_SEW ?? null;
 
-                if ($firstOPT instanceof Carbon && $firstOPT->format('Y-m') === $month) {
+                if ($finishSEW instanceof Carbon && $finishSEW->format('Y-m') === $month) {
                     return true;
                 }
 

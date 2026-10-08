@@ -67,6 +67,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie,warehouse,ppic,prod,accountant,qa_qc')
         ->name('masterplan.view');
 
+    Route::put('/master-plan/accountant/{id}/note', [MasterPlanController::class, 'updateAccountantNote'])
+        ->middleware('role:accountant')
+        ->name('masterplan.accountant.note.update');
+
     Route::get('/master-plan/export', [MasterPlanController::class, 'export'])
         ->middleware('role:admin,ie,warehouse')
         ->name('masterplan.export');

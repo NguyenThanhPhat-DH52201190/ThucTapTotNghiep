@@ -79,6 +79,7 @@ class MasterPlanController extends Controller
                 'ocs.SNo as Style',
                 'ocs.ONum as PO',
                 'ocs.Qty as Order_Qty',
+                'ocs.CMT as CMT',
                 'ocs.status as order_status',
                 'ocs.bom_header_id',
                 'bom_headers.style_no as bom_style',
@@ -214,10 +215,19 @@ class MasterPlanController extends Controller
     public function index(Request $request)
     {
         $plan = $this->getMasterPlan($request);
+        $confirmDateSort = $request->input('confirm_date_sort');
 
-        if ($request->user()?->role === 'qa_qc') {
+        if (in_array($confirmDateSort, ['asc', 'desc'], true)) {
+            $plan = $confirmDateSort === 'desc'
+                ? $plan->sortByDesc(fn ($item) => filled($item->Confirm_date)
+                    ? (string) $item->Confirm_date
+                    : '0000-00-00')->values()
+                : $plan->sortBy(fn ($item) => filled($item->Confirm_date)
+                    ? (string) $item->Confirm_date
+                    : '9999-12-31')->values();
+        } elseif (in_array($request->user()?->role, ['qa_qc', 'accountant'], true)) {
             // Put upcoming shipment dates first, in calendar order. Rows without
-            // a Confirmed Date remain visible at the end of the QA/QC list.
+            // a Confirmed Date remain visible at the end of these grouped views.
             $plan = $plan->sortBy(fn ($item) => filled($item->Confirm_date)
                 ? (string) $item->Confirm_date
                 : '9999-12-31')->values();
@@ -649,6 +659,23 @@ class MasterPlanController extends Controller
         abort_unless($updated || DB::table('mtp')->where('id', $id)->exists(), 404);
 
         return redirect()->route('masterplan.view')->with('success', 'Warehouse planning updated.');
+    }
+
+    public function updateAccountantNote(Request $request, string $id)
+    {
+        $data = $request->validate([
+            'mps_notes' => 'nullable|string|max:5000',
+        ]);
+
+        $updated = DB::table('mtp')->where('id', $id)->update([
+            'mps_notes' => $data['mps_notes'] ?? null,
+            'updated_at' => now(),
+        ]);
+
+        abort_unless($updated || DB::table('mtp')->where('id', $id)->exists(), 404);
+
+        return redirect()->route('masterplan.view', $request->query())
+            ->with('success', 'Note updated successfully.');
     }
 
     public function updateQaQc(Request $request, string $id)

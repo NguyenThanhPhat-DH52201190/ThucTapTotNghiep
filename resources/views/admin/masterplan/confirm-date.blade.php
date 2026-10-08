@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
         <h4 class="mb-1 fw-bold">Master Plan by Confirm Date</h4>
-        <div class="text-muted">Choose a day, month, or year to view the matching codes.</div>
+        <div class="text-muted">Choose a month and year to view matching codes.</div>
     </div>
     <a href="{{ route('masterplan.view', request()->only(['search', 'ship_balance_only'])) }}" class="btn btn-outline-secondary">Back to Master Plan</a>
 </div>
@@ -13,33 +13,19 @@
     @foreach(['search', 'ship_balance_only'] as $key)
         @if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
     @endforeach
-    <div class="col-12 col-sm-4 col-lg-3">
-        <label for="confirmPeriod" class="form-label">Filter by</label>
-        <select id="confirmPeriod" name="period" class="form-select">
-            <option value="day" @selected($period === 'day')>Day</option>
-            <option value="month" @selected($period === 'month')>Month</option>
-            <option value="year" @selected($period === 'year')>Year</option>
-        </select>
-    </div>
-    <div class="col-12 col-sm-4 col-lg-3">
-        <label for="confirmPeriodValue" class="form-label" id="confirmPeriodValueLabel">{{ ucfirst($period) }}</label>
-        <input id="confirmPeriodValue" name="value" class="form-control"
-            type="{{ $period === 'day' ? 'date' : ($period === 'year' ? 'number' : 'month') }}"
-            value="{{ $value }}"
-            data-day="{{ $periodValues['day'] }}"
-            data-month="{{ $periodValues['month'] }}"
-            data-year="{{ $periodValues['year'] }}"
-            min="1900" max="2200" required>
+    <div class="col-12 col-sm-6 col-lg-4">
+        <label for="confirmMonth" class="form-label">Confirm Date month</label>
+        <input id="confirmMonth" name="month" type="month" class="form-control" value="{{ $month }}" required>
     </div>
     <div class="col-12 col-sm-auto d-flex gap-2">
         <button type="submit" class="btn btn-primary">View codes</button>
-        <a href="{{ route('masterplan.confirm-date', array_merge(request()->only(['search', 'ship_balance_only']), ['period' => 'month', 'value' => now()->format('Y-m')])) }}" class="btn btn-outline-secondary">This month</a>
+        <a href="{{ route('masterplan.confirm-date', array_merge(request()->only(['search', 'ship_balance_only']), ['month' => now()->format('Y-m')])) }}" class="btn btn-outline-secondary">This month</a>
     </div>
 </form>
 
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h5 class="mb-0">{{ $plan->count() }} code(s)</h5>
-    <span class="text-muted">{{ ucfirst($period) }}: {{ $value }}</span>
+    <span class="text-muted">Month: {{ $month }}</span>
 </div>
 
 <div class="table-responsive">
@@ -69,29 +55,10 @@
                     <td>{{ $item->Confirm_date ?? '' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center text-muted py-4">No Master Plan codes match this Confirm Date period.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">No Master Plan codes match this Confirm Date month.</td></tr>
             @endforelse
         </tbody>
     </table>
 </div>
 
-<script>
-(() => {
-    const period = document.getElementById('confirmPeriod');
-    const value = document.getElementById('confirmPeriodValue');
-    const label = document.getElementById('confirmPeriodValueLabel');
-    if (!period || !value || !label) return;
-
-    const syncPeriodInput = () => {
-        const selected = period.value;
-        value.type = selected === 'day' ? 'date' : (selected === 'year' ? 'number' : 'month');
-        value.value = value.dataset[selected];
-        value.min = selected === 'year' ? '1900' : '';
-        value.max = selected === 'year' ? '2200' : '';
-        label.textContent = selected.charAt(0).toUpperCase() + selected.slice(1);
-    };
-
-    period.addEventListener('change', syncPeriodInput);
-})();
-</script>
 @endsection

@@ -97,7 +97,7 @@ $hideMidCols = $isAccountant;
         width: 100%;
         min-width: max-content;
         --sticky-col-1: 110px;
-        --sticky-col-2: 120px;
+        --sticky-col-2: 96px;
         --sticky-col-3: 130px;
         --sticky-col-4: 85px;
         --sticky-col-5: 76px;
@@ -228,6 +228,15 @@ $hideMidCols = $isAccountant;
         min-width: 88px;
         max-width: 88px;
     }
+    .masterplan-table .masterplan-line-select {
+        box-sizing: border-box;
+        width: 88px;
+        min-width: 88px;
+        max-width: 88px;
+        padding-left: .35rem;
+        padding-right: .25rem;
+        font-size: .78rem;
+    }
     .masterplan-table .masterplan-inline-input.masterplan-inline-notes {
         width: 180px;
         min-width: 180px;
@@ -257,7 +266,8 @@ $hideMidCols = $isAccountant;
 
     .masterplan-table .col-line {
         width: var(--sticky-col-2);
-        min-width: 120px;
+        min-width: var(--sticky-col-2);
+        max-width: var(--sticky-col-2);
     }
 
     .masterplan-table .col-style {
@@ -270,7 +280,9 @@ $hideMidCols = $isAccountant;
     }
 
     .masterplan-table .col-date {
-        min-width: 115px;
+        width: 138px;
+        min-width: 138px;
+        max-width: 138px;
     }
 
     .masterplan-table .col-po {
@@ -292,8 +304,17 @@ $hideMidCols = $isAccountant;
     }
 
     .masterplan-table .col-number {
-        min-width: 90px;
+        width: 104px;
+        min-width: 104px;
+        max-width: 104px;
         text-align: right;
+    }
+
+    .masterplan-table td.col-date > .masterplan-inline-input,
+    .masterplan-table td.col-number > .masterplan-inline-input {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
     }
 
     .masterplan-table .col-gap-right {
@@ -403,7 +424,7 @@ $hideMidCols = $isAccountant;
     @media (max-width: 1400px) {
         .masterplan-table {
             --sticky-col-1: 94px;
-            --sticky-col-2: 100px;
+            --sticky-col-2: 90px;
             --sticky-col-3: 110px;
             --sticky-col-4: 75px;
             --sticky-col-5: 70px;
@@ -449,7 +470,13 @@ $hideMidCols = $isAccountant;
     @media (max-width: 576px) {
         .masterplan-table {
             --sticky-col-1: 78px;
-            --sticky-col-2: 84px;
+            --sticky-col-2: 80px;
+        }
+
+        .masterplan-table .masterplan-line-select {
+            width: 72px;
+            min-width: 72px;
+            max-width: 72px;
         }
 
         .masterplan-table tbody td.sticky-2 {
@@ -868,7 +895,7 @@ $hideMidCols = $isAccountant;
             @endunless
             @endunless
             <td class="col-number">@if($canManage)<input form="{{ $inlineFormId }}" type="number" name="lt" class="form-control form-control-sm masterplan-inline-input" min="0" value="{{ $item->lt }}" aria-label="Lead time for {{ $item->CU }}">@else{{ $item->lt }}@endif</td>
-            <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="FirstOPT" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->FirstOPT ? \Carbon\Carbon::parse($item->FirstOPT)->format('Y-m-d') : '' }}" aria-label="First OPT for {{ $item->CU }}">@else{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}@endif</td>
+            <td class="col-date">@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="FirstOPT" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->FirstOPT ? \Carbon\Carbon::parse($item->FirstOPT)->format('Y-m-d') : '' }}" aria-label="First OPT for {{ $item->CU }}">@else{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}@endif</td>
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
             <td>{{$item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : ''  }}</td>
             @if($canManage)

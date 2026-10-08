@@ -259,12 +259,16 @@ class MasterPlanController extends Controller
     public function export(Request $request)
     {
         $plan = $this->getMasterPlan($request);
+        $isQaQc = $request->user()?->role === 'qa_qc';
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('MasterPlan');
+        $sheet->setTitle($isQaQc ? 'QAQC Master Plan' : 'MasterPlan');
 
-        $headers = [
+        $headers = $isQaQc ? [
+            'CU', 'Line', 'Style', 'PO', 'Order Quantity', 'Confirmed Date',
+            'Warehouse Date', 'Third-Party Inspection', 'Inspection Date', 'Status',
+        ] : [
             'CU',
             'Line',
             'Style',
@@ -301,7 +305,18 @@ class MasterPlanController extends Controller
 
         $rowIndex = 2;
         foreach ($plan as $item) {
-            $rowValues = [
+            $rowValues = $isQaQc ? [
+                $item->CU ?? '',
+                $item->Line ?? '',
+                $item->Style ?? '',
+                $item->PO ?? '',
+                $item->Order_Qty ?? '',
+                $item->Confirm_date ?? '',
+                $item->inWHDate ?? '',
+                $item->{'3rd_PartyInspection'} ?? '',
+                $item->qa_inspection_date ?? '',
+                ($item->qa_status ?? 'not_approved') === 'approved' ? 'Approved' : 'Not Approved',
+            ] : [
                 $item->CU ?? '',
                 $item->Line ?? '',
                 $item->Style ?? '',
@@ -345,7 +360,7 @@ class MasterPlanController extends Controller
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
-        $filename = 'masterplan-' . now()->format('Ymd_His') . '.xlsx';
+        $filename = ($isQaQc ? 'masterplan-qa-qc-' : 'masterplan-') . now()->format('Ymd_His') . '.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);

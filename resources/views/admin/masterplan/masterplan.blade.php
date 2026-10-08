@@ -494,6 +494,12 @@ $hideMidCols = $isAccountant;
         </a>
         @endunless
 
+        @if($isQaQc)
+        <a href="{{ route('masterplan.export', request()->query()) }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </a>
+        @endif
+
         @if($canManage)
         <button type="button" class="btn btn-outline-primary" id="bulkEditButton" disabled>
             <i class="bi bi-pencil-square"></i> Bulk edit (<span id="bulkEditCount">0</span>)
@@ -529,8 +535,8 @@ $hideMidCols = $isAccountant;
                 <th scope="col" class="col-date">Warehouse Date</th>
                 @if($isQaQc)
                 <th scope="col" class="col-wide" style="min-width: 170px">Third-Party Inspection</th>
-                <th scope="col" class="col-date">QA/QC Inspection Date</th>
-                <th scope="col" class="col-status">QA/QC Status</th>
+                <th scope="col" class="col-date">Inspection Date</th>
+                <th scope="col" class="col-status">Status</th>
                 @else
                 <th scope="col" class="col-qty">CMT</th>
                 <th scope="col" style="min-width: 220px">Note</th>

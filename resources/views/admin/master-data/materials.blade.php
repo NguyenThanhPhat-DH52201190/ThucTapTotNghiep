@@ -6,6 +6,7 @@
 @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 <style>
 #taxonomyModal .modal-dialog{max-width:min(1200px,calc(100vw - 2rem))}
+.material-page-header{position:sticky;top:0;z-index:1020;background:#fff}
 .taxonomy-subcategory-update{min-width:0}
 .taxonomy-subcategory-update .form-control,.taxonomy-subcategory-update .form-select{min-width:0}
 .search-suggest-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1080;max-height:240px;overflow-y:auto;background:#fff;border:1px solid #ced4da;border-radius:.5rem;box-shadow:0 .35rem 1rem rgba(0,0,0,.15);padding:.3rem;display:none}
@@ -13,7 +14,7 @@
 .search-suggest-option{display:block;width:100%;border:0;border-radius:.3rem;background:#fff;color:#212529;text-align:left;padding:.45rem .65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .search-suggest-option:hover,.search-suggest-option:focus,.search-suggest-option.active{background:#f1f3f5;color:#111;outline:0}
 </style>
-<div class="card shadow-sm border-0 mb-4"><div class="card-body d-flex justify-content-between align-items-center">
+<div class="card shadow-sm border-0 mb-4 material-page-header"><div class="card-body d-flex justify-content-between align-items-center">
  <div><h5 class="mb-1 fw-bold"><i class="bi bi-box-seam me-2"></i>Material Master</h5><small class="text-muted">Standard material data used by BOM, MRP, inventory and purchasing.</small></div>
  <div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#taxonomyModal">Manage categories</button><button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#mappingModal">Map supplier</button><button class="btn btn-primary" onclick="newMaterial()">Add material</button></div>
 </div></div>

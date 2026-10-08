@@ -211,10 +211,28 @@ $hideMidCols = $isAccountant;
     .masterplan-table th {
         font-weight: 700;
     }
-    .masterplan-inline-input { min-width: 120px; font-size: .82rem; }
-    .masterplan-inline-input[type="date"] { min-width: 145px; }
-    .masterplan-inline-input[type="color"] { min-width: 54px; width: 54px; height: 34px; padding: .2rem; }
-    .masterplan-inline-notes { min-width: 220px; }
+    .masterplan-table .masterplan-inline-input {
+        box-sizing: border-box;
+        width: 128px;
+        min-width: 128px;
+        max-width: 128px;
+        font-size: .82rem;
+    }
+    .masterplan-table .masterplan-inline-input[type="date"] {
+        width: 138px;
+        min-width: 138px;
+        max-width: 138px;
+    }
+    .masterplan-table .masterplan-inline-input[type="number"] {
+        width: 88px;
+        min-width: 88px;
+        max-width: 88px;
+    }
+    .masterplan-table .masterplan-inline-input.masterplan-inline-notes {
+        width: 180px;
+        min-width: 180px;
+        max-width: 180px;
+    }
 
     .masterplan-scroll .masterplan-table > thead > tr > th {
         white-space: nowrap !important;
@@ -643,7 +661,6 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-line sticky-col sticky-2">Line</th>
             <th scope="col" class="col-style sticky-col sticky-3">Style</th>
             <th scope="col" class="col-po sticky-col sticky-4">PO</th>
-            @if($canManage)<th scope="col">Line Color</th>@endif
             <th scope="col" class="col-qty">Order_Qty</th>
             <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Require_date</th>
@@ -714,7 +731,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = ($canEditFabric ? 1 : 0) + ($canManage ? 1 : 0);
-        $tableColspan = $canManage ? 35 : ($isPpic ? 17 : 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0));
+        $tableColspan = $canManage ? 34 : ($isPpic ? 17 : 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0));
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -754,9 +771,9 @@ $hideMidCols = $isAccountant;
             </td>
             <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">
                 @if($canManage)
-                <select form="{{ $inlineFormId }}" name="Line" class="form-select form-select-sm masterplan-inline-input" required aria-label="Line for {{ $item->CU }}">
-                    @if(!$lineOptions->contains($item->Line))<option value="{{ $item->Line }}" selected>{{ $item->Line }}</option>@endif
-                    @foreach($lineOptions as $lineOption)<option value="{{ $lineOption }}" @selected($item->Line === $lineOption)>{{ $lineOption }}</option>@endforeach
+                <select form="{{ $inlineFormId }}" name="Line" class="form-select form-select-sm masterplan-inline-input masterplan-line-select" data-color-input="masterplan-line-color-{{ $item->id }}" required aria-label="Line for {{ $item->CU }}">
+                    @if(!$lineOptions->contains('name', $item->Line))<option value="{{ $item->Line }}" data-hex="{{ $inlineLineColor }}" selected>{{ $item->Line }}</option>@endif
+                    @foreach($lineOptions as $lineOption)<option value="{{ $lineOption->name }}" data-hex="{{ $lineOption->hex_code }}" @selected($item->Line === $lineOption->name)>{{ $lineOption->name }}</option>@endforeach
                 </select>
                 @else
                 {{ $item->Line }}
@@ -764,9 +781,6 @@ $hideMidCols = $isAccountant;
             </td>
             <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
             <td class="col-po sticky-col sticky-4">{{ $item->PO }}</td>
-            @if($canManage)
-            <td><input form="{{ $inlineFormId }}" type="color" name="LineColor" class="form-control form-control-color masterplan-inline-input" value="{{ $inlineLineColor }}" aria-label="Line color for {{ $item->CU }}"></td>
-            @endif
             <td class="col-qty">{{ $item->Order_Qty }}</td>
             <td class="col-qty col-gap-right sticky-col sticky-5">
                 @if($canManage)<input form="{{ $inlineFormId }}" type="number" name="Qty_dis" class="form-control form-control-sm masterplan-inline-input" min="0" value="{{ $item->Qty_dis }}" aria-label="Distributed quantity for {{ $item->CU }}">
@@ -868,6 +882,7 @@ $hideMidCols = $isAccountant;
             <td class="sticky-action sticky-action-edit sticky-action-before-delete">
                 <form id="{{ $inlineFormId }}" method="POST" action="{{ route('admin.masterplan.update', array_merge(request()->query(), ['masterplan' => $item->id])) }}" class="d-inline">
                     @csrf @method('PUT')
+                    <input type="hidden" id="masterplan-line-color-{{ $item->id }}" name="LineColor" value="{{ $inlineLineColor }}">
                     <button type="submit" class="btn btn-success btn-sm">Save</button>
                 </form>
             </td>
@@ -941,7 +956,7 @@ $hideMidCols = $isAccountant;
         @endif
         @else
         <tr>
-            <td colspan="{{ $canManage ? 35 : ($isPpic ? 17 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 2 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0)) }}" class="text-center">No data</td>
+            <td colspan="{{ $canManage ? 34 : ($isPpic ? 17 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 2 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0)) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>
@@ -953,6 +968,16 @@ $hideMidCols = $isAccountant;
 @endif
 
 <script>
+    document.querySelectorAll('.masterplan-line-select').forEach((select) => {
+        select.addEventListener('change', function () {
+            const color = this.selectedOptions[0]?.dataset.hex || '';
+            const colorInput = document.getElementById(this.dataset.colorInput);
+            if (!colorInput || !/^#(?:[A-Fa-f0-9]{3}){1,2}$/.test(color)) return;
+            colorInput.value = color;
+            this.closest('td').style.backgroundColor = color;
+        });
+    });
+
     (function () {
         const selectAll = document.getElementById('selectAllMasterplan');
         const rows = Array.from(document.querySelectorAll('.masterplan-row-select'));

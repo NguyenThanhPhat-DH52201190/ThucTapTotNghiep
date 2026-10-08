@@ -229,9 +229,10 @@ class MasterPlanController extends Controller
     {
         $plan = $this->getMasterPlan($request);
         $lineOptions = DB::table('colors')
+            ->select('name', 'hex_code')
             ->where('is_active', 1)
             ->orderBy('name')
-            ->pluck('name');
+            ->get();
         if (in_array($request->user()?->role, ['qa_qc', 'accountant'], true)) {
             // Put upcoming shipment dates first, in calendar order. Rows without
             // a Confirmed Date remain visible at the end of these grouped views.

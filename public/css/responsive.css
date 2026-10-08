@@ -1,7 +1,7 @@
 /* Shared application layout. PDF documents retain their own print styles. */
 .app-shell { min-height: 100vh; min-height: 100dvh; }
 .app-main { min-width: 0; width: 100%; }
-.app-content { min-width: 0; overflow-wrap: break-word; }
+.app-content { min-width: 0; width: 100%; overflow-wrap: break-word; }
 .app-shell .sidebar { flex: 0 0 240px; --bs-offcanvas-width: min(300px, 88vw); background: #1e293b !important; }
 .sidebar .offcanvas-body { background: #1e293b; }
 .sidebar a { overflow-wrap: anywhere; }
@@ -18,6 +18,7 @@
 .app-content img { max-width: 100%; }
 .app-content pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 .table-responsive { max-width: 100%; overscroll-behavior-x: contain; }
+.table-responsive { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .table-responsive:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
 .table-responsive th { white-space: nowrap; }
 .table-responsive td { overflow-wrap: normal; }
@@ -40,6 +41,13 @@
     .sidebar .offcanvas-body { overflow-y: auto; }
     .app-content { padding: 1rem !important; }
     .topbar { padding-inline: 1rem !important; }
+    /* Tablets and small laptops keep table columns readable and scroll each table locally. */
+    .table-responsive .table { width: max-content; min-width: 100%; }
+    .table-responsive .table > :not(caption) > * > * { white-space: nowrap; }
+    .table-responsive td[colspan] { white-space: normal; }
+    .app-content .table-responsive { margin-bottom: 1rem; }
+    .app-content .row { --bs-gutter-x: 1rem; --bs-gutter-y: .75rem; }
+    .app-content .form-control, .app-content .form-select { min-height: 42px; }
 }
 @media (max-width: 1199.98px) {
     /* Pinned columns must not cover the entire narrow viewport. */
@@ -118,6 +126,25 @@
     .auth-layout .card-body { padding: 1.25rem !important; }
     .auth-layout .badge { white-space: normal; line-height: 1.4; }
     .auth-layout .form-control { font-size: 16px; }
+}
+/* Phones in landscape and compact tablets. */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .topbar { align-items: flex-start !important; }
+    .topbar-account { justify-content: flex-end; }
+    .app-content .card-body { padding: 1rem; }
+}
+/* Large desktops: use the extra space for legibility while retaining full-width work areas. */
+@media (min-width: 1440px) {
+    .app-content { font-size: 1.025rem; }
+    .app-content .table { font-size: .975rem; }
+    .app-content .table th { font-size: .925rem; }
+    .app-content .form-control, .app-content .form-select { min-height: 42px; }
+    .app-content .card-body { min-width: 0; }
+}
+@media (min-width: 1920px) {
+    .app-content { font-size: 1.05rem; }
+    .app-content .table { font-size: 1rem; }
+    .app-content .table th { font-size: .95rem; }
 }
 /* Keep delivery controls aligned independently of the selected material's note. */
 #deliveryRows .delivery-row-fields {

@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
         <h4 class="mb-1 fw-bold">Master Plan by Confirm Date</h4>
-        <div class="text-muted">Choose a month and year to view matching codes.</div>
+        <div class="text-muted">Choose a month and year to view matching cutsheets.</div>
     </div>
     <a href="{{ route('masterplan.view', request()->only(['search', 'ship_balance_only'])) }}" class="btn btn-outline-secondary">Back to Master Plan</a>
 </div>
@@ -13,18 +13,18 @@
     @foreach(['search', 'ship_balance_only'] as $key)
         @if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
     @endforeach
-    <div class="col-12 col-sm-6 col-lg-4">
+    <div class="col-12 col-sm-3 col-lg-2">
         <label for="confirmMonth" class="form-label">Confirm Date month</label>
         <input id="confirmMonth" name="month" type="month" class="form-control" value="{{ $month }}" required>
     </div>
     <div class="col-12 col-sm-auto d-flex gap-2">
-        <button type="submit" class="btn btn-primary">View codes</button>
+        <button type="submit" class="btn btn-primary">Apply</button>
         <a href="{{ route('masterplan.confirm-date', array_merge(request()->only(['search', 'ship_balance_only']), ['month' => now()->format('Y-m')])) }}" class="btn btn-outline-secondary">This month</a>
     </div>
 </form>
 
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <h5 class="mb-0">{{ $plan->count() }} code(s)</h5>
+    <h5 class="mb-0">{{ $plan->count() }} {{ $plan->count() === 1 ? 'cutsheet' : 'cutsheets' }}</h5>
     <span class="text-muted">Month: {{ $month }}</span>
 </div>
 

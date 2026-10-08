@@ -228,6 +228,10 @@ class MasterPlanController extends Controller
     public function index(Request $request)
     {
         $plan = $this->getMasterPlan($request);
+        $lineOptions = DB::table('colors')
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->pluck('name');
         if (in_array($request->user()?->role, ['qa_qc', 'accountant'], true)) {
             // Put upcoming shipment dates first, in calendar order. Rows without
             // a Confirmed Date remain visible at the end of these grouped views.
@@ -236,7 +240,7 @@ class MasterPlanController extends Controller
                 : '9999-12-31')->values();
         }
 
-        return view('admin.masterplan.masterplan', compact('plan'));
+        return view('admin.masterplan.masterplan', compact('plan', 'lineOptions'));
     }
 
     public function confirmDate(Request $request)
@@ -438,6 +442,7 @@ class MasterPlanController extends Controller
             'planned_sew_end' => 'nullable|date',
             'mps_priority' => 'nullable|in:low,medium,high,urgent',
             'daily_target_qty' => 'nullable|integer|min:0',
+            'mps_notes' => 'nullable|string|max:5000',
         ]);
 
         $ocs = DB::table('ocs')->where('CS', $request->CU)->first();
@@ -802,6 +807,7 @@ class MasterPlanController extends Controller
             'planned_sew_end' => 'nullable|date',
             'mps_priority' => 'nullable|in:low,medium,high,urgent',
             'daily_target_qty' => 'nullable|integer|min:0',
+            'mps_notes' => 'nullable|string|max:5000',
         ], [
             'CU.unique' => 'CU already exists!',
         ]);
@@ -864,10 +870,10 @@ class MasterPlanController extends Controller
 
             app(RevenueMasterPlanSync::class)->syncReadyMasterPlans();
 
-            return redirect()->route('admin.masterplan.index', [
+            return redirect()->route('admin.masterplan.index', array_merge($request->query(), [
                 'role' => 'admin',
                 'page' => 'masterplan'
-            ])->with('success', 'Updated successfully');
+            ]))->with('success', 'Updated successfully');
         } catch (\Throwable $e) {
             Log::error('Failed to update MasterPlan record', [
                 'message' => $e->getMessage(),

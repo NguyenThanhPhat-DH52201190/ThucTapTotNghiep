@@ -478,6 +478,7 @@ class RevenueController extends Controller
         foreach (range('A', 'H') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
+        \App\Support\SpreadsheetBranding::addCompanyHeader($sheet, 'H');
 
         $filename = 'revenue-' . now()->format('Ymd_His') . '.xlsx';
 
@@ -783,9 +784,12 @@ class RevenueController extends Controller
     {
         $request->validate([
             'month' => 'nullable|date_format:Y-m',
+            'category' => 'nullable|in:gsv,subcon,both',
         ]);
 
         $month = $request->input('month', now()->format('Y-m'));
+        $category = strtoupper($request->input('category', 'both'));
+        $categoryLabel = $category === 'BOTH' ? 'Both' : ucfirst(strtolower($category));
         $monthLabel = Carbon::createFromFormat('Y-m', $month)->format('M');
 
         // Sort by line priority (green, blue, orange, yellow, others)
@@ -833,11 +837,11 @@ class RevenueController extends Controller
                 $join->on('mtp.CU', '=', 'ocs.CS')
                     ->on(DB::raw('mtp.mtp_line'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
-            ->join('colors as c', function ($join) {
+            ->leftJoin('colors as c', function ($join) {
                 $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
             ->whereRaw("DATE_FORMAT(dr.work_date, '%Y-%m') = ?", [$month])
-            ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
+            ->when($category !== 'BOTH', fn ($query) => $query->whereRaw("UPPER(TRIM(COALESCE(c.cate, 'SUBCON'))) = ?", [$category]))
             ->select(
                 DB::raw('TRIM(r.SewingLine) as sewing_line'),
                 DB::raw('DAY(dr.work_date) as day_no'),
@@ -848,7 +852,11 @@ class RevenueController extends Controller
 
         $dailyOutputRows = DB::table('daily_revenues as dr')
             ->join('revenue as r', 'dr.revenue_id', '=', 'r.id')
+            ->leftJoin('colors as c', function ($join) {
+                $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
+            })
             ->whereRaw("DATE_FORMAT(dr.work_date, '%Y-%m') = ?", [$month])
+            ->when($category !== 'BOTH', fn ($query) => $query->whereRaw("UPPER(TRIM(COALESCE(c.cate, 'SUBCON'))) = ?", [$category]))
             ->select(
                 DB::raw('TRIM(r.SewingLine) as sewing_line'),
                 DB::raw('DAY(dr.work_date) as day_no'),
@@ -864,17 +872,18 @@ class RevenueController extends Controller
                 $join->on('mtp.CU', '=', 'ocs.CS')
                     ->on(DB::raw('mtp.mtp_line'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
-            ->join('colors as c', function ($join) {
+            ->leftJoin('colors as c', function ($join) {
                 $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
             ->whereRaw("DATE_FORMAT(dr.work_date, '%Y-%m') = ?", [$month])
-            ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
+            ->when($category !== 'BOTH', fn ($query) => $query->whereRaw("UPPER(TRIM(COALESCE(c.cate, 'SUBCON'))) = ?", [$category]))
             ->select(
                 DB::raw('TRIM(r.SewingLine) as sewing_line'),
                 DB::raw('MAX(COALESCE(mtp.mtp_line_color, "#6b7280")) as line_color')
             )
             ->groupBy(DB::raw('TRIM(r.SewingLine)'))
             ->pluck('line_color', 'sewing_line')
+            ->mapWithKeys(fn ($color, $line) => [mb_convert_case(trim((string) $line), MB_CASE_TITLE, 'UTF-8') => $color])
             ->toArray();
 
         $matrixLines = collect($dailyRevenueRows)
@@ -903,7 +912,7 @@ class RevenueController extends Controller
         }
 
         foreach ($dailyRevenueRows as $row) {
-            $line = (string) $row->sewing_line;
+            $line = mb_convert_case(trim((string) $row->sewing_line), MB_CASE_TITLE, 'UTF-8');
             $day = (int) $row->day_no;
             $amount = round((float) $row->revenue_amount, 2);
 
@@ -965,11 +974,11 @@ class RevenueController extends Controller
 
         $totalPlanoutAllLines = (float) DB::table('revenue as r')
             ->join('ocs', 'r.CS', '=', 'ocs.CS')
-            ->join('colors as c', function ($join) {
+            ->leftJoin('colors as c', function ($join) {
                 $join->on(DB::raw('LOWER(TRIM(c.name))'), '=', DB::raw('LOWER(TRIM(r.SewingLine))'));
             })
             ->whereIn('r.id', $monthRevenueIds)
-            ->whereRaw("UPPER(TRIM(COALESCE(c.cate, ''))) = 'GSV'")
+            ->when($category !== 'BOTH', fn ($query) => $query->whereRaw("UPPER(TRIM(COALESCE(c.cate, 'SUBCON'))) = ?", [$category]))
             ->sum(DB::raw('COALESCE(r.planout, 0) * COALESCE(ocs.CMT, 0)'));
 
         $workingDaysCount = 0;
@@ -997,6 +1006,8 @@ class RevenueController extends Controller
         return view('admin.revenue.daily_revenue_summary', compact(
             'month',
             'monthLabel',
+            'category',
+            'categoryLabel',
             'matrixLines',
             'days',
             'dailyRevenueMatrix',

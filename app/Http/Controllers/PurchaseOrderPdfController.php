@@ -35,6 +35,10 @@ class PurchaseOrderPdfController extends Controller
                 'material_vendors.supplier_color_code')
             ->orderBy('po_items.id')->get();
         $surcharges = DB::table('po_surcharges')->where('po_id', $id)->orderBy('id')->get();
+        $logoPath = public_path('images/global-safewear-logo.jpg');
+        $logoDataUri = is_file($logoPath)
+            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+            : '';
         $options = new Options();
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isRemoteEnabled', false);
@@ -42,7 +46,7 @@ class PurchaseOrderPdfController extends Controller
         $options->set('isJavascriptEnabled', false);
         $pdf = new Dompdf($options);
         $pdf->setPaper('A4', 'landscape');
-        $pdf->loadHtml(view('admin.procurement.pdf', compact('po', 'supplier', 'items', 'surcharges', 'settings'))->render(), 'UTF-8');
+        $pdf->loadHtml(view('admin.procurement.pdf', compact('po', 'supplier', 'items', 'surcharges', 'settings', 'logoDataUri'))->render(), 'UTF-8');
         $pdf->render();
         $bytes = $pdf->output();
         // Save only after a successful render so the user can export again with the same details.

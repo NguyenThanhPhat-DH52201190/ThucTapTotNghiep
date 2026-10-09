@@ -5,16 +5,39 @@ namespace App\Imports;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Carbon\Carbon;
 
-class OCSImport implements ToCollection, WithHeadingRow
+class OCSImport implements ToCollection
 {
     public function collection(Collection $rows): void
     {
-        DB::transaction(function () use ($rows) {
-        foreach ($rows as $row) {
+        $headerIndex = null;
+        $columnMap = [];
+        foreach ($rows as $index => $values) {
+            $values = $values instanceof Collection ? $values->all() : $values;
+            $normalized = array_map(fn ($value) => strtolower(trim((string) $value)), $values);
+            if (in_array('cs', $normalized, true) && in_array('onum', $normalized, true) && in_array('qty', $normalized, true)) {
+                $headerIndex = $index;
+                foreach ($normalized as $column => $heading) {
+                    if (in_array($heading, ['cs', 'onum', 'sno', 'sname', 'customer', 'csdate', 'cmt', 'color', 'qty'], true)) {
+                        $columnMap[$heading] = $column;
+                    }
+                }
+                break;
+            }
+        }
+        if ($headerIndex === null) {
+            throw new \RuntimeException('Could not detect OCS columns in the file.');
+        }
+
+        DB::transaction(function () use ($rows, $headerIndex, $columnMap) {
+        foreach ($rows->slice($headerIndex + 1) as $values) {
+            $values = $values instanceof Collection ? $values->all() : $values;
+            $row = [];
+            foreach ($columnMap as $heading => $column) {
+                $row[$heading] = $values[$column] ?? null;
+            }
             // BOM is intentionally optional in the import sheet. OCS rows can be
             // imported first and a matching BOM assigned later from Edit OCS.
             $cs = trim((string) ($row['cs'] ?? ''));

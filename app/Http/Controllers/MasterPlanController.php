@@ -364,6 +364,7 @@ class MasterPlanController extends Controller
             $column = Coordinate::stringFromColumnIndex($columnIndex);
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
+        \App\Support\SpreadsheetBranding::addCompanyHeader($sheet, Coordinate::stringFromColumnIndex(count($headers)));
 
         $filename = ($isQaQc ? 'masterplan-qa-qc-' : 'masterplan-') . now()->format('Ymd_His') . '.xlsx';
 

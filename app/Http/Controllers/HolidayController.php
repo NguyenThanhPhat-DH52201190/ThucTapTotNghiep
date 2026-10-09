@@ -43,6 +43,7 @@ class HolidayController extends Controller
         foreach (range('A', 'B') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
+        \App\Support\SpreadsheetBranding::addCompanyHeader($sheet, 'B');
 
         $filename = 'holidays-' . now()->format('Ymd_His') . '.xlsx';
 

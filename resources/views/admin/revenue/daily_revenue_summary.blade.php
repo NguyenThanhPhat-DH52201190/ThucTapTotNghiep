@@ -7,7 +7,15 @@
         <label>Month</label>
         <input type="month" name="month" class="form-control" value="{{ $month }}">
     </div>
-    <div class="col-md-9 d-flex align-items-end gap-2">
+    <div class="col-md-3">
+        <label for="summaryCategory">Category</label>
+        <select id="summaryCategory" name="category" class="form-select">
+            <option value="both" @selected($category === 'BOTH')>Both</option>
+            <option value="gsv" @selected($category === 'GSV')>GSV</option>
+            <option value="subcon" @selected($category === 'SUBCON')>Subcon</option>
+        </select>
+    </div>
+    <div class="col-md-6 d-flex align-items-end gap-2">
         <button type="submit" class="btn btn-dark">Apply</button>
         <a href="{{ route('admin.revenue.index') }}" class="btn btn-secondary">Back</a>
     </div>
@@ -15,7 +23,7 @@
 
 <!-- Summary Table -->
 <div class="mb-5">
-    <h5 class="text-uppercase fw-bold">Daily Plan Vs Actual Revenue - {{ strtoupper($monthLabel) }}</h5>
+    <h5 class="text-uppercase fw-bold">Daily Plan Vs Actual Revenue - {{ strtoupper($monthLabel) }} ({{ strtoupper($categoryLabel) }})</h5>
     <div class="table-responsive">
         <table class="table table-bordered table-sm matrix-table align-middle">
             <thead>
@@ -74,7 +82,7 @@
 <div class="mb-5">
     <div class="card shadow-sm">
         <div class="card-body">
-            <h6 class="card-title">Daily Revenue & Total Planout - {{ $monthLabel }}</h6>
+            <h6 class="card-title">Daily Revenue & Total Planout - {{ $monthLabel }} ({{ $categoryLabel }})</h6>
             <div style="position: relative; height: 400px;">
                 <canvas id="dailyRevenuePlanoutChart"></canvas>
             </div>
@@ -84,7 +92,7 @@
 
 <!-- Daily Line Output Table -->
 <div class="mb-5">
-    <h5 class="text-uppercase fw-bold">Daily Line Output - {{ strtoupper($monthLabel) }}</h5>
+    <h5 class="text-uppercase fw-bold">Daily Line Output - {{ strtoupper($monthLabel) }} ({{ strtoupper($categoryLabel) }})</h5>
     <div class="table-responsive">
         <table class="table table-bordered table-sm matrix-table align-middle">
             <thead>
@@ -131,7 +139,7 @@
 <div class="mb-5">
     <div class="card shadow-sm">
         <div class="card-body">
-            <h6 class="card-title">Daily Line Output - {{ strtoupper($monthLabel) }}</h6>
+            <h6 class="card-title">Daily Line Output - {{ strtoupper($monthLabel) }} ({{ strtoupper($categoryLabel) }})</h6>
             <div style="position: relative; height: 400px;">
                 <canvas id="dailyLineOutputChart"></canvas>
             </div>

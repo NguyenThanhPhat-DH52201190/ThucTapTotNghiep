@@ -184,6 +184,7 @@ class OCSController extends Controller
         foreach (range('A', 'I') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
+        \App\Support\SpreadsheetBranding::addCompanyHeader($sheet, 'I');
 
         $filename = 'order-cutsheet-' . now()->format('Ymd_His') . '.xlsx';
 
@@ -571,6 +572,7 @@ class OCSController extends Controller
         $sheet->getStyle("J2:J{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.0000');
         $sheet->getStyle("K2:K{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00');
         $sheet->getStyle("L2:P{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        \App\Support\SpreadsheetBranding::addCompanyHeader($sheet, 'Q');
 
         return response()->streamDownload(function () use ($spreadsheet) {
             (new Xlsx($spreadsheet))->save('php://output');

@@ -34,6 +34,7 @@
         <div class="card-body">
             <form method="GET" class="row g-3">
                 <div class="col-md-3">
+                    @if(request('show_closed'))<input type="hidden" name="show_closed" value="1">@endif
                     <select name="status" class="form-select">
                         <option value="">All Status</option>
                         @foreach(['draft','sent','confirmed','partial','received','closed','cancelled'] as $s)
@@ -44,6 +45,16 @@
                 <div class="col-md-3">
                     <button type="submit" class="btn btn-dark"><i class="bi bi-search"></i> Filter</button>
                     <a href="{{ url()->current() }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i></a>
+                    @if(request('status') !== 'closed')
+                        @php
+                            $closedToggleQuery = request()->except(['show_closed', 'page']);
+                            if (!request()->boolean('show_closed')) $closedToggleQuery['show_closed'] = 1;
+                            $closedToggleUrl = url()->current() . (count($closedToggleQuery) ? '?' . http_build_query($closedToggleQuery) : '');
+                        @endphp
+                        <a href="{{ $closedToggleUrl }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-{{ request()->boolean('show_closed') ? 'eye-slash' : 'eye' }} me-1"></i>{{ request()->boolean('show_closed') ? 'Hide Closed PO' : 'Show Closed PO' }}
+                        </a>
+                    @endif
                 </div>
             </form>
         </div>

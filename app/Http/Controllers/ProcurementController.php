@@ -183,8 +183,10 @@ class ProcurementController extends Controller
             ->select('purchase_orders.*', 'suppliers.name as supplier_name', 'suppliers.code as supplier_code')
             ->whereNull('purchase_orders.deleted_at')
             ->when($request->filled('status'), fn($q) => $q->where('purchase_orders.status', $request->status))
+            ->when(!$request->boolean('show_closed') && $request->input('status') !== 'closed', fn($q) => $q->where('purchase_orders.status', '!=', 'closed'))
             ->orderBy('purchase_orders.created_at', 'desc')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('admin.procurement.index', compact('pos'));
     }

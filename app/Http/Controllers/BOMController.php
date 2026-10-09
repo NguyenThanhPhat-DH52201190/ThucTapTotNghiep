@@ -631,7 +631,7 @@ class BOMController extends Controller
         foreach (range('A', 'J') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
-
+        \App\Support\SpreadsheetBranding::addCompanyHeader($sheet, 'J');
         $filename = 'BOM-' . $bom->style_no . '-' . now()->format('Ymd_His') . '.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {

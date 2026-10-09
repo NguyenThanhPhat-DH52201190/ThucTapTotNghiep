@@ -197,6 +197,7 @@ class NormController extends Controller
         $sheet->getStyle("O2:P{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.0000');
         $sheet->getStyle("Q2:Q{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00');
         $sheet->getStyle("R2:V{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        \App\Support\SpreadsheetBranding::addCompanyHeader($sheet, 'W');
 
         return response()->streamDownload(function () use ($spreadsheet) {
             (new Xlsx($spreadsheet))->save('php://output');

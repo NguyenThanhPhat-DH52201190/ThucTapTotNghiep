@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -74,19 +75,42 @@ class PurchaseOrderExcelController extends Controller
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Purchase Order');
-        $sheet->mergeCells('A1:' . $lastColumn . '1');
-        $this->setText($sheet, 'A1', 'PURCHASE ORDER');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $this->setText($sheet, 'A2', 'PO No.:');
-        $this->setText($sheet, 'B2', (string) $po->po_number);
-        $this->setText($sheet, 'J2', 'Date:');
-        $this->setText($sheet, 'K2', $po->order_date ? date('d/m/Y', strtotime($po->order_date)) : '-');
-        $this->setText($sheet, 'A3', 'Order to:');
-        $this->setText($sheet, 'B3', (string) ($supplier?->name ?? '-'));
-        $sheet->getStyle('B3')->getFont()->setBold(true);
-        $sheet->mergeCells('B3:' . $lastColumn . '3');
-        $metaRow = 4;
+        $logo = new Drawing();
+        $logo->setName('Global Safewear');
+        $logo->setDescription('Global Safewear logo');
+        $logo->setPath(public_path('images/global-safewear-logo.jpg'));
+        $logo->setHeight(100);
+        $logo->setCoordinates('A1');
+        $logo->setOffsetY(2);
+        $logo->setWorksheet($sheet);
+        foreach (range(1, 4) as $logoRow) {
+            $sheet->getRowDimension($logoRow)->setRowHeight(22);
+        }
+        foreach ([
+            '72 Anson Road',
+            '#07-04, Anson House, SINGAPORE 079911',
+            'www.globalsafewear.com',
+        ] as $index => $addressLine) {
+            $addressRow = $index + 5;
+            $this->setText($sheet, 'A' . $addressRow, $addressLine);
+            $sheet->mergeCells('A' . $addressRow . ':' . $lastColumn . $addressRow);
+        }
+        foreach (range(5, 7) as $addressRow) {
+            $sheet->getRowDimension($addressRow)->setRowHeight(20);
+        }
+        $sheet->mergeCells('A11:' . $lastColumn . '11');
+        $this->setText($sheet, 'A11', 'PURCHASE ORDER');
+        $sheet->getStyle('A11')->getFont()->setBold(true)->setSize(16);
+        $sheet->getStyle('A11')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $this->setText($sheet, 'A12', 'PO No.:');
+        $this->setText($sheet, 'B12', (string) $po->po_number);
+        $this->setText($sheet, 'J12', 'Date:');
+        $this->setText($sheet, 'K12', $po->order_date ? date('d/m/Y', strtotime($po->order_date)) : '-');
+        $this->setText($sheet, 'A13', 'Order to:');
+        $this->setText($sheet, 'B13', (string) ($supplier?->name ?? '-'));
+        $sheet->getStyle('B13')->getFont()->setBold(true);
+        $sheet->mergeCells('B13:' . $lastColumn . '13');
+        $metaRow = 14;
         foreach (preg_split('/\r\n|\r|\n/', (string) ($supplier?->address ?? '')) as $addressLine) {
             if ($addressLine === '') continue;
             $this->setText($sheet, 'B' . $metaRow, $addressLine);
@@ -104,8 +128,8 @@ class PurchaseOrderExcelController extends Controller
             $metaRow++;
         }
         if (!empty($settings['revised'])) {
-            $this->setText($sheet, $lastColumn . '2', 'REVISED');
-            $sheet->getStyle($lastColumn . '2')->getFont()->setBold(true)->getColor()->setRGB('ED0000');
+            $this->setText($sheet, $lastColumn . '12', 'REVISED');
+            $sheet->getStyle($lastColumn . '12')->getFont()->setBold(true)->getColor()->setRGB('ED0000');
         }
         $metaRow++;
         $this->setText($sheet, 'A' . $metaRow, 'Ref.');

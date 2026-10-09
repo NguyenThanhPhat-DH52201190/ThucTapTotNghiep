@@ -128,10 +128,16 @@
                     Customer Master
                 </a>
 
+                @if(in_array(auth()->user()->role, ['admin', 'ppic'], true))
+                @if(in_array(auth()->user()->role, ['admin', 'ppic'], true))
+                @if(in_array(auth()->user()->role, ['admin', 'ppic'], true))
                 <a href="{{ route('admin.master-data.materials') }}" class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-box-seam"></i>
                     Material Master
                 </a>
+                @endif
+                @endif
+                @endif
 
                 <a href="{{ route('admin.bom.index') }}"
                     class="d-flex align-items-center gap-2 mb-1">
@@ -268,6 +274,10 @@
             </a>
             @endif
             @elseif($role === 'warehouse')
+            <a href="{{ route('admin.procurement.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.procurement.*') ? 'active' : '' }}">
+                <i class="bi bi-cart3"></i>
+                Procurement / PO
+            </a>
             <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('masterplan.view', 'masterplan.warehouse.*') ? 'active' : '' }}">
                 <i class="bi bi-calendar-check"></i>
                 Master Plan

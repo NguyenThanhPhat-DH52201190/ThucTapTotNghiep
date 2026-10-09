@@ -286,7 +286,7 @@ Route::middleware('auth')->group(function () {
         Route::post('procurement/suppliers', [ProcurementController::class, 'suppliersStore'])->middleware('role:admin')->name('procurement.suppliers.store');
         Route::patch('procurement/suppliers/{id}', [ProcurementController::class, 'supplierUpdate'])->middleware('role:admin')->name('procurement.suppliers.update');
         Route::get('procurement/create-from-mrp/{mrpId}', [ProcurementController::class, 'createFromMrp'])->middleware('ppic.team:create')->name('procurement.create-from-mrp');
-        Route::post('procurement/store', [ProcurementController::class, 'store'])->middleware('ppic.team:create')->name('procurement.store');
+        Route::post('procurement/store', [ProcurementController::class, 'store'])->middleware('role:admin,warehouse,ppic')->middleware('ppic.team:create')->name('procurement.store');
         Route::post('procurement/from-suggestions', [ProcurementController::class, 'createFromSuggestions'])->middleware('ppic.team:create')->name('procurement.from-suggestions');
         Route::patch('procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->middleware('role:admin')->name('procurement.status');
         Route::patch('procurement/{id}/close', [ProcurementController::class, 'close'])->middleware('role:admin')->name('procurement.close');
@@ -295,9 +295,9 @@ Route::middleware('auth')->group(function () {
         Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->middleware('role:admin')->name('procurement.receipts.store');
         Route::get('procurement/{procurement}/receipts/{receipt}', [ProcurementController::class, 'receiptHistory'])->middleware('ppic.team:view')->name('procurement.receipts.show');
         Route::patch('procurement/{procurement}/receipts/{receipt}', [ProcurementController::class, 'updateReceiptHistory'])->middleware('role:admin')->name('procurement.receipts.update');
-        Route::get('procurement', [ProcurementController::class, 'index'])->middleware('ppic.team:view')->name('procurement.index');
-        Route::get('procurement/create', [ProcurementController::class, 'create'])->middleware('ppic.team:create')->name('procurement.create');
-        Route::get('procurement/{procurement}', [ProcurementController::class, 'show'])->middleware('ppic.team:view')->name('procurement.show');
+        Route::get('procurement', [ProcurementController::class, 'index'])->middleware('role:admin,warehouse')->middleware('ppic.team:view')->name('procurement.index');
+        Route::get('procurement/create', [ProcurementController::class, 'create'])->middleware('role:admin,warehouse')->middleware('ppic.team:create')->name('procurement.create');
+        Route::get('procurement/{procurement}', [ProcurementController::class, 'show'])->middleware('role:admin,warehouse')->middleware('ppic.team:view')->name('procurement.show');
         Route::get('procurement/{procurement}/edit', [ProcurementController::class, 'edit'])->middleware('role:admin')->name('procurement.edit');
         Route::put('procurement/{procurement}', [ProcurementController::class, 'update'])->middleware('role:admin')->name('procurement.update');
         Route::patch('procurement/{procurement}', [ProcurementController::class, 'update'])->middleware('role:admin');

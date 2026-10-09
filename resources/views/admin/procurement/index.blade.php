@@ -3,7 +3,7 @@
 @section('content')
 @php
     $user = auth()->user();
-    $canCreatePo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
+    $canCreatePo = $user->role === 'admin' || $user->role === 'warehouse' || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
     $canManagePo = $user->role === 'admin';
 @endphp
 

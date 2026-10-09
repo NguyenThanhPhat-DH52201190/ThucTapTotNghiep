@@ -16,13 +16,21 @@ class ModuleAccessMiddleware
 
         $uri = trim($request->route()?->uri() ?? '', '/');
         $segment = explode('/', preg_replace('#^admin/?#', '', $uri))[0] ?? '';
+        if ($segment === 'master-data' && $role === 'ppic') {
+            abort_unless(
+                in_array($request->method(), ['GET', 'HEAD'], true)
+                    && $request->routeIs('admin.master-data.materials', 'admin.master-data.material-image'),
+                403
+            );
+            return $next($request);
+        }
         $allowedRoles = [
             'masterplan' => ['ppic'],
             'mps-schedules' => ['ppic'],
             'work-orders' => ['ppic'],
             'ocs' => ['ppic'],
             'mrp' => ['ppic'],
-            'procurement' => ['ppic'],
+            'procurement' => ['ppic', 'warehouse'],
             'bom' => ['user', 'warehouse', 'ppic', 'ie', 'prod', 'accountant', 'development'],
             'norm' => ['ppic'],
             'development-norms' => ['development', 'ppic'],

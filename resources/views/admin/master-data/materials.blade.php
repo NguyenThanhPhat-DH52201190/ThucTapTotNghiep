@@ -2,6 +2,7 @@
 @section('title', 'Material Master')
 @section('content')
 @include('admin.partials.image-popover')
+@php($canManageMaterials = auth()->user()->role === 'admin')
 @if(session('success'))<div class="alert alert-success" role="status">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 <style>
@@ -16,7 +17,7 @@
 </style>
 <div class="card shadow-sm border-0 mb-4 material-page-header"><div class="card-body d-flex justify-content-between align-items-center">
  <div><h5 class="mb-1 fw-bold"><i class="bi bi-box-seam me-2"></i>Material Master</h5><small class="text-muted">Standard material data used by BOM, MRP, inventory and purchasing.</small></div>
- <div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#taxonomyModal">Manage categories</button><button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#mappingModal">Map supplier</button><button class="btn btn-primary" onclick="newMaterial()">Add material</button></div>
+ @if($canManageMaterials)<div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#taxonomyModal">Manage categories</button><button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#mappingModal">Map supplier</button><button class="btn btn-primary" onclick="newMaterial()">Add material</button></div>@endif
 </div></div>
 <form method="GET" class="row g-2 mb-3 align-items-end">
  @foreach(['mapping_category_id', 'mapping_subcategory_id', 'mapping_search', 'mapping_supplier_sort', 'mapping_page'] as $key)@if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
@@ -27,15 +28,15 @@
  <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-dark"><i class="bi bi-search me-1"></i>Search</button><a class="btn btn-outline-secondary" href="{{ route('admin.master-data.materials', request()->only(['mapping_category_id', 'mapping_subcategory_id', 'mapping_search', 'mapping_supplier_sort', 'mapping_page'])) }}">Reset</a></div>
 </form>
 <div class="card shadow-sm border-0 mb-4">
- <div class="card-header bg-white"><form method="GET" action="{{ route('admin.master-data.materials.copy') }}" id="copySelectedMaterials" class="d-flex align-items-center gap-2 flex-wrap"><button id="copySelectedButton" class="btn btn-outline-primary" disabled><i class="bi bi-copy me-1"></i>Copy selected (<span id="selectedMaterialCount">0</span>)</button><small class="text-muted"></small></form></div>
+ @if($canManageMaterials)<div class="card-header bg-white"><form method="GET" action="{{ route('admin.master-data.materials.copy') }}" id="copySelectedMaterials" class="d-flex align-items-center gap-2 flex-wrap"><button id="copySelectedButton" class="btn btn-outline-primary" disabled><i class="bi bi-copy me-1"></i>Copy selected (<span id="selectedMaterialCount">0</span>)</button><small class="text-muted"></small></form></div>@endif
  <div class="table-responsive"><table class="table table-hover align-middle mb-0">
- <thead class="table-light"><tr><th><input type="checkbox" id="selectPageMaterials" class="form-check-input" aria-label="Select all materials on this page"></th><th>Code</th><th>Old Code</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Color / Size</th><th>Unit</th><th>Suppliers</th><th class="text-end">Action</th></tr></thead>
+ <thead class="table-light"><tr>@if($canManageMaterials)<th><input type="checkbox" id="selectPageMaterials" class="form-check-input" aria-label="Select all materials on this page"></th>@endif<th>Code</th><th>Old Code</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Color / Size</th><th>Unit</th><th>Suppliers</th>@if($canManageMaterials)<th class="text-end">Action</th>@endif</tr></thead>
  <tbody>@forelse($materials as $material)<tr>
- <td><input type="checkbox" name="ids[]" value="{{ $material->id }}" form="copySelectedMaterials" class="form-check-input material-copy-selection" aria-label="Select {{ $material->internal_code }}"></td>
+ @if($canManageMaterials)<td><input type="checkbox" name="ids[]" value="{{ $material->id }}" form="copySelectedMaterials" class="form-check-input material-copy-selection" aria-label="Select {{ $material->internal_code }}"></td>@endif
  <td><code>@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->internal_code])</code></td><td><code>{{ $material->old_code ?: '-' }}</code></td><td class="fw-semibold">@include('admin.partials.image-trigger', ['imageUrl' => !empty($material->image_path) ? route('admin.master-data.material-image', $material->id, false) : null, 'imageLabel' => $material->material_name])</td><td><span class="badge bg-info">{{ $material->category_name ?: ucfirst($material->material_type) }}</span></td><td>{{ $material->subcategory_name ?: '-' }}</td><td>{{ $material->color ?: '-' }} / {{ $material->size ?: '-' }}</td><td>{{ $material->unit }}</td><td>{{ $material->vendor_count }}</td>
- <td class="text-end text-nowrap"><a href="{{ route('admin.master-data.materials.copy', ['ids' => [$material->id]]) }}" class="btn btn-sm btn-outline-primary" aria-label="Copy {{ $material->internal_code }}"><i class="bi bi-copy me-1"></i>Copy</a> <button class="btn btn-sm btn-warning" onclick='editMaterial(@json($material))'><i class="bi bi-pencil"></i></button></td></tr>@empty<tr><td colspan="10" class="text-center text-muted py-4">No materials yet.</td></tr>@endforelse</tbody>
+ @if($canManageMaterials)<td class="text-end text-nowrap"><a href="{{ route('admin.master-data.materials.copy', ['ids' => [$material->id]]) }}" class="btn btn-sm btn-outline-primary" aria-label="Copy {{ $material->internal_code }}"><i class="bi bi-copy me-1"></i>Copy</a> <button class="btn btn-sm btn-warning" onclick='editMaterial(@json($material))'><i class="bi bi-pencil"></i></button></td>@endif</tr>@empty<tr><td colspan="10" class="text-center text-muted py-4">No materials yet.</td></tr>@endforelse</tbody>
 </table></div><div class="card-footer">{{ $materials->links() }}</div></div>
-<div class="card shadow-sm border-0" id="materialMappings"><div class="card-header fw-bold">Material–supplier mappings</div>
+@if($canManageMaterials)<div class="card shadow-sm border-0" id="materialMappings"><div class="card-header fw-bold">Material–supplier mappings</div>
 <div class="card-body"><form method="GET" action="{{ route('admin.master-data.materials') }}#materialMappings" class="row g-2 align-items-end">
  @foreach(['category_id', 'subcategory_id', 'page'] as $key)@if(request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
  @endforeach
@@ -73,6 +74,7 @@
  <div class="col-12"><label class="form-label">Material *</label><select name="material_id" class="form-select" required><option value="">Select material</option>@foreach($materials as $material)<option value="{{ $material->id }}">{{ $material->internal_code }} — {{ $material->material_name }}</option>@endforeach</select></div><div class="col-12"><label class="form-label">Supplier *</label><select name="vendor_id" class="form-select" required><option value="">Select supplier</option>@foreach($suppliers as $supplier)<option value="{{ $supplier->id }}">{{ $supplier->code }} — {{ $supplier->name }}</option>@endforeach</select></div><div class="col-md-6"><label class="form-label">Supplier item code</label><input name="vendor_item_code" class="form-control"></div><div class="col-md-6"><label class="form-label">Product Description</label><input name="supplier_description" maxlength="500" class="form-control"></div><div class="col-md-6"><label class="form-label">Color code</label><input name="supplier_color_code" maxlength="100" class="form-control"></div><div class="col-md-6"><label class="form-label">Unit price *</label><input type="number" min="0" step="0.0001" name="unit_price" value="0.0000" class="form-control" required></div><div class="col-md-6"><label class="form-label">Lead time (days) *</label><input type="number" min="0" name="lead_time_days" value="0" class="form-control" required></div><div class="col-md-6 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" value="1" name="is_default_vendor" id="defaultVendor"><label class="form-check-label" for="defaultVendor">Default supplier</label></div></div>
  </div></div><div class="modal-footer"><button class="btn btn-primary">Save mapping</button></div></form></div></div>
 @include('admin.master-data.partials.edit-mapping')
+@endif
 @endsection
 @push('scripts')
 <script>
@@ -123,13 +125,14 @@ document.querySelectorAll('input[list]').forEach(input => {
 const materialSelections = [...document.querySelectorAll('.material-copy-selection')];
 const selectPageMaterials = document.getElementById('selectPageMaterials');
 function updateMaterialSelection() {
+    if (!selectPageMaterials) return;
     const count = materialSelections.filter(input => input.checked).length;
     document.getElementById('selectedMaterialCount').textContent = count;
     document.getElementById('copySelectedButton').disabled = count === 0;
     selectPageMaterials.checked = count > 0 && count === materialSelections.length;
     selectPageMaterials.indeterminate = count > 0 && count < materialSelections.length;
 }
-selectPageMaterials.addEventListener('change', () => { materialSelections.forEach(input => input.checked = selectPageMaterials.checked); updateMaterialSelection(); });
+selectPageMaterials?.addEventListener('change', () => { materialSelections.forEach(input => input.checked = selectPageMaterials.checked); updateMaterialSelection(); });
 materialSelections.forEach(input => input.addEventListener('change', updateMaterialSelection));
 updateMaterialSelection();
 function filterSubcategories(selected=''){const category=document.getElementById('materialCategory').value,select=document.getElementById('materialSubcategory');[...select.options].forEach((o,i)=>{if(i)o.hidden=o.dataset.category!==category});if(selected&&[...select.options].some(o=>o.value==selected&&!o.hidden))select.value=selected;else if(select.selectedOptions[0]?.hidden)select.value=''}
@@ -140,6 +143,7 @@ function filterMaterialSubcategories(reset=false){const category=document.getEle
 document.getElementById('materialCategoryFilter')?.addEventListener('change',()=>filterMaterialSubcategories(true));
 filterMaterialSubcategories();
 function filterMappingSubcategories(){
+ if(!document.getElementById('mappingCategoryFilter'))return;
  const category=document.getElementById('mappingCategoryFilter').value;
  const select=document.getElementById('mappingSubcategoryFilter');
  [...select.options].forEach((option,index)=>{if(index){option.hidden=!!category&&option.dataset.category!==category;option.disabled=option.hidden;}});

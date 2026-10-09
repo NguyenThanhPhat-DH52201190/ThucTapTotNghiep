@@ -225,7 +225,8 @@ function populateMaterialSelect(select, selectedMaterialId = '') {
     const currentId = String(selectedMaterialId || select.closest('tr').querySelector('.material-id').value || '');
     select.innerHTML = '<option value="">-- Select mapped material --</option>';
     materials.forEach(material => {
-        const option = new Option(`${material.internal_code} — ${material.material_name}`, material.internal_code);
+        const colorSize = [material.color, material.size].filter(value => value && value.trim() !== '').join(' / ');
+        const option = new Option(`${material.internal_code} — ${material.material_name}${colorSize ? ` — ${colorSize}` : ''}`, material.internal_code);
         option.dataset.materialId = material.material_id;
         if (String(material.material_id) === currentId) option.selected = true;
         select.add(option);

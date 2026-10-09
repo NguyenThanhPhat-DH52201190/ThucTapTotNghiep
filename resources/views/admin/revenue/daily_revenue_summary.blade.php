@@ -48,13 +48,13 @@
                             @php $amount = $dailyRevenueMatrix[$line][$day] ?? 0; @endphp
                             <td class="text-end amount-cell">
                                 @if($amount > 0)
-                                    $ {{ number_format($amount, 4) }}
+                                    $ {{ number_format($amount, 2) }}
                                 @else
                                     -
                                 @endif
                             </td>
                         @endforeach
-                        <td class="text-end fw-bold total-col">$ {{ number_format($lineTotals[$line] ?? 0, 4) }}</td>
+                        <td class="text-end fw-bold total-col">$ {{ number_format($lineTotals[$line] ?? 0, 2) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -62,16 +62,16 @@
                 <tr class="fw-bold total-row">
                     <td class="sticky-col">Total</td>
                     @foreach($days as $day)
-                        <td class="text-end">$ {{ number_format($dailyTotals[$day] ?? 0, 4) }}</td>
+                        <td class="text-end">$ {{ number_format($dailyTotals[$day] ?? 0, 2) }}</td>
                     @endforeach
-                    <td class="text-end total-col">$ {{ number_format($totalRevenue, 4) }}</td>
+                    <td class="text-end total-col">$ {{ number_format($totalRevenue, 2) }}</td>
                 </tr>
                 <tr class="fw-bold target-row">
                     <td class="sticky-col">Target</td>
                     @foreach($days as $day)
-                        <td class="text-end">$ {{ number_format($dailyTotalPlanout[$day] ?? 0, 4) }}</td>
+                        <td class="text-end">$ {{ number_format($dailyTotalPlanout[$day] ?? 0, 2) }}</td>
                     @endforeach
-                    <td class="text-end total-col">$ {{ number_format($targetTotal, 4) }}</td>
+                    <td class="text-end total-col">$ {{ number_format($targetTotal, 2) }}</td>
                 </tr>
             </tfoot>
         </table>

@@ -2,6 +2,7 @@
 @section('title', 'NORM - Materials')
 @section('content')
 @include('admin.partials.image-popover')
+@php($canManageNorm = in_array(auth()->user()->role, ['admin', 'ppic'], true))
 <div class="container-fluid px-0">
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
@@ -22,7 +23,9 @@
         <tbody>@forelse($orders as $order)<tr>
             <td class="fw-bold">@include('admin.partials.image-trigger', ['imageUrl' => !empty($order->image_path) ? route('admin.ocs.image', $order->id, false) : null, 'imageLabel' => $order->CS])</td><td>{{ $order->ONum ?? '-' }}</td><td>{{ $order->SNo }}</td><td>{{ $order->Sname }}</td><td>{{ $order->Customer }}</td><td>{{ $order->Color }}</td><td class="text-end fw-semibold">{{ number_format($order->Qty, 0) }}</td>
             <td>@include('admin.partials.image-trigger', ['imageUrl' => $order->bom_image_id ? route('admin.bom.image', $order->bom_image_id, false) : null, 'imageLabel' => $order->bom_style . ' / ' . $order->bom_version])</td><td><span class="badge bg-secondary">{{ ucfirst(str_replace('_', ' ', $order->status)) }}</span></td>
-            <td><a href="{{ route('admin.norm.materials.show', $order->id) }}" class="btn btn-sm btn-primary"><i class="bi bi-eye me-1"></i>View Materials</a></td>
+            <td class="text-nowrap"><a href="{{ route('admin.norm.materials.show', $order->id) }}" class="btn btn-sm btn-primary"><i class="bi bi-eye me-1"></i>View Materials</a>
+                @if($canManageNorm)<form method="POST" action="{{ route('admin.norm.order.destroy', ['cutsheetId' => $order->id, 'cs' => request('cs')]) }}" class="d-inline" onsubmit="return confirm('Delete NORM for this CS and current BOM version? NORM from a new BOM version will appear after the order is synced.')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete NORM</button></form>@endif
+            </td>
         </tr>@empty<tr><td colspan="10" class="text-center text-muted py-4">No OCS with a BOM found.</td></tr>@endforelse</tbody>
     </table></div>@if($orders->hasPages())<div class="card-footer">{{ $orders->links() }}</div>@endif</div>
 </div>

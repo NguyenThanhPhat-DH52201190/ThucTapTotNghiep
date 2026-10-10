@@ -28,9 +28,12 @@ class OrderMaterialRequirementService
         $balances = DB::table('inventory_balances')
             ->whereIn('material_id', $items->pluck('material_id')->merge($replacements->pluck('material_id'))->filter()->unique())->get();
         $activeItemIds = [];
+        $excludedItemIds = DB::table('order_material_requirements')->where('cutsheet_id', $cutsheetId)
+            ->where('is_excluded', true)->whereNotNull('bom_item_id')->pluck('bom_item_id')->map(fn ($id) => (int) $id)->all();
 
         foreach ($items as $item) {
             $activeItemIds[] = $item->id;
+            if (in_array((int) $item->id, $excludedItemIds, true)) continue;
             $mappedSizeNames = DB::table('bom_item_customer_sizes')
                 ->join('customer_sizes', 'customer_sizes.id', '=', 'bom_item_customer_sizes.customer_size_id')
                 ->where('bom_item_customer_sizes.bom_item_id', $item->id)->pluck('customer_sizes.size_name');
@@ -99,6 +102,7 @@ class OrderMaterialRequirementService
                 ->whereNotIn('replacement_id', $replacements->pluck('id'))->delete();
         }
 
-        return DB::table('order_material_requirements')->where('cutsheet_id', $cutsheetId)->orderBy('id')->get();
+        return DB::table('order_material_requirements')->where('cutsheet_id', $cutsheetId)
+            ->where('is_excluded', false)->orderBy('id')->get();
     }
 }

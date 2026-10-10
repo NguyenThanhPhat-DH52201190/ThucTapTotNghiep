@@ -210,6 +210,8 @@ Route::middleware('auth')->group(function () {
         Route::post('ocs/import', [OCSController::class, 'import'])->name('ocs.import');
 
         Route::get('norm/materials', [NormController::class, 'materials'])->name('norm.materials');
+        Route::delete('norm/materials/{cutsheetId}', [NormController::class, 'destroyOrderNorm'])
+            ->middleware('role:admin,ppic')->name('norm.order.destroy');
         Route::get('development-norms', [DevelopmentNormController::class, 'index'])->name('development-norms.index');
         Route::get('development-norms/{cutsheetId}', [DevelopmentNormController::class, 'show'])->name('development-norms.show');
         Route::put('development-norms/{cutsheetId}', [DevelopmentNormController::class, 'update'])->name('development-norms.update');
@@ -291,8 +293,8 @@ Route::middleware('auth')->group(function () {
         Route::patch('procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->middleware('role:admin')->name('procurement.status');
         Route::patch('procurement/{id}/close', [ProcurementController::class, 'close'])->middleware('role:admin')->name('procurement.close');
         Route::patch('procurement/{id}/eta', [ProcurementController::class, 'updateEta'])->middleware('role:admin')->name('procurement.eta.update');
-        Route::post('procurement/{id}/receipts/import', [ProcurementController::class, 'importReceiptRows'])->middleware('role:admin')->name('procurement.receipts.import');
-        Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->middleware('role:admin')->name('procurement.receipts.store');
+        Route::post('procurement/{id}/receipts/import', [ProcurementController::class, 'importReceiptRows'])->middleware('role:admin,warehouse')->name('procurement.receipts.import');
+        Route::post('procurement/{id}/receipts', [ProcurementController::class, 'receive'])->middleware('role:admin,warehouse')->name('procurement.receipts.store');
         Route::get('procurement/{procurement}/receipts/{receipt}', [ProcurementController::class, 'receiptHistory'])->middleware('ppic.team:view')->name('procurement.receipts.show');
         Route::patch('procurement/{procurement}/receipts/{receipt}', [ProcurementController::class, 'updateReceiptHistory'])->middleware('role:admin')->name('procurement.receipts.update');
         Route::get('procurement', [ProcurementController::class, 'index'])->middleware('role:admin,warehouse')->middleware('ppic.team:view')->name('procurement.index');

@@ -21,6 +21,7 @@ class NormController extends Controller
     private function query(Request $request)
     {
         return DB::table('order_material_requirements as norm')
+            ->where('norm.is_excluded', false)
             ->join('ocs', 'ocs.id', '=', 'norm.cutsheet_id')
             ->leftJoin('bom_headers', 'bom_headers.id', '=', 'norm.bom_header_id')
             ->leftJoin('bom_items as source_item', 'source_item.id', '=', 'norm.bom_item_id')
@@ -171,6 +172,26 @@ class NormController extends Controller
         });
         return redirect()->route('admin.norm.materials.show', ['id' => $id, 'page' => $request->query('page', 1)])
             ->with('success', 'NORM confirmed values saved and requirements recalculated. Existing PO, MRP runs and inventory transactions are unchanged; rerun MRP to use the new requirements.');
+    }
+
+    public function destroyOrderNorm(int $cutsheetId, Request $request, OrderMaterialRequirementService $service, \App\Services\AuditTrailService $audit)
+    {
+        $service->sync($cutsheetId);
+        DB::transaction(function () use ($cutsheetId, $request, $audit) {
+            $order = DB::table('ocs')->where('id', $cutsheetId)->lockForUpdate()->first();
+            if (!$order) abort(404);
+            $requirements = DB::table('order_material_requirements')->where('cutsheet_id', $cutsheetId)
+                ->where('bom_header_id', $order->bom_header_id)->whereNull('replacement_id')
+                ->where('is_excluded', false)->lockForUpdate()->get();
+            DB::table('order_material_requirements')->whereIn('id', $requirements->pluck('id'))
+                ->update(['is_excluded' => true, 'updated_at' => now()]);
+            $audit->record('norm_order_excluded', 'ocs', $cutsheetId, $request->user()->id,
+                ['bom_header_id' => $order->bom_header_id, 'requirements' => $requirements->toArray()],
+                ['excluded_requirement_ids' => $requirements->pluck('id')->all()]);
+        });
+
+        return redirect()->route('admin.norm.materials', $request->only('cs'))
+            ->with('success', 'NORM deleted for this CS and BOM version. Materials from the updated BOM version will appear when the order is synced.');
     }
 
     public function exportMaterials(Request $request, OrderMaterialRequirementService $service)

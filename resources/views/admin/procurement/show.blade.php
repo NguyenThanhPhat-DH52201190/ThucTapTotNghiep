@@ -5,7 +5,7 @@
     $user = auth()->user();
     $canCreatePo = $user->role === 'admin' || ($user->role === 'ppic' && in_array($user->ppic_team, ['create', 'both'], true));
     $canManagePo = $user->role === 'admin';
-    $canTrackPo = $canManagePo;
+    $canTrackPo = $canManagePo || $user->role === 'warehouse';
     $canExportPo = in_array($user->role, ['admin', 'ppic'], true);
 @endphp
 @include('admin.procurement.partials.pdf-modal')

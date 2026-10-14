@@ -103,20 +103,9 @@ class RevenueController extends Controller
         return $count;
     }
 
-    private function skipSunday(Carbon $date): Carbon
-    {
-        $result = $date->copy();
-
-        if ($result->isSunday()) {
-            $result->addDay();
-        }
-
-        return $result;
-    }
-
     private function calcFinishSew($startDate, $days, array $holidays = [])
     {
-        $start = Carbon::parse($startDate);
+        $start = Carbon::parse($startDate)->copy();
         $baseDays = max(0, (int) $days);
 
         if ($baseDays === 0) {
@@ -124,15 +113,15 @@ class RevenueController extends Controller
         }
 
         $holidaySet = $this->normalizeHolidaySet($holidays);
-        $totalDays = $baseDays - 1;
+        $totalDays = $baseDays;
 
         while (true) {
             $end = $start->copy()->addDays($totalDays);
-            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, true);
-            $newTotalDays = $baseDays - 1 + $extra;
+            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, false);
+            $newTotalDays = $baseDays + $extra;
 
             if ($newTotalDays === $totalDays) {
-                return $this->skipSunday($end);
+                return $end;
             }
 
             $totalDays = $newTotalDays;
@@ -311,35 +300,18 @@ class RevenueController extends Controller
         $lineMeta = $this->getLineMetaSubquery();
         $lineCateMap = $this->getLineCateMap();
         $month = $request->input('month', now()->format('Y-m'));
+        $holidays = DB::table('holidays')->pluck('holiday')->toArray();
         $monthlyActualOut = $this->getMonthlyActualOutSubquery($month);
 
         // Build list of CS (CU) whose calculated Finish_SEW falls in the selected month.
         $csForMonth = collect();
         if ($request->filled('month')) {
-            $mtpRows = DB::table('mtp')
-                ->select('CU', 'FirstOPT', 'lt')
-                ->whereNotNull('CU')
-                ->get();
-
-            foreach ($mtpRows as $row) {
-                if (empty($row->FirstOPT) || empty($row->lt)) {
-                    continue;
-                }
-
-                try {
-                    $first = Carbon::parse($row->FirstOPT);
-                } catch (\Throwable $e) {
-                    continue;
-                }
-
-                $finish = $first->copy()->addDays((int) $row->lt);
-                // If finish falls on Sunday, move to next day (same logic as masterplan skipSunday)
-                if ($finish->isSunday()) {
-                    $finish->addDay();
-                }
-
-                if ($finish->format('Y-m') === $month) {
-                    $csForMonth->push(trim((string) $row->CU));
+            $lineNames = DB::table('mtp')->whereNotNull('Line')->distinct()->pluck('Line');
+            foreach ($lineNames as $lineName) {
+                foreach ($this->getMasterPlanWindowsByLine((string) $lineName, $holidays) as $window) {
+                    if ($window->finishSEW && $window->finishSEW->format('Y-m') === $month) {
+                        $csForMonth->push(trim($window->CU));
+                    }
                 }
             }
 

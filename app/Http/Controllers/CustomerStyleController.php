@@ -15,7 +15,9 @@ class CustomerStyleController extends Controller
         $customer = DB::table('customer_info')->where('id', $customer)->first();
         abort_unless($customer, 404);
         $styles = DB::table('customer_styles')->where('customer_id', $customer->id)
-            ->when($request->filled('search'), fn ($q) => $q->where('style_no', 'like', '%'.$request->search.'%'))
+            ->when($request->filled('search'), fn ($q) => $q->where(fn ($search) => $search
+                ->where('style_no', 'like', '%'.$request->search.'%')
+                ->orWhere('style_name', 'like', '%'.$request->search.'%')))
             ->orderBy('style_no')->paginate(20)->withQueryString();
         return view('admin.master-data.customer-styles', compact('customer', 'styles'));
     }

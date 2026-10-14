@@ -738,7 +738,7 @@ $hideMidCols = $isAccountant;
             @endunless
             @endunless
             <th scope="col" class="col-number">LT</th>
-            <th scope="col" class="col-date">FirstOPT</th>
+            <th scope="col" class="col-date">FirstOPT (calculated)</th>
             <th scope="col" class="col-date">Finish_SEW</th>
             <th scope="col" class="col-date">EX_Fact</th>
             @if($canManage)
@@ -909,7 +909,13 @@ $hideMidCols = $isAccountant;
             @endunless
             @endunless
             <td class="col-number">@if($canManage)<input form="{{ $inlineFormId }}" type="number" name="lt" class="form-control form-control-sm masterplan-inline-input" min="0" value="{{ $item->lt }}" aria-label="Lead time for {{ $item->CU }}">@else{{ $item->lt }}@endif</td>
-            <td class="col-date">@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="FirstOPT" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->FirstOPT ? \Carbon\Carbon::parse($item->FirstOPT)->format('Y-m-d') : '' }}" aria-label="First OPT for {{ $item->CU }}">@else{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}@endif</td>
+            <td class="col-date">
+                <div>{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</div>
+                @if($canManage)
+                <label class="small text-muted mt-1" for="first-opt-input-{{ $item->id }}">Saved date</label>
+                <input id="first-opt-input-{{ $item->id }}" form="{{ $inlineFormId }}" type="date" name="FirstOPT" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->FirstOPT ? \Carbon\Carbon::parse($item->FirstOPT)->format('Y-m-d') : '' }}" aria-label="Saved First OPT date for {{ $item->CU }}">
+                @endif
+            </td>
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
             <td>{{$item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : ''  }}</td>
             @if($canManage)

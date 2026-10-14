@@ -17,7 +17,7 @@
         <div class="col-12"><button class="btn btn-primary">Add Style</button></div>
     </form>
 </div></div>
-<form method="GET" class="d-flex gap-2 mb-3"><input name="search" value="{{ request('search') }}" placeholder="Search Style No" class="form-control" style="max-width:320px"><button class="btn btn-dark">Search</button><a class="btn btn-outline-secondary" href="{{ route('admin.customer-styles.index', $customer->id) }}">Reset</a></form>
+<form method="GET" class="d-flex gap-2 mb-3"><input name="search" value="{{ request('search') }}" placeholder="Search Style No or Style Name" class="form-control" style="max-width:320px"><button class="btn btn-dark">Search</button><a class="btn btn-outline-secondary" href="{{ route('admin.customer-styles.index', $customer->id) }}">Reset</a></form>
 @forelse($styles as $style)
 <div class="card mb-3"><div class="card-body">
     <form method="POST" enctype="multipart/form-data" action="{{ route('admin.customer-styles.update', [$customer->id, $style->id]) }}" class="row g-3 align-items-end">

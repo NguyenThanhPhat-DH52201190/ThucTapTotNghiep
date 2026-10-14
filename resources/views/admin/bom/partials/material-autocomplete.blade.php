@@ -84,7 +84,7 @@
                 code.textContent = material.internal_code;
                 const name = document.createElement('small');
                 name.className = 'd-block text-muted';
-                name.textContent = material.material_name;
+                name.textContent = [material.material_name, material.old_code ? `Old code: ${material.old_code}` : null].filter(Boolean).join(' · ');
                 option.append(code, name);
                 option.addEventListener('mousedown', event => {
                     event.preventDefault();

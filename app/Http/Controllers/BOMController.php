@@ -160,7 +160,10 @@ class BOMController extends Controller
         return DB::table('bom_headers')
             ->where('bom_kind', 'template')
             ->when($request->filled('style_no'), function ($q) use ($request) {
-                $q->where('style_no', 'like', '%' . $request->style_no . '%');
+                $q->where(fn ($search) => $search
+                    ->where('style_no', 'like', '%' . $request->style_no . '%')
+                    ->orWhere('style_name', 'like', '%' . $request->style_no . '%')
+                    ->orWhere('version', 'like', '%' . $request->style_no . '%'));
             })
             ->when($request->filled('customer'), function ($q) use ($request) {
                 $q->where('customer', 'like', '%' . $request->customer . '%');
@@ -196,9 +199,12 @@ class BOMController extends Controller
 
         return response()->json(
             DB::table('materials')
-                ->select('id', 'category_id', 'internal_code', 'material_name', 'material_type', 'color', 'size', 'unit')
+                ->select('id', 'category_id', 'internal_code', 'old_code', 'material_name', 'material_type', 'color', 'size', 'unit')
                 ->where('category_id', $data['category_id'])
-                ->where('internal_code', 'like', '%' . $term . '%')
+                ->where(fn ($search) => $search
+                    ->where('internal_code', 'like', '%' . $term . '%')
+                    ->orWhere('old_code', 'like', '%' . $term . '%')
+                    ->orWhere('material_name', 'like', '%' . $term . '%'))
                 ->orderByRaw('CASE WHEN internal_code LIKE ? THEN 0 ELSE 1 END', [$term . '%'])
                 ->orderBy('internal_code')
                 ->limit(20)

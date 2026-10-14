@@ -19,7 +19,7 @@
         <form method="GET" action="{{ route('admin.procurement.suppliers') }}" class="row g-3 align-items-end px-3 pb-3">
             <div class="col-12 col-lg-5">
                 <label for="supplierSearch" class="form-label">Search suppliers</label>
-                <input type="search" id="supplierSearch" name="search" value="{{ request('search') }}" class="form-control" placeholder="Code, name, email or contact">
+                <input type="search" id="supplierSearch" name="search" value="{{ request('search') }}" class="form-control" placeholder="Code, name, tax code, contact, phone, email or status">
             </div>
             <div class="col-md-4 col-lg-2">
                 <label for="supplierCodeFilter" class="form-label">Code</label>

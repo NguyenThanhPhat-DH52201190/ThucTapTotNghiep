@@ -19,11 +19,13 @@ class StockRecordController extends Controller
             ->selectRaw('SUM(balance_qty) as on_hand, SUM(reserved_qty) as reserved')->groupBy('material_id');
         $records = DB::table('stock_records as record')->join('materials', 'materials.id', '=', 'record.material_id')
             ->leftJoinSub($balances, 'stock', 'stock.material_id', '=', 'record.material_id')
-            ->select('record.*', 'materials.internal_code', 'materials.material_name', 'materials.unit', 'materials.color', 'materials.size')
+            ->select('record.*', 'materials.internal_code', 'materials.old_code', 'materials.material_name', 'materials.unit', 'materials.color', 'materials.size')
             ->selectRaw('COALESCE(stock.on_hand, 0) as on_hand, COALESCE(stock.reserved, 0) as reserved')
             ->when($request->filled('q'), function ($q) use ($request) {
                 $term = '%' . trim($request->q) . '%';
-                $q->where(fn ($q) => $q->where('materials.internal_code', 'like', $term)->orWhere('materials.material_name', 'like', $term));
+                $q->where(fn ($q) => $q->where('materials.internal_code', 'like', $term)
+                    ->orWhere('materials.old_code', 'like', $term)
+                    ->orWhere('materials.material_name', 'like', $term));
             })->orderBy('record.sort_order')->orderBy('materials.internal_code')->paginate(30)->withQueryString();
         return view('admin.stock-records.index', compact('records'));
     }

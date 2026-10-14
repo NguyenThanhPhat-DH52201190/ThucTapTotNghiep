@@ -164,7 +164,6 @@ class MasterPlanController extends Controller
                 }
 
                 $finishSew = $this->calcFinishSew($firstOPT, $item->lt, $holidays);
-                $finishSew = $this->skipSunday($finishSew);
                 $exFact = $this->calcExFact($finishSew, 3, $holidays);
 
                 $item->calc_FirstOPT = $firstOPT;
@@ -611,7 +610,7 @@ class MasterPlanController extends Controller
         $dateFields = [
             'Confirm_date', 'planned_cut_start', 'planned_cut_end', 'planned_sew_start', 'planned_sew_end',
             'Norm_date', 'fabric_issue_date', 'trims_issue_date', 'inWHDate', 'ShipDate2',
-            'FirstOPT', 'qa_inspection_date',
+            'qa_inspection_date',
         ];
         $rules = [
             'rows' => 'required|array|min:1|max:3000',
@@ -632,12 +631,6 @@ class MasterPlanController extends Controller
         foreach ($dateFields as $field) {
             $rules['rows.*.' . $field] = ['nullable', 'date'];
         }
-        $rules['rows.*.FirstOPT'][] = function ($attribute, $value, $fail) {
-            if ($value && Carbon::parse($value)->isSunday()) {
-                $fail('FirstOPT cannot be on a Sunday. Please choose another date.');
-            }
-        };
-
         $validated = $request->validate($rules);
         $rows = $validated['rows'];
         $ids = collect($rows)->pluck('id')->map(fn ($id) => (int) $id)->all();
@@ -1085,7 +1078,6 @@ class MasterPlanController extends Controller
             ->toArray();
 
         $finish = $this->calcFinishSew($request->firstOPT, (int) $request->lt, $holidays);
-        $finish = $this->skipSunday($finish);
         $ex = $this->calcExFact($finish, 3, $holidays);
 
         return response()->json([
@@ -1133,7 +1125,7 @@ class MasterPlanController extends Controller
 
     public function calcFinishSew($startDate, $days, $holidays = [])
     {
-        $start = Carbon::parse($startDate);
+        $start = Carbon::parse($startDate)->copy();
         $baseDays = max(0, (int) $days);
 
         if ($baseDays === 0) {
@@ -1141,12 +1133,13 @@ class MasterPlanController extends Controller
         }
 
         $holidaySet = $this->normalizeHolidaySet($holidays);
-        $totalDays = $baseDays - 1;
+        // LT is added to FirstOPT; Sundays and holidays in that interval extend the finish date.
+        $totalDays = $baseDays;
 
         while (true) {
             $end = $start->copy()->addDays($totalDays);
-            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, true);
-            $newTotalDays = $baseDays - 1 + $extra;
+            $extra = $this->countNonWorkingDays($start, $end, $holidaySet, false);
+            $newTotalDays = $baseDays + $extra;
 
             if ($newTotalDays === $totalDays) {
                 return $end;

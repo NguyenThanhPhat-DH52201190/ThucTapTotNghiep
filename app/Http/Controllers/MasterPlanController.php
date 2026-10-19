@@ -814,6 +814,53 @@ class MasterPlanController extends Controller
             ->with('success', 'Note updated successfully.');
     }
 
+    public function saveAllForRole(Request $request)
+    {
+        $role = $request->user()?->role;
+        abort_unless(in_array($role, ['warehouse', 'accountant', 'qa_qc', 'ppic'], true), 403);
+
+        $rules = [
+            'rows' => 'required|array|min:1|max:3000',
+            'rows.*.id' => 'required|integer|distinct|exists:mtp,id',
+        ];
+        $fieldsByRole = [
+            'warehouse' => ['Norm_date', 'fabric_issue_date', 'trims_issue_date', 'mps_notes'],
+            'accountant' => ['mps_notes'],
+            'qa_qc' => ['3rd_PartyInspection', 'qa_inspection_date', 'qa_status'],
+            'ppic' => ['Fabric1', 'ETA1', 'Actual', 'Fabric2', 'ETA2', 'Linning', 'ETA3', 'Pocket', 'ETA4', 'Trim'],
+        ];
+        $fields = $fieldsByRole[$role];
+        foreach ($fields as $field) {
+            $rules['rows.*.' . $field] = match ($field) {
+                'Norm_date', 'fabric_issue_date', 'trims_issue_date', 'qa_inspection_date' => 'nullable|date',
+                'mps_notes' => 'nullable|string|max:5000',
+                '3rd_PartyInspection' => 'nullable|string|max:50',
+                'qa_status' => 'required|in:approved,not_approved',
+                'Fabric1', 'Fabric2', 'Linning', 'Pocket', 'Trim' => 'nullable|string|max:50',
+                'ETA1', 'Actual', 'ETA2', 'ETA3', 'ETA4' => 'nullable|date',
+            };
+        }
+
+        $rows = $request->validate($rules)['rows'];
+        DB::transaction(function () use ($rows, $fields) {
+            foreach ($rows as $row) {
+                $updates = ['updated_at' => now()];
+                foreach ($fields as $field) {
+                    $value = $row[$field] ?? null;
+                    $updates[$field] = in_array($field, ['Norm_date', 'fabric_issue_date', 'trims_issue_date', 'qa_inspection_date', 'ETA1', 'Actual', 'ETA2', 'ETA3', 'ETA4'], true)
+                        ? $this->nullableDate($value)
+                        : (in_array($field, ['3rd_PartyInspection', 'mps_notes', 'Fabric1', 'Fabric2', 'Linning', 'Pocket', 'Trim'], true)
+                            ? (filled($value) ? $value : null)
+                            : $value);
+                }
+                DB::table('mtp')->where('id', $row['id'])->update($updates);
+            }
+        });
+
+        return redirect()->route('masterplan.view', $request->query())
+            ->with('success', count($rows) . ' Master Plan row(s) saved successfully.');
+    }
+
     public function updateQaQc(Request $request, string $id)
     {
         abort_unless(in_array($request->user()?->role, ['admin', 'qa_qc'], true), 403);

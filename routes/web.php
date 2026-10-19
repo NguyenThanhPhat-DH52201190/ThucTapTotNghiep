@@ -75,6 +75,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:accountant')
         ->name('masterplan.accountant.note.update');
 
+    Route::put('/master-plan/save-all', [MasterPlanController::class, 'saveAllForRole'])
+        ->middleware('role:warehouse,accountant,qa_qc,ppic')
+        ->name('masterplan.save-all');
+
     Route::get('/master-plan/export', [MasterPlanController::class, 'export'])
         ->middleware('role:admin,ie,warehouse,qa_qc')
         ->name('masterplan.export');

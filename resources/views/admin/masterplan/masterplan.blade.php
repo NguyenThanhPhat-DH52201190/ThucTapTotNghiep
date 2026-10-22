@@ -893,6 +893,7 @@ $hideMidCols = $isAccountant;
                 <span class="badge bg-{{ $priColor }}" style="font-size:0.65rem;">{{ substr($item->mps_priority ?? 'MED', 0, 4) }}</span>
                 @endif
             </td>
+            @endunless
             @if($canManage)
             <td><input form="{{ $inlineFormId }}" type="date" name="fabric_issue_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->fabric_issue_date ? \Carbon\Carbon::parse($item->fabric_issue_date)->format('Y-m-d') : '' }}" aria-label="Fabric issue date for {{ $item->CU }}"></td>
             <td><input form="{{ $inlineFormId }}" type="date" name="trims_issue_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->trims_issue_date ? \Carbon\Carbon::parse($item->trims_issue_date)->format('Y-m-d') : '' }}" aria-label="Trims issue date for {{ $item->CU }}"></td>

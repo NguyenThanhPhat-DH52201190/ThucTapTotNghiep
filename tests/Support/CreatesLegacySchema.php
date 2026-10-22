@@ -209,6 +209,7 @@ trait CreatesLegacySchema
             $table->unsignedInteger('ExQty')->nullable();
             $table->integer('lt')->nullable();
             $table->date('FirstOPT')->nullable();
+            $table->boolean('is_manually_highlighted')->default(false);
             $table->unsignedInteger('Qty_dis')->nullable();
             $table->timestamps();
         });

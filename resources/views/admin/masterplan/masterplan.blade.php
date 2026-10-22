@@ -5,8 +5,8 @@
 
 @php
 $canManage = auth()->user()->role === 'admin';
-$canEditFabric = $canManage;
 $isWarehouse = auth()->user()->role === 'warehouse';
+$canEditFabric = $isWarehouse;
 $isQaQc = auth()->user()->role === 'qa_qc';
 $isAccountant = auth()->user()->role === 'accountant';
 $isPpic = auth()->user()->role === 'ppic';
@@ -377,6 +377,19 @@ $hideMidCols = $isAccountant;
         font-weight: 500;
     }
 
+    .masterplan-table tr.masterplan-row-red > td {
+        background-color: #f8d7da !important;
+    }
+
+    .masterplan-table tr.masterplan-row-red > td.line-color-cell {
+        color: #7f1d1d !important;
+    }
+
+    .masterplan-row-highlight-toggle {
+        line-height: 1;
+        vertical-align: middle;
+    }
+
     #warehouseMasterplanTable th,
     #warehouseMasterplanTable td {
         white-space: nowrap !important;
@@ -521,10 +534,8 @@ $hideMidCols = $isAccountant;
             value="{{ request('search') }}">
     </div>
 
-    @unless($isQaQc || $isAccountant)
     <input type="hidden" name="ship_balance_only" id="shipBalanceFilter"
         value="{{ request('ship_balance_only', 1) }}">
-    @endunless
 
     <div class="col-lg-auto masterplan-filter-actions">
 
@@ -543,13 +554,11 @@ $hideMidCols = $isAccountant;
             <i class="bi bi-calendar-date"></i> Confirm Date
         </a>
 
-        @unless($isQaQc || $isAccountant)
-        <button type="button" class="btn ship-balance-btn {{ request('ship_balance_only', 1) ? 'btn-warning' : 'btn-outline-warning' }}"
-            id="toggleShipBalanceBtn" title="{{ request('ship_balance_only', 1) ? 'Hiding rows where ExQty is entered and ShipBalance = 0' : 'Showing all rows' }}">
+        <button type="button" class="btn ship-balance-btn {{ (int) request('ship_balance_only', 1) === 1 ? 'btn-warning' : 'btn-outline-warning' }}"
+            id="toggleShipBalanceBtn" title="{{ (int) request('ship_balance_only', 1) === 1 ? 'Show all rows' : 'Hide rows where ShipBalance = 0' }}">
             <i class="bi bi-funnel"></i> 
-            {{ request('ship_balance_only', 1) ? 'Hide ' : 'Show all rows' }}
+            {{ (int) request('ship_balance_only', 1) === 1 ? 'Show all rows' : 'Hide' }}
         </button>
-        @endunless
 
         @unless($isQaQc || $isAccountant)
         <a href="{{ route('masterplan.export', request()->query()) }}"
@@ -612,18 +621,15 @@ $hideMidCols = $isAccountant;
                 <th scope="col" class="col-qty">CMT</th>
                 <th scope="col" style="min-width: 220px">Note</th>
                 @endif
-                @if($isQaQc)
-                <th scope="col" class="sticky-action sticky-action-edit">Edit</th>
-                @endif
             </tr>
         </thead>
         <tbody>
             @forelse($qaQcGroups as $month => $items)
             <tr class="table-warning">
-                <th colspan="{{ $isQaQc ? 11 : 9 }}" class="text-start">{{ $month === 'undated' ? 'Chưa có Confirmed Date' : 'Tháng ' . substr($month, 5, 2) . '/' . substr($month, 0, 4) }}</th>
+                <th colspan="{{ $isQaQc ? 10 : 9 }}" class="text-start">{{ $month === 'undated' ? 'Chưa có Confirmed Date' : 'Tháng ' . substr($month, 5, 2) . '/' . substr($month, 0, 4) }}</th>
             </tr>
             @foreach($items as $item)
-            <tr>
+            <tr class="{{ !empty($item->is_manually_highlighted) ? 'masterplan-row-red' : '' }}">
                 <td class="col-code sticky-col sticky-1">{{ $item->CU }}</td>
                 <td class="col-line sticky-col sticky-2 line-color-cell" data-line-color="{{ $item->LineColor ?? '#808080' }}">{{ $item->Line }}</td>
                 <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
@@ -646,7 +652,7 @@ $hideMidCols = $isAccountant;
             </tr>
             @endforeach
             @empty
-            <tr><td colspan="{{ $isQaQc ? 11 : 9 }}" class="text-center">No data</td></tr>
+            <tr><td colspan="{{ $isQaQc ? 10 : 9 }}" class="text-center">No data</td></tr>
             @endforelse
         </tbody>
     </table>
@@ -671,7 +677,7 @@ $hideMidCols = $isAccountant;
                 <td colspan="16" class="text-start">Line: {{ $line ?: 'Unassigned' }}</td>
             </tr>
             @foreach($lineItems as $item)
-            <tr>
+            <tr class="{{ !empty($item->is_manually_highlighted) ? 'masterplan-row-red' : '' }}">
                 <td>{{ $item->CU }}</td><td class="line-color-cell" data-line-color="{{ preg_match('/^#(?:[A-Fa-f0-9]{3}){1,2}$/', (string) $item->LineColor) ? $item->LineColor : '#808080' }}" style="background-color: {{ preg_match('/^#(?:[A-Fa-f0-9]{3}){1,2}$/', (string) $item->LineColor) ? $item->LineColor : '#808080' }}">{{ $item->Line }}</td><td>{{ $item->Style }}</td><td>{{ $item->PO }}</td>
                 <td>{{ $item->Order_Qty }}</td><td>{{ $item->Qty_dis }}</td><td>{{ $item->Confirm_date }}</td>
                 <td><input form="masterplan-row-{{ $item->id }}" type="date" name="Norm_date" class="form-control form-control-sm warehouse-inline-input masterplan-inline-input" value="{{ $item->Norm_date ? \Carbon\Carbon::parse($item->Norm_date)->format('Y-m-d') : '' }}" aria-label="Norm date for {{ $item->CU }}"></td>
@@ -709,15 +715,6 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-status">MPS Status</th>
             @endunless
             <th scope="col" class="col-priority">Pri.</th>
-            @unless($isPpic)
-            <th scope="col" class="col-date">Cut Start</th>
-            <th scope="col" class="col-date">Cut End</th>
-            <th scope="col" class="col-date">Sew Start</th>
-            <th scope="col" class="col-date">Sew End</th>
-            @endunless
-            @unless($hideMidCols)
-            <th scope="col" class="col-date">Norm_date</th>
-            @endunless
             @if($canManage)
             <th scope="col" class="col-date">Fabric Issue Date</th>
             <th scope="col" class="col-date">Trims Issue Date</th>
@@ -732,6 +729,10 @@ $hideMidCols = $isAccountant;
             @unless($isPpic)
             <th scope="col" class="col-date">inWHDate</th>
             <th scope="col" class="col-wide">3rd_PartyInspection</th>
+            @if($canManage)
+            <th scope="col" class="col-date">Inspection Date</th>
+            <th scope="col">QA Status</th>
+            @endif
             <th scope="col" class="col-date">ShipDate2</th>
             <th scope="col" class="col-wide">SoTK</th>
             @endunless
@@ -746,12 +747,10 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-date">EX_Fact</th>
             @if($canManage)
             <th scope="col" class="col-number">Daily Target</th>
-            <th scope="col" class="col-date">Inspection Date</th>
-            <th scope="col">QA Status</th>
             <th scope="col">Notes</th>
             @endif
-            @if($canEditFabric && !$canManage && !$isPpic)
-            <th scope="col" class="sticky-action sticky-action-edit {{ $canManage ? 'sticky-action-before-delete' : '' }}">Edit</th>
+            @if($canEditFabric)
+            <th scope="col" class="sticky-action sticky-action-edit">Edit</th>
             @endif
             @if($canManage)
             <th scope="col" class="sticky-action sticky-action-delete">Delete</th>
@@ -771,7 +770,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = $canEditFabric ? 1 : 0;
-        $tableColspan = $canManage ? 33 : ($isPpic ? 27 : 25 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0) - ($hidePpicExecShipCols ? 2 : 0));
+        $tableColspan = $canManage ? 28 : ($isPpic ? 26 : 20 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hidePpicExecShipCols ? 2 : 0));
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -799,14 +798,24 @@ $hideMidCols = $isAccountant;
         @endif
 
         @foreach($lineItems as $index => $item)
-        <tr>
+        <tr class="{{ !empty($item->is_manually_highlighted) ? 'masterplan-row-red' : '' }}">
             @php
                 $inlineFormId = 'masterplan-row-' . $item->id;
                 $inlineLineColor = preg_match('/^#(?:[A-Fa-f0-9]{3}){1,2}$/', (string) ($item->LineColor ?? '')) ? $item->LineColor : '#808080';
             @endphp
             @if($canManage)<td><input type="checkbox" class="masterplan-row-select" value="{{ $item->id }}" aria-label="Select {{ $item->CU }}"></td>@endif
             <td class="col-code sticky-col sticky-1">
+                <div class="d-flex align-items-center justify-content-between gap-1">
                 @include('admin.partials.image-trigger', ['imageUrl' => !empty($item->ocs_image_path) ? route('masterplan.ocs-image', $item->image_ocs_id, false) : null, 'imageLabel' => $item->CU])
+                @if($canManage)
+                <form method="POST" action="{{ route('masterplan.highlight.toggle', ['id' => $item->id] + request()->query()) }}" class="d-inline-flex m-0">
+                    @csrf
+                    <button type="submit" class="btn btn-sm p-0 border-0 bg-transparent masterplan-row-highlight-toggle" title="{{ !empty($item->is_manually_highlighted) ? 'Remove red highlight' : 'Mark row red' }}" aria-label="{{ !empty($item->is_manually_highlighted) ? 'Remove red highlight for ' . $item->CU : 'Mark row red for ' . $item->CU }}">
+                        <i class="bi {{ !empty($item->is_manually_highlighted) ? 'bi-circle-fill text-danger' : 'bi-circle text-secondary' }}"></i>
+                    </button>
+                </form>
+                @endif
+                </div>
                 @if($canManage || $isPpic)
                 <form id="{{ $inlineFormId }}" class="d-none" onsubmit="return false">
                     @if($canManage)
@@ -884,14 +893,6 @@ $hideMidCols = $isAccountant;
                 <span class="badge bg-{{ $priColor }}" style="font-size:0.65rem;">{{ substr($item->mps_priority ?? 'MED', 0, 4) }}</span>
                 @endif
             </td>
-            <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="planned_cut_start" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->planned_cut_start ? \Carbon\Carbon::parse($item->planned_cut_start)->format('Y-m-d') : '' }}" aria-label="Cut start for {{ $item->CU }}">@else{{ $item->planned_cut_start ?? '' }}@endif</td>
-            <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="planned_cut_end" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->planned_cut_end ? \Carbon\Carbon::parse($item->planned_cut_end)->format('Y-m-d') : '' }}" aria-label="Cut end for {{ $item->CU }}">@else{{ $item->planned_cut_end ?? '' }}@endif</td>
-            <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="planned_sew_start" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->planned_sew_start ? \Carbon\Carbon::parse($item->planned_sew_start)->format('Y-m-d') : '' }}" aria-label="Sew start for {{ $item->CU }}">@else{{ $item->planned_sew_start ?? '' }}@endif</td>
-            <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="planned_sew_end" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->planned_sew_end ? \Carbon\Carbon::parse($item->planned_sew_end)->format('Y-m-d') : '' }}" aria-label="Sew end for {{ $item->CU }}">@else{{ $item->planned_sew_end ?? '' }}@endif</td>
-            @endunless
-            @unless($hideMidCols)
-            <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="Norm_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->Norm_date ? \Carbon\Carbon::parse($item->Norm_date)->format('Y-m-d') : '' }}" aria-label="Norm date for {{ $item->CU }}">@else{{ $item->Norm_date }}@endif</td>
-            @endunless
             @if($canManage)
             <td><input form="{{ $inlineFormId }}" type="date" name="fabric_issue_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->fabric_issue_date ? \Carbon\Carbon::parse($item->fabric_issue_date)->format('Y-m-d') : '' }}" aria-label="Fabric issue date for {{ $item->CU }}"></td>
             <td><input form="{{ $inlineFormId }}" type="date" name="trims_issue_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->trims_issue_date ? \Carbon\Carbon::parse($item->trims_issue_date)->format('Y-m-d') : '' }}" aria-label="Trims issue date for {{ $item->CU }}"></td>
@@ -908,6 +909,13 @@ $hideMidCols = $isAccountant;
             @unless($isPpic)
             <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="inWHDate" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->inWHDate ? \Carbon\Carbon::parse($item->inWHDate)->format('Y-m-d') : '' }}" aria-label="In warehouse date for {{ $item->CU }}">@else{{ $item->inWHDate }}@endif</td>
             <td>@if($canManage)<input form="{{ $inlineFormId }}" type="text" name="3rd_PartyInspection" class="form-control form-control-sm masterplan-inline-input" maxlength="50" value="{{ $item->{'3rd_PartyInspection'} ?? '' }}" aria-label="Third party inspection for {{ $item->CU }}">@else{{ $item->{'3rd_PartyInspection'} ?? '' }}@endif</td>
+            @if($canManage)
+            <td><input form="{{ $inlineFormId }}" type="date" name="qa_inspection_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->qa_inspection_date ? \Carbon\Carbon::parse($item->qa_inspection_date)->format('Y-m-d') : '' }}" aria-label="Inspection date for {{ $item->CU }}"></td>
+            <td><select form="{{ $inlineFormId }}" name="qa_status" class="form-select form-select-sm masterplan-inline-input" aria-label="QA status for {{ $item->CU }}">
+                <option value="not_approved" @selected(($item->qa_status ?? 'not_approved') === 'not_approved')>Not Approved</option>
+                <option value="approved" @selected(($item->qa_status ?? '') === 'approved')>Approved</option>
+            </select></td>
+            @endif
             <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="ShipDate2" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->ShipDate2 ? \Carbon\Carbon::parse($item->ShipDate2)->format('Y-m-d') : '' }}" aria-label="Ship date for {{ $item->CU }}">@else{{ $item->ShipDate2 }}@endif</td>
             <td>@if($canManage)<input form="{{ $inlineFormId }}" type="text" name="SoTK" class="form-control form-control-sm masterplan-inline-input" maxlength="50" value="{{ $item->SoTK ?? '' }}" aria-label="SoTK for {{ $item->CU }}">@else{{ $item->SoTK }}@endif</td>
             @endunless
@@ -917,20 +925,15 @@ $hideMidCols = $isAccountant;
             @endunless
             @endunless
             <td class="col-number">@if($canManage)<input form="{{ $inlineFormId }}" type="number" name="lt" class="form-control form-control-sm masterplan-inline-input" min="0" value="{{ $item->lt }}" aria-label="Lead time for {{ $item->CU }}">@else{{ $item->lt }}@endif</td>
-            <td class="col-date">{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}</td>
+            <td class="col-date">@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="FirstOPT" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}" aria-label="FirstOPT for {{ $item->CU }}">@else{{ $item->calc_FirstOPT ? $item->calc_FirstOPT->format('Y-m-d') : '' }}@endif</td>
             <td>{{ $item->calc_Finish_SEW ? $item->calc_Finish_SEW->format('Y-m-d') : '' }}</td>
             <td>{{$item->calc_EX_Fact ? $item->calc_EX_Fact->format('Y-m-d') : ''  }}</td>
             @if($canManage)
             <td><input form="{{ $inlineFormId }}" type="number" name="daily_target_qty" class="form-control form-control-sm masterplan-inline-input" min="0" value="{{ $item->daily_target_qty }}" aria-label="Daily target for {{ $item->CU }}"></td>
-            <td><input form="{{ $inlineFormId }}" type="date" name="qa_inspection_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->qa_inspection_date ? \Carbon\Carbon::parse($item->qa_inspection_date)->format('Y-m-d') : '' }}" aria-label="Inspection date for {{ $item->CU }}"></td>
-            <td><select form="{{ $inlineFormId }}" name="qa_status" class="form-select form-select-sm masterplan-inline-input" aria-label="QA status for {{ $item->CU }}">
-                <option value="not_approved" @selected(($item->qa_status ?? 'not_approved') === 'not_approved')>Not Approved</option>
-                <option value="approved" @selected(($item->qa_status ?? '') === 'approved')>Approved</option>
-            </select></td>
             <td><input form="{{ $inlineFormId }}" type="text" name="mps_notes" class="form-control form-control-sm masterplan-inline-input masterplan-inline-notes" maxlength="5000" value="{{ $item->mps_notes ?? '' }}" aria-label="Notes for {{ $item->CU }}"></td>
-            @elseif($canEditFabric && !$isPpic)
+            @elseif($canEditFabric)
             <td class="sticky-action sticky-action-edit {{ $canManage ? 'sticky-action-before-delete' : '' }}">
-                <a href="{{ route('masterplan.fabric.edit', $item->id) }}" class="btn btn-warning btn-sm">
+                <a href="{{ route('masterplan.warehouse.edit', $item->id) }}" class="btn btn-warning btn-sm">
                     <i class="bi bi-pencil-square"></i>
                 </a>
             </td>

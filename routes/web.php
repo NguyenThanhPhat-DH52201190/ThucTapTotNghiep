@@ -67,6 +67,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,ie,warehouse,ppic,prod,accountant,qa_qc')
         ->name('masterplan.view');
 
+    Route::post('/master-plan/{id}/toggle-red-highlight', [MasterPlanController::class, 'toggleRedHighlight'])
+        ->middleware('role:admin')
+        ->name('masterplan.highlight.toggle');
+
     Route::get('/master-plan/confirm-date', [MasterPlanController::class, 'confirmDate'])
         ->middleware('role:admin,ie,warehouse,ppic,prod,accountant,qa_qc')
         ->name('masterplan.confirm-date');

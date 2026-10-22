@@ -153,7 +153,9 @@ class MasterPlanController extends Controller
                         ? Carbon::parse($item->FirstOPT)
                         : null;
                 } else {
-                    $firstOPT = $this->calcExFact($previousFinish, 1, $holidays);
+                    $firstOPT = $item->FirstOPT
+                        ? Carbon::parse($item->FirstOPT)
+                        : $this->calcExFact($previousFinish, 1, $holidays);
                 }
 
                 if (!$firstOPT || !$item->lt) {
@@ -186,12 +188,9 @@ class MasterPlanController extends Controller
             }
         }
 
-        // Default behavior: hide only rows that were processed and computed to zero.
-        // QA/QC works from the complete Master Plan. The ship-balance filter is
-        // only a convenience for the planning views and must not hide MTP rows.
-        $shipBalanceOnly = $request->user()?->role === 'qa_qc'
-            ? 0
-            : (int) $request->input('ship_balance_only', 1);
+        // Hide rows that have been fully shipped by default for every role.
+        // Users can still show all rows with the ship balance toggle.
+        $shipBalanceOnly = (int) $request->input('ship_balance_only', 1);
         if ($shipBalanceOnly === 1) {
             $plan = $plan->filter(function ($item) {
                 if ($item->ExQty === null) {
@@ -241,6 +240,21 @@ class MasterPlanController extends Controller
         }
 
         return view('admin.masterplan.masterplan', compact('plan', 'lineOptions'));
+    }
+
+    public function toggleRedHighlight(Request $request, string $id)
+    {
+        abort_unless($request->user()?->role === 'admin', 403);
+
+        $plan = DB::table('mtp')->select('is_manually_highlighted')->where('id', $id)->first();
+        abort_unless($plan, 404);
+
+        DB::table('mtp')->where('id', $id)->update([
+            'is_manually_highlighted' => !(bool) $plan->is_manually_highlighted,
+            'updated_at' => now(),
+        ]);
+
+        return back();
     }
 
     public function confirmDate(Request $request)
@@ -609,7 +623,7 @@ class MasterPlanController extends Controller
 
         $dateFields = [
             'Confirm_date', 'planned_cut_start', 'planned_cut_end', 'planned_sew_start', 'planned_sew_end',
-            'Norm_date', 'fabric_issue_date', 'trims_issue_date', 'inWHDate', 'ShipDate2',
+            'Norm_date', 'fabric_issue_date', 'trims_issue_date', 'inWHDate', 'ShipDate2', 'FirstOPT',
             'qa_inspection_date',
         ];
         $rules = [
@@ -631,6 +645,11 @@ class MasterPlanController extends Controller
         foreach ($dateFields as $field) {
             $rules['rows.*.' . $field] = ['nullable', 'date'];
         }
+        $rules['rows.*.FirstOPT'] = ['nullable', 'date', function ($attribute, $value, $fail) {
+            if ($value && Carbon::parse($value)->isSunday()) {
+                $fail('FirstOPT cannot be on a Sunday. Please choose another date.');
+            }
+        }];
         $validated = $request->validate($rules);
         $rows = $validated['rows'];
         $ids = collect($rows)->pluck('id')->map(fn ($id) => (int) $id)->all();

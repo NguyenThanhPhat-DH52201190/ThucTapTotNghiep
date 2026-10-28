@@ -20,7 +20,7 @@
         <div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted">Current</div><strong class="fs-4">{{ number_format($currentTotal, 0) }}</strong></div></div></div>
         <div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted">Reserved</div><strong class="fs-4">{{ number_format($reservedTotal, 0) }}</strong></div></div></div>
         <div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted">Available</div><strong class="fs-4">{{ number_format($availableTotal, 0) }}</strong></div></div></div>
-        <div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted">Total value</div><strong class="fs-4">$ {{ number_format($valueTotal, 4) }}</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted">Total value</div><strong class="fs-4">$ {{ number_format($valueTotal, 2) }}</strong></div></div></div>
     </div>
     <div class="card border-0 shadow-sm"><div class="card-header bg-white"><h5 class="mb-0">Stock balances under {{ $materialCode }}</h5></div>
         <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0" style="min-width:1500px">
@@ -31,7 +31,7 @@
                         <td><code>{{ $item->old_code ?: '-' }}</code></td><td>{{ $item->material_name }}</td><td><span class="badge bg-info">{{ ucfirst($item->material_type ?: 'other') }}</span></td>
                         <td>{{ $item->warehouse_code ?: '-' }} / {{ $item->location_code ?: ($item->location_bin ?: '-') }}</td><td>{{ $item->custom_code ?: '-' }}</td><td>{{ $item->batch_no ?: '-' }}</td>
                         <td class="text-end text-nowrap">{{ number_format($item->current_qty, 0) }} {{ $item->unit }}</td><td class="text-end text-nowrap">{{ number_format($item->reserved_qty, 0) }}</td><td class="text-end text-nowrap fw-bold">{{ number_format($item->available_qty, 0) }}</td>
-                        <td class="text-end">{{ number_format($item->min_stock_level, 0) }}</td><td class="text-end">{{ number_format($item->reorder_point, 2) }}</td><td class="text-end">{{ number_format($item->unit_cost, 4) }}</td><td class="text-end fw-bold text-nowrap">$ {{ number_format($item->current_qty * $item->unit_cost, 4) }}</td>
+                        <td class="text-end">{{ number_format($item->min_stock_level, 0) }}</td><td class="text-end">{{ number_format($item->reorder_point, 2) }}</td><td class="text-end">{{ number_format($item->unit_cost, 4) }}</td><td class="text-end fw-bold text-nowrap">$ {{ number_format($item->current_qty * $item->unit_cost, 2) }}</td>
                         @if($canManage)<td class="text-nowrap"><button class="btn btn-sm btn-warning" onclick='editInventory(@json($item))' aria-label="Edit balance"><i class="bi bi-pencil"></i></button> <form method="POST" action="{{ route('admin.inventory.destroy', $item->id) }}" class="d-inline" onsubmit="return confirm('Delete this inventory balance?')">@csrf @method('DELETE')<button class="btn btn-sm btn-danger" aria-label="Delete balance"><i class="bi bi-trash"></i></button></form></td>@endif
                     </tr>
                 @endforeach

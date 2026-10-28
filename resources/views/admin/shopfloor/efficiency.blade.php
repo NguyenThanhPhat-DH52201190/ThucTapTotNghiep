@@ -70,7 +70,7 @@
                             <td>
                                 @if($r->avg_efficiency > 0)
                                     <span class="badge bg-{{ $r->avg_efficiency >= 80 ? 'success' : ($r->avg_efficiency >= 60 ? 'warning' : 'danger') }}">
-                                        {{ number_format($r->avg_efficiency, 1) }}%
+                                        {{ number_format($r->avg_efficiency, 2) }}%
                                     </span>
                                 @endif
                             </td>
@@ -90,7 +90,7 @@
                         <td class="text-danger">{{ $grandDefects }}</td>
                         <td>{{ $grandQty > 0 ? round(($grandDefects/$grandQty)*100,1) : 0 }}%</td>
                         <td>{{ $grandDowntime }}m</td>
-                        <td>{{ $effCount > 0 ? number_format($grandEff/$effCount, 1) : 0 }}%</td>
+                        <td>{{ $effCount > 0 ? number_format($grandEff/$effCount, 2) : 0 }}%</td>
                         <td></td>
                     </tr>
                 </tfoot>

@@ -99,9 +99,9 @@
                             <td>{{ $bom->customer }}</td>
                             <td><span class="badge bg-secondary">{{ $bom->version }}</span></td>
                             @if($canManage)
-                                <td>{{ number_format($bom->total_fabric_cost, 4) }}</td>
-                                <td>{{ number_format($bom->total_trim_cost, 4) }}</td>
-                                <td><strong>{{ number_format($bom->total_fabric_cost + $bom->total_trim_cost, 4) }}</strong></td>
+                                <td>{{ number_format($bom->total_fabric_cost, 2) }}</td>
+                                <td>{{ number_format($bom->total_trim_cost, 2) }}</td>
+                                <td><strong>{{ number_format($bom->total_fabric_cost + $bom->total_trim_cost, 2) }}</strong></td>
                             @endif
                             <td>
                                 @if($bom->status === 'active')

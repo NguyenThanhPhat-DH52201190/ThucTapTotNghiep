@@ -93,7 +93,7 @@
                         <td>{{ $item->roll_no ?: '-' }}</td>
                         <td>{{ $item->customs_material_code ?: '-' }}</td>
                         <td class="text-end">{{ $item->customs_unit_price !== null ? number_format((float) $item->customs_unit_price, 4) : '-' }}</td>
-                        <td class="text-end">{{ number_format((float) $item->quantity_received, 4) }}</td>
+                        <td class="text-end">{{ number_format((float) $item->quantity_received, 2) }}</td>
                     </tr>
                     @empty
                     <tr><td colspan="6" class="text-center text-muted py-4">No item details for this receipt.</td></tr>

@@ -56,23 +56,23 @@
                             <td class="fw-bold">{{ $a->style_no }}</td>
                             <td><small>{{ $a->customer }}</small></td>
                             <td>{{ number_format($a->total_qty) }}</td>
-                            <td class="text-end">$ {{ number_format($a->standard_total_cost, 4) }}</td>
-                            <td class="text-end">$ {{ number_format($a->actual_total_cost, 4) }}</td>
+                            <td class="text-end">$ {{ number_format($a->standard_total_cost, 2) }}</td>
+                            <td class="text-end">$ {{ number_format($a->actual_total_cost, 2) }}</td>
                             <td class="text-end text-{{ $varColor }} fw-bold">
-                                {{ $a->cost_variance >= 0 ? '+' : '' }}{{ number_format($a->cost_variance, 4) }}
+                                {{ $a->cost_variance >= 0 ? '+' : '' }}{{ number_format($a->cost_variance, 2) }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ $varColor }}">
-                                    {{ $a->variance_percent >= 0 ? '+' : '' }}{{ number_format($a->variance_percent, 1) }}%
+                                    {{ $a->variance_percent >= 0 ? '+' : '' }}{{ number_format($a->variance_percent, 2) }}%
                                 </span>
                             </td>
-                            <td class="text-end">$ {{ number_format($a->revenue_per_unit, 4) }}</td>
+                            <td class="text-end">$ {{ number_format($a->revenue_per_unit, 2) }}</td>
                             <td class="text-end fw-bold text-{{ $isProfitable ? 'success' : 'danger' }}">
-                                $ {{ number_format($a->total_profit, 4) }}
+                                $ {{ number_format($a->total_profit, 2) }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ $isProfitable ? ($a->profit_margin_percent >= 20 ? 'success' : 'warning') : 'danger' }}">
-                                    {{ number_format($a->profit_margin_percent, 1) }}%
+                                    {{ number_format($a->profit_margin_percent, 2) }}%
                                 </span>
                             </td>
                             <td><small>{{ $a->period }}</small></td>

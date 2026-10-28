@@ -18,7 +18,7 @@
             <div class="card border-0 shadow-sm bg-success text-white">
                 <div class="card-body">
                     <small>Total Revenue</small>
-                    <h4 class="mb-0">$ {{ number_format($summary->total_revenue, 4) }}</h4>
+                    <h4 class="mb-0">$ {{ number_format($summary->total_revenue, 2) }}</h4>
                 </div>
             </div>
         </div>
@@ -26,7 +26,7 @@
             <div class="card border-0 shadow-sm bg-danger text-white">
                 <div class="card-body">
                     <small>Total Actual Cost</small>
-                    <h4 class="mb-0">$ {{ number_format($summary->total_actual_cost, 4) }}</h4>
+                    <h4 class="mb-0">$ {{ number_format($summary->total_actual_cost, 2) }}</h4>
                 </div>
             </div>
         </div>
@@ -34,7 +34,7 @@
             <div class="card border-0 shadow-sm {{ $summary->total_profit >= 0 ? 'bg-primary' : 'bg-danger' }} text-white">
                 <div class="card-body">
                     <small>Total Profit</small>
-                    <h4 class="mb-0">$ {{ number_format($summary->total_profit, 4) }}</h4>
+                    <h4 class="mb-0">$ {{ number_format($summary->total_profit, 2) }}</h4>
                 </div>
             </div>
         </div>
@@ -42,7 +42,7 @@
             <div class="card border-0 shadow-sm bg-warning text-dark">
                 <div class="card-body">
                     <small>Avg Margin</small>
-                    <h4 class="mb-0">{{ number_format($summary->avg_margin, 1) }}%</h4>
+                    <h4 class="mb-0">{{ number_format($summary->avg_margin, 2) }}%</h4>
                     <small>Best: {{ $summary->best_style }} | Worst: {{ $summary->worst_style }}</small>
                 </div>
             </div>
@@ -75,19 +75,19 @@
                             <td class="fw-bold">{{ $r->style_no }}</td>
                             <td><small>{{ $r->customer }}</small></td>
                             <td class="text-end">{{ number_format($r->total_qty) }}</td>
-                            <td class="text-end">$ {{ number_format($r->revenue_per_unit, 4) }}</td>
-                            <td class="text-end">$ {{ number_format($r->actual_total_cost, 4) }}</td>
-                            <td class="text-end text-success">$ {{ number_format($r->total_revenue, 4) }}</td>
-                            <td class="text-end text-danger">$ {{ number_format($r->total_actual_cost, 4) }}</td>
+                            <td class="text-end">$ {{ number_format($r->revenue_per_unit, 2) }}</td>
+                            <td class="text-end">$ {{ number_format($r->actual_total_cost, 2) }}</td>
+                            <td class="text-end text-success">$ {{ number_format($r->total_revenue, 2) }}</td>
+                            <td class="text-end text-danger">$ {{ number_format($r->total_actual_cost, 2) }}</td>
                             <td class="text-end fw-bold {{ $r->total_profit >= 0 ? 'text-success' : 'text-danger' }}">
-                                $ {{ number_format($r->total_profit, 4) }}
+                                $ {{ number_format($r->total_profit, 2) }}
                             </td>
                             <td>
                                 @php
                                     $mc = $r->profit_margin_percent >= 20 ? 'success' : ($r->profit_margin_percent >= 0 ? 'warning' : 'danger');
                                 @endphp
                                 <span class="badge bg-{{ $mc }}">
-                                    {{ number_format($r->profit_margin_percent, 1) }}%
+                                    {{ number_format($r->profit_margin_percent, 2) }}%
                                 </span>
                             </td>
                         </tr>

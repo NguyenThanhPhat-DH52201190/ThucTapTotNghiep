@@ -41,24 +41,24 @@
                         <tr>
                             <td class="fw-bold">{{ $m->period }}</td>
                             <td>{{ $m->style_count }}</td>
-                            <td class="text-end text-success">$ {{ number_format($m->revenue, 4) }}</td>
-                            <td class="text-end">$ {{ number_format($m->standard_cost, 4) }}</td>
-                            <td class="text-end text-danger">$ {{ number_format($m->actual_cost, 4) }}</td>
+                            <td class="text-end text-success">$ {{ number_format($m->revenue, 2) }}</td>
+                            <td class="text-end">$ {{ number_format($m->standard_cost, 2) }}</td>
+                            <td class="text-end text-danger">$ {{ number_format($m->actual_cost, 2) }}</td>
                             <td class="text-end fw-bold {{ $m->profit >= 0 ? 'text-success' : 'text-danger' }}">
-                                $ {{ number_format($m->profit, 4) }}
+                                $ {{ number_format($m->profit, 2) }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ $m->avg_margin >= 20 ? 'success' : ($m->avg_margin >= 0 ? 'warning' : 'danger') }}">
-                                    {{ number_format($m->avg_margin, 1) }}%
+                                    {{ number_format($m->avg_margin, 2) }}%
                                 </span>
                             </td>
-                            <td class="text-end text-danger">$ {{ number_format($m->expenses, 4) }}</td>
+                            <td class="text-end text-danger">$ {{ number_format($m->expenses, 2) }}</td>
                             <td class="text-end fw-bold {{ $m->net_profit >= 0 ? 'text-success' : 'text-danger' }}">
-                                $ {{ number_format($m->net_profit, 4) }}
+                                $ {{ number_format($m->net_profit, 2) }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ $netMargin >= 10 ? 'success' : ($netMargin >= 0 ? 'warning' : 'danger') }}">
-                                    {{ number_format($netMargin, 1) }}%
+                                    {{ number_format($netMargin, 2) }}%
                                 </span>
                             </td>
                         </tr>
@@ -78,14 +78,14 @@
                     <tr>
                         <td>TOTAL</td>
                         <td>{{ $monthlyData->sum('style_count') }}</td>
-                        <td class="text-end text-success">$ {{ number_format($totRev, 4) }}</td>
-                        <td class="text-end">$ {{ number_format($monthlyData->sum('standard_cost'), 4) }}</td>
-                        <td class="text-end text-danger">$ {{ number_format($totCost, 4) }}</td>
-                        <td class="text-end {{ $totProfit >= 0 ? 'text-success' : 'text-danger' }}">$ {{ number_format($totProfit, 4) }}</td>
-                        <td>{{ $totRev > 0 ? number_format(($totProfit/$totRev)*100, 1) : 0 }}%</td>
-                        <td class="text-end text-danger">$ {{ number_format($totExp, 4) }}</td>
-                        <td class="text-end {{ $totNet >= 0 ? 'text-success' : 'text-danger' }}">$ {{ number_format($totNet, 4) }}</td>
-                        <td>{{ $totRev > 0 ? number_format(($totNet/$totRev)*100, 1) : 0 }}%</td>
+                        <td class="text-end text-success">$ {{ number_format($totRev, 2) }}</td>
+                        <td class="text-end">$ {{ number_format($monthlyData->sum('standard_cost'), 2) }}</td>
+                        <td class="text-end text-danger">$ {{ number_format($totCost, 2) }}</td>
+                        <td class="text-end {{ $totProfit >= 0 ? 'text-success' : 'text-danger' }}">$ {{ number_format($totProfit, 2) }}</td>
+                        <td>{{ $totRev > 0 ? number_format(($totProfit/$totRev)*100, 2) : 0 }}%</td>
+                        <td class="text-end text-danger">$ {{ number_format($totExp, 2) }}</td>
+                        <td class="text-end {{ $totNet >= 0 ? 'text-success' : 'text-danger' }}">$ {{ number_format($totNet, 2) }}</td>
+                        <td>{{ $totRev > 0 ? number_format(($totNet/$totRev)*100, 2) : 0 }}%</td>
                     </tr>
                 </tfoot>
                 @endif

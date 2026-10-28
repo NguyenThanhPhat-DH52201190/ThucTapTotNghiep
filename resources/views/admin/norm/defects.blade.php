@@ -22,7 +22,7 @@
 @forelse($history as $row)<tr>
     <td>{{ $row->occurred_on }}<div class="small text-muted">{{ $row->recorded_by ?? '—' }}<br>{{ $row->created_at }}</div></td>
     <td><strong>{{ $row->material_code }}</strong><div>{{ $row->material_name }}</div></td><td>{{ $row->material_color ?: '—' }} / {{ $row->material_size ?: '—' }}</td><td>{{ $row->unit }}</td>
-    <td>{{ rtrim(rtrim(number_format($row->defect_qty, 4), '0'), '.') }}</td><td>{{ rtrim(rtrim(number_format($row->replacement_qty, 4), '0'), '.') }}</td>
+    <td>{{ rtrim(rtrim(number_format($row->defect_qty, 2), '0'), '.') }}</td><td>{{ rtrim(rtrim(number_format($row->replacement_qty, 2), '0'), '.') }}</td>
     <td>{{ ['scrap' => 'Scrap', 'reuse' => 'Reuse', 'return_supplier' => 'Return to supplier'][$row->disposition] ?? $row->disposition }}</td><td style="white-space:pre-wrap;min-width:180px">{{ $row->reason }}</td>
     <td>@if($row->image_path)<a href="{{ route('admin.norm.defects.image', [$order->id, $row->id]) }}" target="_blank" rel="noopener"><img src="{{ route('admin.norm.defects.image', [$order->id, $row->id]) }}" alt="Defect evidence" style="width:70px;height:70px;object-fit:contain" loading="lazy"></a>@else — @endif</td>
 </tr>@empty<tr><td colspan="9" class="text-center text-muted">No material defects recorded.</td></tr>@endforelse

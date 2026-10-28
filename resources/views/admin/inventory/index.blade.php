@@ -83,7 +83,7 @@
                             <td class="text-end">{{ number_format($item->min_stock_level, 0) }}</td>
                             <td class="text-end">{{ number_format($item->reorder_point, 2) }}</td>
                             <td class="text-end text-nowrap">{{ number_format($item->unit_cost, 4) }}</td>
-                            <td class="text-end text-nowrap fw-bold">$ {{ number_format($item->total_value, 4) }}</td>
+                            <td class="text-end text-nowrap fw-bold">$ {{ number_format($item->total_value, 2) }}</td>
                             <td class="nowrap-cell">
                                 <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.inventory.code-details', ['materialCode' => $item->material_code]) }}"><i class="bi bi-list-ul me-1"></i>Details</a>
                             </td>

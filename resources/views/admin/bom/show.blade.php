@@ -63,11 +63,11 @@
                 @if($canManage)
                     <div class="col-md-3">
                         <label class="fw-semibold text-muted small">Total Fabric Cost</label>
-                        <p class="mb-0 fw-bold text-primary">$ {{ number_format($bom->total_fabric_cost, 4) }}</p>
+                        <p class="mb-0 fw-bold text-primary">$ {{ number_format($bom->total_fabric_cost, 2) }}</p>
                     </div>
                     <div class="col-md-3">
                         <label class="fw-semibold text-muted small">Total Trim Cost</label>
-                        <p class="mb-0 fw-bold text-success">$ {{ number_format($bom->total_trim_cost, 4) }}</p>
+                        <p class="mb-0 fw-bold text-success">$ {{ number_format($bom->total_trim_cost, 2) }}</p>
                     </div>
                 @endif
                 @if($bom->notes)
@@ -118,9 +118,9 @@
                             <td>{{ ($itemSizeNames[$item->id] ?? collect())->pluck('size_name')->implode(', ') ?: 'All' }}</td>
                             <td>{{ $item->width ?? '-' }}</td>
                             <td>{{ $item->unit }}</td>
-                            <td class="text-end">{{ number_format($item->consumption_rate, 4) }}</td>
-                            <td class="text-end">{{ $item->waste_percent ? number_format($item->waste_percent, 1) . '%' : '-' }}</td>
-                            <td class="text-end fw-bold">{{ number_format((float) $item->consumption_rate * (1 + (float) $item->waste_percent / 100), 4) }}</td>
+                            <td class="text-end">{{ number_format($item->consumption_rate, 2) }}</td>
+                            <td class="text-end">{{ $item->waste_percent ? number_format($item->waste_percent, 2) . '%' : '-' }}</td>
+                            <td class="text-end fw-bold">{{ number_format((float) $item->consumption_rate * (1 + (float) $item->waste_percent / 100), 2) }}</td>
                             <td><small>{{ $item->remark ?? '' }}</small></td>
                         </tr>
                     @endforeach

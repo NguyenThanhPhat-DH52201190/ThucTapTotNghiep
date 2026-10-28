@@ -111,7 +111,7 @@
 const vendorPrices = @json($vendorPrices);
 
 function money(value) {
-    return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' ' + document.getElementById('poCurrency').value;
+    return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + document.getElementById('poCurrency').value;
 }
 
 function updateRowTotal(row) {

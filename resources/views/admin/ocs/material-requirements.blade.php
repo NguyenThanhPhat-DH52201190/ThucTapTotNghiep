@@ -41,7 +41,7 @@
                             <td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
                             <td>{{ $row->material_color ?: '-' }} / {{ $row->material_size ?: '-' }}</td><td>{{ $row->unit }}</td>
                             <td class="text-end">{{ number_format($row->product_qty, 0) }}</td>
-                            <td class="text-end">{{ number_format($row->consumption_rate, 4) }}</td>
+                            <td class="text-end">{{ number_format($row->consumption_rate, 2) }}</td>
                             <td class="text-end">{{ number_format($row->waste_percent, 2) }}</td>
                             <td class="text-end fw-bold">{{ number_format($row->required_qty, 0) }}</td>
                             <td class="text-end">{{ number_format($row->on_hand_qty, 0) }}</td>

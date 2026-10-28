@@ -106,7 +106,7 @@
                             <td class="text-end">{{ number_format($item->received_qty, 2) }}</td>
                             <td class="text-end fw-semibold {{ (float) $item->quantity - (float) $item->received_qty < 0 ? 'text-danger' : '' }}">{{ number_format((float) $item->quantity - (float) $item->received_qty, 2) }}</td>
                             <td class="text-end">{{ number_format($item->unit_price, 4) }}</td>
-                            <td class="text-end fw-bold">{{ number_format((float) $item->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td>
+                            <td class="text-end fw-bold">{{ number_format((float) $item->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 2) }} {{ $po->currency ?? 'USD' }}</td>
                             <td><small>{{ $item->notes ?? '-' }}</small></td>
                             <td>
                                 @php $sc = match($item->status) { 'partial'=>'warning', 'received'=>'success', 'cancelled'=>'danger', default=>'secondary' } @endphp
@@ -115,13 +115,13 @@
                         </tr>
                     @endforeach
                     @foreach($surcharges as $surcharge)
-                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>-</td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format((float) $surcharge->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td><td>-</td><td>-</td></tr>
+                        <tr class="table-warning"><td><code>Surcharge</code></td><td><small>{{ $surcharge->description }}</small></td><td>-</td><td>{{ $surcharge->unit }}</td><td class="text-end">{{ number_format($surcharge->quantity, 2) }}</td><td class="text-end">-</td><td class="text-end">-</td><td class="text-end">{{ number_format($surcharge->unit_price, 4) }}</td><td class="text-end fw-bold">{{ number_format((float) $surcharge->total_price * (1 + (float) ($po->vat_percent ?? 0) / 100), 2) }} {{ $po->currency ?? 'USD' }}</td><td>-</td><td>-</td></tr>
                     @endforeach
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="8" class="text-end">TOTAL:</td>
-                        <td class="text-end text-primary">{{ number_format((float) $po->total_amount * (1 + (float) ($po->vat_percent ?? 0) / 100), 4) }} {{ $po->currency ?? 'USD' }}</td>
+                        <td class="text-end text-primary">{{ number_format((float) $po->total_amount * (1 + (float) ($po->vat_percent ?? 0) / 100), 2) }} {{ $po->currency ?? 'USD' }}</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>

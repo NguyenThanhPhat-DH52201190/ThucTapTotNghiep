@@ -36,18 +36,8 @@
 
         <div class="col-md-5 d-flex align-items-end gap-2 flex-wrap revenue-actions">
         <button type="submit" class="btn btn-dark revenue-action-btn">Apply</button>
-        <a href="{{ $isAdmin ? route('admin.revenue.index', ['month' => $month]) : route('revenue.view', ['month' => $month]) }}" class="btn btn-secondary revenue-action-btn">Back Revenue</a>
     </div>
 </form>
-
-<div class="mb-2 p-2 border rounded compact-line-panel">
-    <div class="compact-line-wrap">
-        <span class="fw-bold">Line</span>
-        <div class="line-badge line-badge-inline js-line-color" data-line-color="{{ $revenues->first()->LineColor ?? '#808080' }}">
-            {{ $line }}
-        </div>
-    </div>
-</div>
 
 @if($canManage)
 <div class="mb-4">
@@ -206,8 +196,8 @@
             <td>{{ $item->Distribution }}</td>
             <td>{{ $item->actualout }}</td>
             <td>{{ $item->cmp }}</td>
-            <td>{{ '$' . number_format(((float) $item->planout) * ((float) $item->cmp), 4) }}</td>
-            <td>{{ '$' . number_format(((float) $item->actualout) * ((float) $item->cmp), 4) }}</td>
+            <td>{{ '$' . number_format(((float) $item->planout) * ((float) $item->cmp), 2) }}</td>
+            <td>{{ '$' . number_format(((float) $item->actualout) * ((float) $item->cmp), 2) }}</td>
         </tr>
         @empty
         <tr>
@@ -221,8 +211,8 @@
             <td colspan="3" class="text-end">Total</td>
             <td>{{ $totalQty }}</td>
             <td></td>
-            <td>{{ '$' . number_format($totalPlanRevenue, 4) }}</td>
-            <td>{{ '$' . number_format($totalAmount, 4) }}</td>
+            <td>{{ '$' . number_format($totalPlanRevenue, 2) }}</td>
+            <td>{{ '$' . number_format($totalAmount, 2) }}</td>
         </tr>
     </tfoot>
     @endif
@@ -254,9 +244,9 @@
                     $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
                     $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
                     @endphp
-                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyPlanRevenue[$day] ?? 0, 4) }}</td>
+                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyPlanRevenue[$day] ?? 0, 2) }}</td>
                     @endforeach
-                    <td class="fw-bold">${{ number_format($totalPlanRevenue, 4) }}</td>
+                    <td class="fw-bold">${{ number_format($totalPlanRevenue, 2) }}</td>
                 </tr>
                 <tr>
                     <td class="fw-bold">Actual Revenue</td>
@@ -265,9 +255,9 @@
                     $dateKey = $month . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
                     $isSunday = \Carbon\Carbon::createFromFormat('Y-m-d', $dateKey)->isSunday();
                     @endphp
-                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyActualRevenue[$day] ?? 0, 4) }}</td>
+                    <td class="{{ $isSunday ? 'table-danger text-white' : '' }}">${{ number_format($dailyActualRevenue[$day] ?? 0, 2) }}</td>
                     @endforeach
-                    <td class="fw-bold">${{ number_format($totalAmount, 4) }}</td>
+                    <td class="fw-bold">${{ number_format($totalAmount, 2) }}</td>
                 </tr>
             </tbody>
         </table>

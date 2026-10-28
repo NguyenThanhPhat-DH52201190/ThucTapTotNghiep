@@ -26,7 +26,7 @@
         <div class="card-header bg-white"><h5 class="mb-0">FOB component history</h5></div>
         <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>CS</th><th>Style</th><th>Stage</th><th>Type</th><th class="text-end">Amount</th><th>Note</th><th></th></tr></thead><tbody>
             @forelse($components as $component)
-                <tr><td>{{ $component->CS }}</td><td>{{ $component->SNo }}</td><td>{{ ucfirst($component->cost_stage) }}</td><td>{{ strtoupper($component->cost_type) }}</td><td class="text-end">{{ number_format($component->amount, 4) }}</td><td>{{ $component->note }}</td><td class="text-end"><form method="POST" action="{{ route('admin.finance.fob-costs.delete', $component->id) }}" onsubmit="return confirm('Delete this component?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form></td></tr>
+                <tr><td>{{ $component->CS }}</td><td>{{ $component->SNo }}</td><td>{{ ucfirst($component->cost_stage) }}</td><td>{{ strtoupper($component->cost_type) }}</td><td class="text-end">{{ number_format($component->amount, 2) }}</td><td>{{ $component->note }}</td><td class="text-end"><form method="POST" action="{{ route('admin.finance.fob-costs.delete', $component->id) }}" onsubmit="return confirm('Delete this component?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form></td></tr>
             @empty
                 <tr><td colspan="7" class="text-center py-3 text-muted">No FOB cost components recorded.</td></tr>
             @endforelse

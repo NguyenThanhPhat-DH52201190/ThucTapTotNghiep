@@ -55,12 +55,12 @@
                             @php($sizeRate = old('items.'.$item->id.'.size_rates.'.$size->id, $item->size_rates[$size->id]->yield_value ?? $item->yield_value))
                             <td style="min-width:135px">
                                 <input type="number" name="items[{{ $item->id }}][size_rates][{{ $size->id }}]" value="{{ $sizeRate }}" min="0" max="99999999" step="0.0001" class="form-control form-control-sm text-end" data-size-yield data-size-qty="{{ $size->quantity }}" required aria-label="{{ $item->material_code }} norm for size {{ $size->size_name }}">
-                                <div class="small text-muted text-end mt-1">Need: <span data-size-need>{{ number_format((float) $sizeRate * (float) $size->quantity, 4) }}</span></div>
+                                <div class="small text-muted text-end mt-1">Need: <span data-size-need>{{ number_format((float) $sizeRate * (float) $size->quantity, 2) }}</span></div>
                             </td>
                         @endforeach
-                        <td class="text-end fw-semibold" data-weighted-average>{{ number_format($average, 4) }}</td>
+                        <td class="text-end fw-semibold" data-weighted-average>{{ number_format($average, 2) }}</td>
                         <td style="min-width:105px"><input type="number" name="items[{{ $item->id }}][waste_percent]" value="{{ $waste }}" min="0" max="100" step="0.01" class="form-control form-control-sm text-end" data-waste required aria-label="Development waste for {{ $item->material_code }}"></td>
-                        <td class="text-end fw-bold" data-total>{{ number_format($average * (1 + (float) $waste / 100), 4) }}</td><td class="text-nowrap" style="min-width:150px">{{ $item->remark ?: '-' }}</td>
+                        <td class="text-end fw-bold" data-total>{{ number_format($average * (1 + (float) $waste / 100), 2) }}</td><td class="text-nowrap" style="min-width:150px">{{ $item->remark ?: '-' }}</td>
                     </tr>
                 @empty<tr><td colspan="{{ 10 + $sizes->count() + ($isAdmin ? 1 : 0) }}" class="text-center text-muted py-4">This OCS has no BOM material rows.</td>@endforelse
                 </tbody>
@@ -132,7 +132,7 @@ document.querySelectorAll('[data-norm-row]').forEach(row => {
     const averageCell = row.querySelector('[data-weighted-average]');
     const totalCell = row.querySelector('[data-total]');
     const totalQty = rates.reduce((sum, input) => sum + Number(input.dataset.sizeQty || 0), 0);
-    const format = value => Number(value || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4});
+    const format = value => Number(value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     const recalculate = () => {
         let weightedNeed = 0;
         rates.forEach(input => {

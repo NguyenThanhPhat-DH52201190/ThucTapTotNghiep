@@ -51,7 +51,7 @@
         qty.max = limit;
         const factor = Number(row?.consumption_rate) * (1 + Number(row?.waste_percent) / 100);
         const required = factor > 0 ? Number(qty.value) / factor * Number(rate.value) * (1 + Number(waste.value) / 100) : 0;
-        document.getElementById('replacementPreview').textContent = replacement && required > 0 ? `New requirement: ${required.toFixed(4)} ${replacement.unit} (${replacement.internal_code}). Maximum original quantity: ${limit} ${row.unit}.` : 'Select materials and enter quantities to preview the replacement requirement.';
+        document.getElementById('replacementPreview').textContent = replacement && required > 0 ? `New requirement: ${required.toFixed(2)} ${replacement.unit} (${replacement.internal_code}). Maximum original quantity: ${limit} ${row.unit}.` : 'Select materials and enter quantities to preview the replacement requirement.';
     }
     source.addEventListener('change', refreshSource);
     [defect, qty, material, rate, waste].forEach(el => el.addEventListener('input', refresh));

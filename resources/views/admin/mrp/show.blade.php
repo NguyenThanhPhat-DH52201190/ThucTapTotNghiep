@@ -29,7 +29,7 @@
             <div class="row g-3">
                 <div class="col-md-3"><small class="text-muted d-block">Period</small><strong>{{ $mrp->period_from ?? 'N/A' }} → {{ $mrp->period_to ?? 'N/A' }}</strong></div>
                 <div class="col-md-2"><small class="text-muted d-block">Total Materials</small><strong>{{ $mrp->total_materials }}</strong></div>
-                <div class="col-md-2"><small class="text-muted d-block">Total Cost</small><strong class="text-primary">$ {{ number_format($mrp->total_cost, 4) }}</strong></div>
+                <div class="col-md-2"><small class="text-muted d-block">Total Cost</small><strong class="text-primary">$ {{ number_format($mrp->total_cost, 2) }}</strong></div>
                 <div class="col-md-2"><small class="text-muted d-block">Created</small><strong>{{ $mrp->created_at ? \Carbon\Carbon::parse($mrp->created_at)->format('d/m/Y') : '' }}</strong></div>
                 @if($mrp->notes)
                     <div class="col-12"><small class="text-muted d-block">Notes</small><p class="mb-0">{{ $mrp->notes }}</p></div>
@@ -107,7 +107,7 @@
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-white py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-boxes me-2"></i>Lot/Roll allocation proposal</h6></div>
         <div class="table-responsive"><table class="table table-sm mb-0"><thead class="table-light"><tr><th>Material ID</th><th>Color</th><th>Lot/Roll</th><th>Location</th><th class="text-end">Proposed qty</th></tr></thead><tbody>
-        @forelse($lotAllocations as $allocation)<tr><td>{{ $allocation->material_id }}</td><td>{{ $allocation->material_color ?? '-' }}</td><td>{{ $allocation->lot_roll_no ?? '-' }}</td><td>{{ $allocation->location ?? '-' }}</td><td class="text-end">{{ number_format($allocation->allocated_qty, 4) }}</td></tr>
+        @forelse($lotAllocations as $allocation)<tr><td>{{ $allocation->material_id }}</td><td>{{ $allocation->material_color ?? '-' }}</td><td>{{ $allocation->lot_roll_no ?? '-' }}</td><td>{{ $allocation->location ?? '-' }}</td><td class="text-end">{{ number_format($allocation->allocated_qty, 2) }}</td></tr>
         @empty<tr><td colspan="5" class="text-center py-3 text-muted">No on-hand lot is proposed; planned supply may come from open POs.</td></tr>@endforelse
         </tbody></table></div>
     </div>

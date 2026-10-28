@@ -29,9 +29,9 @@
                     <span class="border rounded bg-light px-3 py-2">Style: <strong>{{ $order->SNo }}</strong></span>
                     <span class="border rounded bg-success-subtle text-success-emphasis px-3 py-2">Product Qty: <strong>{{ number_format($order->Qty, 0) }}</strong></span>
                     @if(auth()->user()->role === 'admin')
-                        <span class="border rounded bg-light px-3 py-2">Fabric Value: <strong>$ {{ number_format((float) ($order->total_fabric_cost ?? 0), 4) }}</strong></span>
-                        <span class="border rounded bg-light px-3 py-2">Trim Value: <strong>$ {{ number_format((float) ($order->total_trim_cost ?? 0), 4) }}</strong></span>
-                        <span class="border rounded bg-warning-subtle text-warning-emphasis px-3 py-2">Total: <strong>$ {{ number_format((float) ($order->total_fabric_cost ?? 0) + (float) ($order->total_trim_cost ?? 0), 4) }}</strong></span>
+                        <span class="border rounded bg-light px-3 py-2">Fabric Value: <strong>$ {{ number_format((float) ($order->total_fabric_cost ?? 0), 2) }}</strong></span>
+                        <span class="border rounded bg-light px-3 py-2">Trim Value: <strong>$ {{ number_format((float) ($order->total_trim_cost ?? 0), 2) }}</strong></span>
+                        <span class="border rounded bg-warning-subtle text-warning-emphasis px-3 py-2">Total: <strong>$ {{ number_format((float) ($order->total_fabric_cost ?? 0) + (float) ($order->total_trim_cost ?? 0), 2) }}</strong></span>
                     @endif
                 </div>
             </div>
@@ -68,7 +68,7 @@
             <td class="po-column">@if($row->purchase_orders->isNotEmpty())<div class="po-list">@foreach($row->purchase_orders as $po)<a class="po-link" href="{{ route('admin.procurement.show', $po->id) }}" title="{{ ucfirst($po->status) }}">{{ $po->po_number }}</a>@endforeach</div>@else<span class="text-muted">-</span>@endif</td>
             <td><code>{{ $row->material_old_code ?: '-' }}</code></td><td>@include('admin.partials.material-image-trigger', ['imageLabel' => $row->material_name])</td><td><span class="badge bg-info">{{ ucfirst($row->material_type) }}</span></td>
             <td>{{ $row->material_color ?: '-' }} / {{ $row->material_size ?: '-' }}</td><td>{{ $row->unit }}</td>
-            <td class="text-end">{{ $row->replacement_id ? '?' : number_format($row->yield_plan ?? $row->consumption_rate, 4) }}
+            <td class="text-end">{{ $row->replacement_id ? '?' : number_format($row->yield_plan ?? $row->consumption_rate, 2) }}
                 @if(isset($row->confirmation_revision) && ((float) $row->yield_plan !== (float) $row->bom_yield_at_confirmation || (float) $row->waste_plan !== (float) $row->bom_waste_at_confirmation))<div class="small text-warning">BOM changed; review confirmed values</div>@endif
             </td>
             <td class="text-end">
@@ -78,7 +78,7 @@
                     <input type="hidden" form="normConfirmedForm" name="rows[{{ $loop->index }}][yield_plan]" value="{{ $row->yield_plan }}">
                     <input type="hidden" form="normConfirmedForm" name="rows[{{ $loop->index }}][waste_plan]" value="{{ $row->waste_plan }}">
                     <input type="number" form="normConfirmedForm" name="rows[{{ $loop->index }}][yield_confirmed]" value="{{ old('rows.'.$loop->index.'.yield_confirmed', $row->yield_confirmed) }}" min="0" max="99999999" step="0.0001" class="form-control text-end" placeholder="Use plan" aria-label="Yield confirmed for {{ $row->material_code }}">
-                @else {{ isset($row->yield_confirmed) ? number_format($row->yield_confirmed, 4) : '—' }} @endif
+                @else {{ isset($row->yield_confirmed) ? number_format($row->yield_confirmed, 2) : '—' }} @endif
             </td>
             <td class="text-end">
                 @if($editingNorm && !$row->replacement_id)

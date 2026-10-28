@@ -266,7 +266,7 @@ function calcTotal() {
         const price = parseFloat(row.querySelector('.price')?.value || 0);
         const total = qty * price;
         const totalInclVat = total * (1 + vatRate / 100);
-        row.querySelector('.row-total').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' ' + currency;
+        row.querySelector('.row-total').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + currency;
         row.querySelector('.row-exchange-rate').textContent = document.getElementById('exchangeRate')?.value || '-';
         totalQty += qty;
         totalAmt += total;
@@ -276,12 +276,12 @@ function calcTotal() {
         const price = parseFloat(row.querySelector('.surcharge-price')?.value || 0);
         const total = qty * price;
         const totalInclVat = total * (1 + vatRate / 100);
-        row.querySelector('.surcharge-total').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' ' + currency;
+        row.querySelector('.surcharge-total').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + currency;
         totalAmt += total;
     });
     document.getElementById('totalQty').textContent = totalQty.toFixed(2);
     const totalInclVat = totalAmt * (1 + vatRate / 100);
-    document.getElementById('totalAmount').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' ' + currency;
+    document.getElementById('totalAmount').textContent = totalInclVat.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + currency;
 }
 
 @php

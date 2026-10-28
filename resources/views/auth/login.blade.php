@@ -21,9 +21,4 @@
         <button class="btn btn-warning text-dark fw-semibold py-2" type="submit">Login</button>
     </form>
 
-    <p class="text-center text-secondary mt-4 mb-0">
-        No account yet?
-        <a class="link-primary fw-semibold text-decoration-none" href="{{ route('register') }}">Create one</a>
-    </p>
-
 @endsection

@@ -28,7 +28,7 @@ class SubconContractController extends Controller
             })
             // Keep the source plan id distinct from subcon_contracts.mtp_id. The
             // left-joined table's mtp_id is NULL for rows not saved yet.
-            ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date',
+            ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date', 'mtp.SoTK as masterplan_sotk',
                 'ocs.SNo as style', 'ocs.ONum as po', 'ocs.Customer as customer', 'ocs.Color as garment_color',
                 'subcon_contracts.*')
             ->orderBy('mtp.Line')->orderBy('mtp.CU')->get();
@@ -51,7 +51,7 @@ class SubconContractController extends Controller
             'out_date' => 'nullable|date', 'truck_plate' => 'nullable|string|max:50', 'in_date' => 'nullable|date',
             'truck_plate_2' => 'nullable|string|max:50', 'invoice_no' => 'nullable|string|max:191', 'invoice_date' => 'nullable|date',
             'actual_received_qty' => 'nullable|numeric|min:0', 'payment_date' => 'nullable|date',
-            'export_bank_account' => 'nullable|string|max:191', 'customs_declaration_date' => 'nullable|date', 'notes' => 'nullable|string|max:5000',
+            'customs_declaration_date' => 'nullable|date', 'notes' => 'nullable|string|max:5000',
         ]);
         $existing = DB::table('subcon_contracts')->where('mtp_id', $mtpId)->exists();
         $data['updated_at'] = now();

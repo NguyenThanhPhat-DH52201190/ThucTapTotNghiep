@@ -15,44 +15,55 @@
 </form>
 
 @php
-$fields = [
-    'code' => ['Code', 'text'], 'unit_price' => ['Unit Price', 'number'],
-    'contract_no' => ['Số Hợp Đồng', 'text'], 'contract_date' => ['Ngày Hợp Đồng', 'date'],
-    'appendix_no' => ['Số Phụ lục HĐ', 'text'], 'appendix_date' => ['Ngày phụ lục', 'date'],
-    'tax_code' => ['MST', 'text'], 'customs_doc_no' => ['Số KLKX', 'text'], 'customs_doc_date' => ['Ngày KLKX', 'date'],
-    'form_12' => ['Mẫu 12', 'text'], 'form_12_approved_date' => ['Ngày duyệt mẫu 12', 'date'],
-    'form_18a' => ['Mẫu 18A', 'text'], 'form_18a_received_date' => ['Ngày nhận mẫu 18A', 'date'],
-    'out_date' => ['OUT DATE', 'date'], 'truck_plate' => ['TRUCK PLATE', 'text'], 'in_date' => ['IN DATE', 'date'],
-    'truck_plate_2' => ['TRUCK PLATE2', 'text'], 'invoice_no' => ['Invoice', 'text'], 'invoice_date' => ['INV Date', 'date'],
-    'actual_received_qty' => ['SL THUC NHAN', 'number'], 'payment_date' => ['NGAY THANH TOAN', 'date'],
-    'export_bank_account' => ['STK XUAT', 'text'], 'customs_declaration_date' => ['NGAY TK', 'date'], 'notes' => ['Ghi chú', 'text'],
+$columns = [
+    ['label' => 'Code', 'field' => 'code', 'input' => 'text'],
+    ['label' => 'CS#', 'source' => 'CU'], ['label' => 'Subcon / Line', 'source' => 'Line'],
+    ['label' => 'Style', 'source' => 'style'], ['label' => 'PO#', 'source' => 'po'],
+    ['label' => 'Qty', 'source' => 'Qty_dis'], ['label' => 'Unit Price', 'field' => 'unit_price', 'input' => 'number'],
+    ['label' => 'Total Amount', 'total' => true],
+    ['label' => 'Số Hợp Đồng', 'field' => 'contract_no', 'input' => 'text'], ['label' => 'Ngày Hợp Đồng', 'field' => 'contract_date', 'input' => 'date'],
+    ['label' => 'Số Phụ lục HĐ', 'field' => 'appendix_no', 'input' => 'text'], ['label' => 'Ngày phụ lục', 'field' => 'appendix_date', 'input' => 'date'],
+    ['label' => 'MST', 'field' => 'tax_code', 'input' => 'text'], ['label' => 'Số KLKX', 'field' => 'customs_doc_no', 'input' => 'text'],
+    ['label' => 'Ngày KLKX', 'field' => 'customs_doc_date', 'input' => 'date'], ['label' => 'Mẫu 12', 'field' => 'form_12', 'input' => 'text'],
+    ['label' => 'Ngày duyệt mẫu 12', 'field' => 'form_12_approved_date', 'input' => 'date'], ['label' => 'Mẫu 18A', 'field' => 'form_18a', 'input' => 'text'],
+    ['label' => 'Ngày nhận mẫu 18A', 'field' => 'form_18a_received_date', 'input' => 'date'], ['label' => 'OUT DATE', 'field' => 'out_date', 'input' => 'date'],
+    ['label' => 'TRUCK PLATE', 'field' => 'truck_plate', 'input' => 'text'], ['label' => 'IN DATE', 'field' => 'in_date', 'input' => 'date'],
+    ['label' => 'TRUCK PLATE2', 'field' => 'truck_plate_2', 'input' => 'text'], ['label' => 'Invoice', 'field' => 'invoice_no', 'input' => 'text'],
+    ['label' => 'INV Date', 'field' => 'invoice_date', 'input' => 'date'], ['label' => 'SL THUC NHAN', 'field' => 'actual_received_qty', 'input' => 'number'],
+    ['label' => 'NGAY THANH TOAN', 'field' => 'payment_date', 'input' => 'date'], ['label' => 'STK XUAT', 'source' => 'masterplan_sotk'],
+    ['label' => 'NGAY TK', 'field' => 'customs_declaration_date', 'input' => 'date'], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
+    ['label' => 'Color', 'source' => 'garment_color'], ['label' => 'Customer', 'source' => 'customer'],
+    ['label' => 'Action', 'action' => true],
 ];
-$columnWidths = [85, 155, 120, 125, 130, 180, 75, 135, 175, 100, 125, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245, 155, 95];
+$columnWidths = [100, 100, 155, 120, 125, 75, 125, 155, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245, 130, 180, 95];
 @endphp
 
 <div class="table-responsive border rounded bg-white subcon-contract-scroll">
 <table class="table table-sm table-bordered table-hover align-middle mb-0 subcon-contract-table">
     <colgroup>@foreach($columnWidths as $width)<col style="width: {{ $width }}px">@endforeach</colgroup>
-    <thead class="table-light"><tr>
-        <th>CU</th><th>Subcon / Line</th><th>Style</th><th>PO#</th><th>Color</th><th>Customer</th><th>Qty</th><th>Norm Date</th><th>Material Out Date</th>
-        @foreach($fields as [$label, $type])<th>{{ $label }}</th>@endforeach
-        <th>Total Amount</th><th>Action</th>
-    </tr></thead>
+    <thead class="table-light"><tr>@foreach($columns as $column)<th>{{ $column['label'] }}</th>@endforeach</tr></thead>
     <tbody>
     @forelse($contracts as $row)
         <tr>
-            <td class="fw-semibold text-nowrap">{{ $row->CU }}<form id="contract-{{ $row->masterplan_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', ['mtpId' => $row->masterplan_id]) }}">@csrf @method('PUT')</form></td><td class="text-nowrap">{{ $row->Line }}</td><td>{{ $row->style }}</td><td>{{ $row->po }}</td><td>{{ $row->garment_color }}</td><td>{{ $row->customer }}</td>
-            <td class="text-end">{{ $row->Qty_dis }}</td>
-            <td class="text-nowrap">{{ $row->Norm_date ? \Carbon\Carbon::parse($row->Norm_date)->format('d/m/Y') : '' }}</td>
-            <td class="text-nowrap">{{ $row->fabric_issue_date ? \Carbon\Carbon::parse($row->fabric_issue_date)->format('d/m/Y') : '' }}</td>
-                @foreach($fields as $name => [$label, $type])
-                    <td><input form="contract-{{ $row->masterplan_id }}" class="form-control form-control-sm" type="{{ $type }}" name="{{ $name }}" value="{{ old($name, $row->$name ?? '') }}" @if($type === 'number') step="0.01" min="0" @endif aria-label="{{ $label }} for {{ $row->CU }}"></td>
-                @endforeach
-                <td class="text-end text-nowrap">{{ number_format((float) ($row->Qty_dis ?? 0) * (float) ($row->unit_price ?? 0), 2) }}</td>
-                <td><button form="contract-{{ $row->masterplan_id }}" class="btn btn-sm btn-primary">Save</button></td>
+            @foreach($columns as $column)
+                <td @if(isset($column['total'])) class="text-end text-nowrap" @elseif(isset($column['date']) || isset($column['source'])) class="text-nowrap" @endif>
+                    @if($loop->first)<form id="contract-{{ $row->masterplan_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', ['mtpId' => $row->masterplan_id]) }}">@csrf @method('PUT')</form>@endif
+                    @if(isset($column['action']))
+                        <button form="contract-{{ $row->masterplan_id }}" class="btn btn-sm btn-primary">Save</button>
+                    @elseif(isset($column['total']))
+                        {{ number_format((float) ($row->Qty_dis ?? 0) * (float) ($row->unit_price ?? 0), 2) }}
+                    @elseif(isset($column['field']))
+                        <input form="contract-{{ $row->masterplan_id }}" class="form-control form-control-sm" type="{{ $column['input'] }}" name="{{ $column['field'] }}" value="{{ old($column['field'], $row->{$column['field']} ?? '') }}" @if($column['input'] === 'number') step="0.01" min="0" @endif aria-label="{{ $column['label'] }} for {{ $row->CU }}">
+                    @elseif(isset($column['date']))
+                        {{ $row->{$column['source']} ? \Carbon\Carbon::parse($row->{$column['source']})->format('d/m/Y') : '' }}
+                    @else
+                        {{ $row->{$column['source']} ?? '' }}
+                    @endif
+                </td>
+            @endforeach
         </tr>
     @empty
-        <tr><td colspan="{{ 11 + count($fields) }}" class="text-center text-muted py-4">No Subcon CU found.</td></tr>
+        <tr><td colspan="{{ count($columns) }}" class="text-center text-muted py-4">No Subcon CU found.</td></tr>
     @endforelse
     </tbody>
 </table>
@@ -66,7 +77,6 @@ $columnWidths = [85, 155, 120, 125, 130, 180, 75, 135, 175, 100, 125, 175, 155, 
     .subcon-contract-table td { overflow: hidden; text-overflow: ellipsis; }
     .subcon-contract-table td input { width: 100%; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
     .subcon-contract-table td input[type=date] { min-width: 0; }
-    .subcon-contract-table td input[name=notes] { min-width: 0; }
     .subcon-contract-scrollbar { position: fixed; z-index: 1040; left: 240px; right: 0; bottom: 0; height: 18px; overflow-x: auto; overflow-y: hidden; background: #f1f3f5; border-top: 1px solid #adb5bd; }
     .subcon-contract-scrollbar-inner { height: 1px; }
     @media (max-width: 991.98px) { .subcon-contract-scrollbar { left: 0; } }

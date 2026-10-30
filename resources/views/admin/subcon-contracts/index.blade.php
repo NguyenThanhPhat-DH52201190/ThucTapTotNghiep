@@ -41,15 +41,15 @@ $columnWidths = [85, 155, 120, 125, 130, 180, 75, 135, 175, 100, 125, 175, 155, 
     <tbody>
     @forelse($contracts as $row)
         <tr>
-            <td class="fw-semibold text-nowrap">{{ $row->CU }}<form id="contract-{{ $row->mtp_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', ['mtpId' => $row->mtp_id]) }}">@csrf @method('PUT')</form></td><td class="text-nowrap">{{ $row->Line }}</td><td>{{ $row->style }}</td><td>{{ $row->po }}</td><td>{{ $row->garment_color }}</td><td>{{ $row->customer }}</td>
+            <td class="fw-semibold text-nowrap">{{ $row->CU }}<form id="contract-{{ $row->masterplan_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', ['mtpId' => $row->masterplan_id]) }}">@csrf @method('PUT')</form></td><td class="text-nowrap">{{ $row->Line }}</td><td>{{ $row->style }}</td><td>{{ $row->po }}</td><td>{{ $row->garment_color }}</td><td>{{ $row->customer }}</td>
             <td class="text-end">{{ $row->Qty_dis }}</td>
             <td class="text-nowrap">{{ $row->Norm_date ? \Carbon\Carbon::parse($row->Norm_date)->format('d/m/Y') : '' }}</td>
             <td class="text-nowrap">{{ $row->fabric_issue_date ? \Carbon\Carbon::parse($row->fabric_issue_date)->format('d/m/Y') : '' }}</td>
                 @foreach($fields as $name => [$label, $type])
-                    <td><input form="contract-{{ $row->mtp_id }}" class="form-control form-control-sm" type="{{ $type }}" name="{{ $name }}" value="{{ old($name, $row->$name ?? '') }}" @if($type === 'number') step="0.01" min="0" @endif aria-label="{{ $label }} for {{ $row->CU }}"></td>
+                    <td><input form="contract-{{ $row->masterplan_id }}" class="form-control form-control-sm" type="{{ $type }}" name="{{ $name }}" value="{{ old($name, $row->$name ?? '') }}" @if($type === 'number') step="0.01" min="0" @endif aria-label="{{ $label }} for {{ $row->CU }}"></td>
                 @endforeach
                 <td class="text-end text-nowrap">{{ number_format((float) ($row->Qty_dis ?? 0) * (float) ($row->unit_price ?? 0), 2) }}</td>
-                <td><button form="contract-{{ $row->mtp_id }}" class="btn btn-sm btn-primary">Save</button></td>
+                <td><button form="contract-{{ $row->masterplan_id }}" class="btn btn-sm btn-primary">Save</button></td>
         </tr>
     @empty
         <tr><td colspan="{{ 11 + count($fields) }}" class="text-center text-muted py-4">No Subcon CU found.</td></tr>

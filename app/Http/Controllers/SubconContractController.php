@@ -26,7 +26,9 @@ class SubconContractController extends Controller
                         ->orWhere('ocs.Customer', 'like', "%{$search}%");
                 });
             })
-            ->select('mtp.id as mtp_id', 'mtp.CU', 'mtp.Line', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date',
+            // Keep the source plan id distinct from subcon_contracts.mtp_id. The
+            // left-joined table's mtp_id is NULL for rows not saved yet.
+            ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date',
                 'ocs.SNo as style', 'ocs.ONum as po', 'ocs.Customer as customer', 'ocs.Color as garment_color',
                 'subcon_contracts.*')
             ->orderBy('mtp.Line')->orderBy('mtp.CU')->get();

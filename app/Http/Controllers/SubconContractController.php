@@ -28,7 +28,7 @@ class SubconContractController extends Controller
             })
             // Keep the source plan id distinct from subcon_contracts.mtp_id. The
             // left-joined table's mtp_id is NULL for rows not saved yet.
-            ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date', 'mtp.SoTK as masterplan_sotk',
+            ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.LineColor as line_color', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date', 'mtp.SoTK as masterplan_sotk',
                 'ocs.SNo as style', 'ocs.ONum as po', 'ocs.Customer as customer', 'ocs.Color as garment_color',
                 'subcon_contracts.*')
             ->orderBy('mtp.Line')->orderBy('mtp.CU')->get();

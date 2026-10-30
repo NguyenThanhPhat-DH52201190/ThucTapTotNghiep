@@ -46,7 +46,7 @@ $groupedContracts = $contracts->groupBy('Line');
       @foreach($lineContracts as $row)
         <tr>
             @foreach($columns as $column)
-                <td @if(isset($column['total'])) class="text-end text-nowrap" @elseif(isset($column['date']) || isset($column['source'])) class="text-nowrap" @endif>
+                    <td @if(isset($column['total'])) class="text-end text-nowrap" @elseif(isset($column['source']) && $column['source'] === 'Line') class="text-nowrap line-color-cell" data-line-color="{{ $row->line_color ?? '#808080' }}" @elseif(isset($column['date']) || isset($column['source'])) class="text-nowrap" @endif>
                     @if($loop->first)<form id="contract-{{ $row->masterplan_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', ['mtpId' => $row->masterplan_id]) }}">@csrf @method('PUT')</form>@endif
                     @if(isset($column['action']))
                         <button form="contract-{{ $row->masterplan_id }}" class="btn btn-sm btn-primary">Save</button>
@@ -85,6 +85,7 @@ $groupedContracts = $contracts->groupBy('Line');
     .subcon-contract-table td { overflow: hidden; text-overflow: ellipsis; }
     .subcon-contract-table td input { width: 100%; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
     .subcon-contract-table td input[type=date] { min-width: 0; }
+    .subcon-contract-table .line-color-cell { text-align: center; color: #fff; font-weight: 500; border-radius: 4px; }
     .subcon-contract-scrollbar { position: fixed; z-index: 1040; left: 240px; right: 0; bottom: 0; height: 18px; overflow-x: auto; overflow-y: hidden; background: #f1f3f5; border-top: 1px solid #adb5bd; }
     .subcon-contract-scrollbar-inner { height: 1px; }
     @media (max-width: 991.98px) { .subcon-contract-scrollbar { left: 0; } }
@@ -116,6 +117,9 @@ $groupedContracts = $contracts->groupBy('Line');
         new ResizeObserver(syncWidth).observe(tableScroll);
         new ResizeObserver(syncWidth).observe(tableScroll.querySelector('table'));
         window.addEventListener('resize', syncWidth);
+        document.querySelectorAll('.line-color-cell').forEach((cell) => {
+            cell.style.backgroundColor = cell.dataset.lineColor || '#808080';
+        });
         syncWidth();
     })();
 </script>

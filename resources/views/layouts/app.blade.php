@@ -151,6 +151,10 @@
                     Development Norms
                 </a>
 
+                <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.*') ? 'active' : '' }}">
+                    <i class="bi bi-file-earmark-text"></i> Subcon Contract
+                </a>
+
                 <a href="{{ route('admin.masterplan.index') }}"
                     class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-people"></i>
@@ -241,6 +245,9 @@
             <a href="{{ route('admin.development-norms.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.development-norms.*') ? 'active' : '' }}">
                 <i class="bi bi-rulers"></i>
                 Development Norms
+            </a>
+            <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text"></i> Subcon Contract
             </a>
             <a class="d-flex justify-content-between align-items-center gap-2 mb-1 {{ request()->routeIs('admin.norm.*') ? 'active' : '' }}"
                 data-bs-toggle="collapse" href="#ppicNormMenu" role="button" aria-expanded="{{ request()->routeIs('admin.norm.*') ? 'true' : 'false' }}" aria-controls="ppicNormMenu">
@@ -342,6 +349,8 @@
                         $moduleBack = ['route' => 'admin.masterplan.index', 'label' => 'Master Plan'];
                     } elseif (request()->routeIs('admin.development-norms.*') && !request()->routeIs('admin.development-norms.index')) {
                         $moduleBack = ['route' => 'admin.development-norms.index', 'label' => 'Development Norms'];
+                    } elseif (request()->routeIs('admin.subcon-contracts.*') && !request()->routeIs('admin.subcon-contracts.index')) {
+                        $moduleBack = ['route' => 'admin.subcon-contracts.index', 'label' => 'Subcon Contract'];
                     } elseif (request()->routeIs('admin.norm.*') && !request()->routeIs('admin.norm.materials')) {
                         $moduleBack = ['route' => 'admin.norm.materials', 'label' => 'NORM Materials'];
                     } elseif (request()->routeIs('masterplan.fabric.*')) {

@@ -41,7 +41,7 @@ $columnWidths = [85, 155, 120, 125, 130, 180, 75, 135, 175, 100, 125, 175, 155, 
     <tbody>
     @forelse($contracts as $row)
         <tr>
-            <td class="fw-semibold text-nowrap">{{ $row->CU }}<form id="contract-{{ $row->mtp_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', $row->mtp_id) }}">@csrf @method('PUT')</form></td><td class="text-nowrap">{{ $row->Line }}</td><td>{{ $row->style }}</td><td>{{ $row->po }}</td><td>{{ $row->garment_color }}</td><td>{{ $row->customer }}</td>
+            <td class="fw-semibold text-nowrap">{{ $row->CU }}<form id="contract-{{ $row->mtp_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', ['mtpId' => $row->mtp_id]) }}">@csrf @method('PUT')</form></td><td class="text-nowrap">{{ $row->Line }}</td><td>{{ $row->style }}</td><td>{{ $row->po }}</td><td>{{ $row->garment_color }}</td><td>{{ $row->customer }}</td>
             <td class="text-end">{{ $row->Qty_dis }}</td>
             <td class="text-nowrap">{{ $row->Norm_date ? \Carbon\Carbon::parse($row->Norm_date)->format('d/m/Y') : '' }}</td>
             <td class="text-nowrap">{{ $row->fabric_issue_date ? \Carbon\Carbon::parse($row->fabric_issue_date)->format('d/m/Y') : '' }}</td>

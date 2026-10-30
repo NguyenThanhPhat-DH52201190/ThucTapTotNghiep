@@ -135,9 +135,9 @@ class MasterDataController extends Controller
                     ->orWhere('material_vendors.vendor_item_code', 'like', '%'.$mappingSearch.'%')
                     ->orWhere('material_vendors.supplier_description', 'like', '%'.$mappingSearch.'%')
                     ->orWhere('material_vendors.supplier_color_code', 'like', '%'.$mappingSearch.'%')
-                    ->orWhereRaw('CAST(material_vendors.unit_price AS TEXT) LIKE ?', ['%'.$mappingSearch.'%'])
-                    ->orWhereRaw('CAST(material_vendors.lead_time_days AS TEXT) LIKE ?', ['%'.$mappingSearch.'%'])
-                    ->orWhereRaw('CAST(material_vendors.is_default_vendor AS TEXT) LIKE ?', ['%'.$mappingSearch.'%'])))
+                    ->orWhereRaw('CAST(material_vendors.unit_price AS CHAR) LIKE ?', ['%'.$mappingSearch.'%'])
+                    ->orWhereRaw('CAST(material_vendors.lead_time_days AS CHAR) LIKE ?', ['%'.$mappingSearch.'%'])
+                    ->orWhereRaw('CAST(material_vendors.is_default_vendor AS CHAR) LIKE ?', ['%'.$mappingSearch.'%'])))
             ->orderBy('suppliers.code', $mappingSort)->orderByDesc('material_vendors.is_default_vendor')->orderBy('materials.internal_code')->orderBy('material_vendors.id')
             ->paginate(20, ['*'], 'mapping_page')->withQueryString()->fragment('materialMappings');
         $categories = DB::table('material_categories')->orderBy('name')->get();

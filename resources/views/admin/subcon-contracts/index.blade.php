@@ -34,6 +34,7 @@ $columns = [
     ['label' => 'Action', 'action' => true],
 ];
 $columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245, 95];
+$groupedContracts = $contracts->groupBy('Line');
 @endphp
 
 <div class="table-responsive border rounded bg-white subcon-contract-scroll">
@@ -41,7 +42,8 @@ $columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130,
     <colgroup>@foreach($columnWidths as $width)<col style="width: {{ $width }}px">@endforeach</colgroup>
     <thead class="table-light"><tr>@foreach($columns as $column)<th>{{ $column['label'] }}</th>@endforeach</tr></thead>
     <tbody>
-    @forelse($contracts as $row)
+    @forelse($groupedContracts as $line => $lineContracts)
+      @foreach($lineContracts as $row)
         <tr>
             @foreach($columns as $column)
                 <td @if(isset($column['total'])) class="text-end text-nowrap" @elseif(isset($column['date']) || isset($column['source'])) class="text-nowrap" @endif>
@@ -59,6 +61,14 @@ $columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130,
                     @endif
                 </td>
             @endforeach
+        </tr>
+      @endforeach
+        <tr class="table-secondary fw-bold">
+            <td colspan="5" class="text-end">Total Line {{ $line }}:</td>
+            <td class="text-end">{{ $lineContracts->sum('Qty_dis') }}</td>
+            <td></td>
+            <td class="text-end">{{ number_format($lineContracts->sum(fn ($item) => (float) ($item->Qty_dis ?? 0) * (float) ($item->unit_price ?? 0)), 2) }}</td>
+            <td colspan="{{ count($columns) - 8 }}"></td>
         </tr>
     @empty
         <tr><td colspan="{{ count($columns) }}" class="text-center text-muted py-4">No Subcon CU found.</td></tr>

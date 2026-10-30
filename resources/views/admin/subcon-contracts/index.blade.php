@@ -31,12 +31,22 @@ $columns = [
     ['label' => 'INV Date', 'field' => 'invoice_date', 'input' => 'date'], ['label' => 'SL THUC NHAN', 'field' => 'actual_received_qty', 'input' => 'number'],
     ['label' => 'NGAY THANH TOAN', 'field' => 'payment_date', 'input' => 'date'], ['label' => 'STK XUAT', 'source' => 'masterplan_sotk'],
     ['label' => 'NGAY TK', 'field' => 'customs_declaration_date', 'input' => 'date'], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
-    ['label' => 'Action', 'action' => true],
 ];
-$columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245, 95];
+$columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245];
+$role = auth()->user()->role;
+$editableFields = match ($role) {
+    'admin' => null,
+    'ppic' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes'],
+    'ie' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'notes'],
+    'accountant' => ['payment_date', 'notes'],
+    default => ['notes'],
+};
 $groupedContracts = $contracts->groupBy('Line');
 @endphp
 
+<form method="POST" action="{{ route('admin.subcon-contracts.update-all', request()->only('line', 'search')) }}">
+@csrf @method('PUT')
+<div class="d-flex justify-content-end mb-2"><button class="btn btn-primary"><i class="bi bi-save me-1"></i>Save All</button></div>
 <div class="table-responsive border rounded bg-white subcon-contract-scroll">
 <table class="table table-sm table-bordered table-hover align-middle mb-0 subcon-contract-table">
     <colgroup>@foreach($columnWidths as $width)<col style="width: {{ $width }}px">@endforeach</colgroup>
@@ -47,13 +57,14 @@ $groupedContracts = $contracts->groupBy('Line');
         <tr>
             @foreach($columns as $column)
                     <td @if(isset($column['total'])) class="text-end text-nowrap" @elseif(isset($column['source']) && $column['source'] === 'Line') class="text-nowrap line-color-cell" data-line-color="{{ $row->line_color ?? '#808080' }}" @elseif(isset($column['date']) || isset($column['source'])) class="text-nowrap" @endif>
-                    @if($loop->first)<form id="contract-{{ $row->masterplan_id }}" method="POST" action="{{ route('admin.subcon-contracts.update', ['mtpId' => $row->masterplan_id]) }}">@csrf @method('PUT')</form>@endif
-                    @if(isset($column['action']))
-                        <button form="contract-{{ $row->masterplan_id }}" class="btn btn-sm btn-primary">Save</button>
-                    @elseif(isset($column['total']))
+                    @if(isset($column['total']))
                         {{ number_format((float) ($row->Qty_dis ?? 0) * (float) ($row->unit_price ?? 0), 2) }}
                     @elseif(isset($column['field']))
-                        <input form="contract-{{ $row->masterplan_id }}" class="form-control form-control-sm" type="{{ $column['input'] }}" name="{{ $column['field'] }}" value="{{ old($column['field'], $row->{$column['field']} ?? '') }}" @if($column['input'] === 'number') step="0.01" min="0" @endif aria-label="{{ $column['label'] }} for {{ $row->CU }}">
+                        @if($editableFields === null || in_array($column['field'], $editableFields, true))
+                            <input class="form-control form-control-sm" type="{{ $column['input'] }}" name="contracts[{{ $row->masterplan_id }}][{{ $column['field'] }}]" value="{{ old('contracts.'.$row->masterplan_id.'.'.$column['field'], $row->{$column['field']} ?? '') }}" @if($column['input'] === 'number') step="0.01" min="0" @endif aria-label="{{ $column['label'] }} for {{ $row->CU }}">
+                        @else
+                            {{ $row->{$column['field']} ?? '' }}
+                        @endif
                     @elseif(isset($column['date']))
                         {{ $row->{$column['source']} ? \Carbon\Carbon::parse($row->{$column['source']})->format('d/m/Y') : '' }}
                     @else
@@ -76,6 +87,8 @@ $groupedContracts = $contracts->groupBy('Line');
     </tbody>
 </table>
 </div>
+<div class="d-flex justify-content-end mt-2"><button class="btn btn-primary"><i class="bi bi-save me-1"></i>Save All</button></div>
+</form>
 <div class="subcon-contract-scrollbar" aria-label="Cuộn ngang bảng Subcon Contract">
     <div class="subcon-contract-scrollbar-inner"></div>
 </div>

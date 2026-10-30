@@ -38,7 +38,7 @@ class ModuleAccessMiddleware
             'inventory' => ['warehouse'],
             'stock-records' => ['warehouse', 'ppic'],
             'finance' => ['accountant'],
-            'subcon-contracts' => ['ppic', 'accountant'],
+            'subcon-contracts' => ['ppic', 'accountant', 'ie'],
             'revenue' => ['prod'],
         ];
 

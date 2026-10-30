@@ -167,8 +167,9 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('admin')->name('admin.')->middleware('module.access')->group(function () {
 
-        Route::get('subcon-contracts', [SubconContractController::class, 'index'])->middleware('role:admin,ppic,accountant')->name('subcon-contracts.index');
-        Route::put('subcon-contracts/{mtpId}', [SubconContractController::class, 'update'])->middleware('role:admin,ppic,accountant')->name('subcon-contracts.update');
+        Route::get('subcon-contracts', [SubconContractController::class, 'index'])->middleware('role:admin,ppic,accountant,ie')->name('subcon-contracts.index');
+        Route::put('subcon-contracts/{mtpId}', [SubconContractController::class, 'update'])->middleware('role:admin,ppic,accountant,ie')->name('subcon-contracts.update');
+        Route::put('subcon-contracts', [SubconContractController::class, 'updateAll'])->middleware('role:admin,ppic,accountant,ie')->name('subcon-contracts.update-all');
 
         Route::get('users', [UserManagementController::class, 'index'])->middleware('role:admin')->name('users.index');
         Route::post('users', [UserManagementController::class, 'store'])->middleware('role:admin')->name('users.store');

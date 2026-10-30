@@ -30,7 +30,7 @@ $fields = [
 $columnWidths = [85, 155, 120, 125, 130, 180, 75, 135, 175, 100, 125, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245, 155, 95];
 @endphp
 
-<div class="table-responsive border rounded bg-white">
+<div class="table-responsive border rounded bg-white subcon-contract-scroll">
 <table class="table table-sm table-bordered table-hover align-middle mb-0 subcon-contract-table">
     <colgroup>@foreach($columnWidths as $width)<col style="width: {{ $width }}px">@endforeach</colgroup>
     <thead class="table-light"><tr>
@@ -57,6 +57,9 @@ $columnWidths = [85, 155, 120, 125, 130, 180, 75, 135, 175, 100, 125, 175, 155, 
     </tbody>
 </table>
 </div>
+<div class="subcon-contract-scrollbar" aria-label="Cuộn ngang bảng Subcon Contract">
+    <div class="subcon-contract-scrollbar-inner"></div>
+</div>
 <style>
     .subcon-contract-table { table-layout: fixed; width: max-content; min-width: 100%; }
     .subcon-contract-table th { position: sticky; top: 0; z-index: 1; white-space: normal !important; word-break: keep-all; overflow-wrap: normal; line-height: 1.2; vertical-align: middle; }
@@ -64,5 +67,38 @@ $columnWidths = [85, 155, 120, 125, 130, 180, 75, 135, 175, 100, 125, 175, 155, 
     .subcon-contract-table td input { width: 100%; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
     .subcon-contract-table td input[type=date] { min-width: 0; }
     .subcon-contract-table td input[name=notes] { min-width: 0; }
+    .subcon-contract-scrollbar { position: fixed; z-index: 1040; left: 240px; right: 0; bottom: 0; height: 18px; overflow-x: auto; overflow-y: hidden; background: #f1f3f5; border-top: 1px solid #adb5bd; }
+    .subcon-contract-scrollbar-inner { height: 1px; }
+    @media (max-width: 991.98px) { .subcon-contract-scrollbar { left: 0; } }
 </style>
+<script>
+    (() => {
+        const tableScroll = document.querySelector('.subcon-contract-scroll');
+        const fixedScroll = document.querySelector('.subcon-contract-scrollbar');
+        const fixedInner = document.querySelector('.subcon-contract-scrollbar-inner');
+        if (!tableScroll || !fixedScroll || !fixedInner) return;
+
+        let syncing = false;
+        const syncWidth = () => {
+            fixedInner.style.width = `${tableScroll.scrollWidth}px`;
+            fixedScroll.scrollLeft = tableScroll.scrollLeft;
+        };
+        tableScroll.addEventListener('scroll', () => {
+            if (syncing) return;
+            syncing = true;
+            fixedScroll.scrollLeft = tableScroll.scrollLeft;
+            syncing = false;
+        });
+        fixedScroll.addEventListener('scroll', () => {
+            if (syncing) return;
+            syncing = true;
+            tableScroll.scrollLeft = fixedScroll.scrollLeft;
+            syncing = false;
+        });
+        new ResizeObserver(syncWidth).observe(tableScroll);
+        new ResizeObserver(syncWidth).observe(tableScroll.querySelector('table'));
+        window.addEventListener('resize', syncWidth);
+        syncWidth();
+    })();
+</script>
 @endsection

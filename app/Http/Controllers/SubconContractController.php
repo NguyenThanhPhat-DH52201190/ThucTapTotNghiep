@@ -42,7 +42,7 @@ class SubconContractController extends Controller
         abort_unless($plan && DB::table('colors')->where('name', $plan->Line)->where('cate', 'Subcon')->where('is_active', 1)->exists(), 404);
 
         $data = $request->validate([
-            'code' => 'nullable|string|max:100', 'unit_price' => 'nullable|numeric|min:0|max:9999999999999.99',
+            'unit_price' => 'nullable|numeric|min:0|max:9999999999999.99',
             'contract_no' => 'nullable|string|max:191', 'contract_date' => 'nullable|date',
             'appendix_no' => 'nullable|string|max:191', 'appendix_date' => 'nullable|date', 'tax_code' => 'nullable|string|max:50',
             'customs_doc_no' => 'nullable|string|max:191', 'customs_doc_date' => 'nullable|date',

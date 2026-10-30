@@ -16,9 +16,8 @@
 
 @php
 $columns = [
-    ['label' => 'Code', 'field' => 'code', 'input' => 'text'],
-    ['label' => 'CS#', 'source' => 'CU'], ['label' => 'Subcon / Line', 'source' => 'Line'],
-    ['label' => 'Style', 'source' => 'style'], ['label' => 'PO#', 'source' => 'po'],
+    ['label' => 'Subcon / Line', 'source' => 'Line'], ['label' => 'CS#', 'source' => 'CU'],
+    ['label' => 'Style', 'source' => 'style'], ['label' => 'PO#', 'source' => 'po'], ['label' => 'Customer', 'source' => 'customer'],
     ['label' => 'Qty', 'source' => 'Qty_dis'], ['label' => 'Unit Price', 'field' => 'unit_price', 'input' => 'number'],
     ['label' => 'Total Amount', 'total' => true],
     ['label' => 'Số Hợp Đồng', 'field' => 'contract_no', 'input' => 'text'], ['label' => 'Ngày Hợp Đồng', 'field' => 'contract_date', 'input' => 'date'],
@@ -32,10 +31,9 @@ $columns = [
     ['label' => 'INV Date', 'field' => 'invoice_date', 'input' => 'date'], ['label' => 'SL THUC NHAN', 'field' => 'actual_received_qty', 'input' => 'number'],
     ['label' => 'NGAY THANH TOAN', 'field' => 'payment_date', 'input' => 'date'], ['label' => 'STK XUAT', 'source' => 'masterplan_sotk'],
     ['label' => 'NGAY TK', 'field' => 'customs_declaration_date', 'input' => 'date'], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
-    ['label' => 'Color', 'source' => 'garment_color'], ['label' => 'Customer', 'source' => 'customer'],
     ['label' => 'Action', 'action' => true],
 ];
-$columnWidths = [100, 100, 155, 120, 125, 75, 125, 155, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245, 130, 180, 95];
+$columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245, 95];
 @endphp
 
 <div class="table-responsive border rounded bg-white subcon-contract-scroll">

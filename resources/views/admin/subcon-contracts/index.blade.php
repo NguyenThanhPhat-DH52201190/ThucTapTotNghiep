@@ -22,7 +22,7 @@ $columns = [
     ['label' => 'Total Amount', 'total' => true],
     ['label' => 'Số Hợp Đồng', 'field' => 'contract_no', 'input' => 'text'], ['label' => 'Ngày Hợp Đồng', 'field' => 'contract_date', 'input' => 'date'],
     ['label' => 'Số Phụ lục HĐ', 'field' => 'appendix_no', 'input' => 'text'], ['label' => 'Ngày phụ lục', 'field' => 'appendix_date', 'input' => 'date'],
-    ['label' => 'MST', 'field' => 'tax_code', 'input' => 'text'], ['label' => 'Số KLKX', 'field' => 'customs_doc_no', 'input' => 'text'],
+    ['label' => 'MST', 'field' => 'tax_code', 'input' => 'text'], ['label' => 'Công đoạn gia công', 'field' => 'processing_stage', 'input' => 'text'], ['label' => 'Số KLKX', 'field' => 'customs_doc_no', 'input' => 'text'],
     ['label' => 'Ngày KLKX', 'field' => 'customs_doc_date', 'input' => 'date'], ['label' => 'Mẫu 12', 'field' => 'form_12', 'input' => 'text'],
     ['label' => 'Ngày duyệt mẫu 12', 'field' => 'form_12_approved_date', 'input' => 'date'], ['label' => 'Mẫu 18A', 'field' => 'form_18a', 'input' => 'text'],
     ['label' => 'Ngày nhận mẫu 18A', 'field' => 'form_18a_received_date', 'input' => 'date'], ['label' => 'OUT DATE', 'field' => 'out_date', 'input' => 'date'],
@@ -32,31 +32,41 @@ $columns = [
     ['label' => 'NGAY THANH TOAN', 'field' => 'payment_date', 'input' => 'date'], ['label' => 'STK XUAT', 'source' => 'masterplan_sotk'],
     ['label' => 'NGAY TK', 'field' => 'customs_declaration_date', 'input' => 'date'], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
 ];
-$columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245];
+$columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 155, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245];
 $role = auth()->user()->role;
+$canEdit = in_array($role, ['admin', 'ie', 'ppic', 'accountant'], true);
 $editableFields = match ($role) {
     'admin' => null,
-    'ppic' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes'],
-    'ie' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'notes'],
-    'accountant' => ['payment_date', 'notes'],
-    default => ['notes'],
+    'ppic' => ['processing_stage'],
+    'ie' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'customs_declaration_date', 'notes'],
+    'accountant' => ['payment_date'],
+    default => [],
 };
 $groupedContracts = $contracts->groupBy('Line');
 @endphp
 
+@if($canEdit)
 <form method="POST" action="{{ route('admin.subcon-contracts.update-all', request()->only('line', 'search')) }}">
 @csrf @method('PUT')
 <div class="d-flex justify-content-end mb-2"><button class="btn btn-primary"><i class="bi bi-save me-1"></i>Save All</button></div>
+@endif
 <div class="table-responsive border rounded bg-white subcon-contract-scroll">
 <table class="table table-sm table-bordered table-hover align-middle mb-0 subcon-contract-table">
     <colgroup>@foreach($columnWidths as $width)<col style="width: {{ $width }}px">@endforeach</colgroup>
-    <thead class="table-light"><tr>@foreach($columns as $column)<th>{{ $column['label'] }}</th>@endforeach</tr></thead>
+    <thead class="table-light"><tr>@foreach($columns as $column)<th class="{{ $loop->index < 8 ? 'subcon-sticky-col subcon-sticky-' . ($loop->index + 1) : '' }}">{{ $column['label'] }}</th>@endforeach</tr></thead>
     <tbody>
     @forelse($groupedContracts as $line => $lineContracts)
       @foreach($lineContracts as $row)
         <tr>
             @foreach($columns as $column)
-                    <td @if(isset($column['total'])) class="text-end text-nowrap" @elseif(isset($column['source']) && $column['source'] === 'Line') class="text-nowrap line-color-cell" data-line-color="{{ $row->line_color ?? '#808080' }}" @elseif(isset($column['date']) || isset($column['source'])) class="text-nowrap" @endif>
+                    @php
+                        $cellClasses = [];
+                        if ($loop->index < 8) $cellClasses[] = 'subcon-sticky-col subcon-sticky-' . ($loop->index + 1);
+                        if (isset($column['total'])) $cellClasses[] = 'text-end text-nowrap';
+                        if (isset($column['source']) && $column['source'] === 'Line') $cellClasses[] = 'text-nowrap line-color-cell';
+                        elseif (isset($column['date']) || isset($column['source'])) $cellClasses[] = 'text-nowrap';
+                    @endphp
+                    <td class="{{ implode(' ', $cellClasses) }}" @if(isset($column['source']) && $column['source'] === 'Line') data-line-color="{{ $row->line_color ?? '#808080' }}" @endif>
                     @if(isset($column['total']))
                         {{ number_format((float) ($row->Qty_dis ?? 0) * (float) ($row->unit_price ?? 0), 2) }}
                     @elseif(isset($column['field']))
@@ -87,18 +97,46 @@ $groupedContracts = $contracts->groupBy('Line');
     </tbody>
 </table>
 </div>
+@if($canEdit)
 <div class="d-flex justify-content-end mt-2"><button class="btn btn-primary"><i class="bi bi-save me-1"></i>Save All</button></div>
 </form>
+@endif
 <div class="subcon-contract-scrollbar" aria-label="Cuộn ngang bảng Subcon Contract">
     <div class="subcon-contract-scrollbar-inner"></div>
 </div>
 <style>
-    .subcon-contract-table { table-layout: fixed; width: max-content; min-width: 100%; }
-    .subcon-contract-table th { position: sticky; top: 0; z-index: 1; white-space: normal !important; word-break: keep-all; overflow-wrap: normal; line-height: 1.2; vertical-align: middle; }
+    .subcon-contract-scroll { position: relative; overflow-x: auto !important; overflow-y: auto !important; width: 100%; max-width: 100%; max-height: calc(100vh - 220px); isolation: isolate; }
+    .subcon-contract-table {
+        table-layout: fixed;
+        width: max-content;
+        min-width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        --subcon-sticky-1: 155px;
+        --subcon-sticky-2: 100px;
+        --subcon-sticky-3: 120px;
+        --subcon-sticky-4: 125px;
+        --subcon-sticky-5: 180px;
+        --subcon-sticky-6: 75px;
+        --subcon-sticky-7: 125px;
+    }
+    .subcon-contract-table th { position: sticky; top: 0; z-index: 20; background: #f8f9fa; white-space: normal !important; word-break: keep-all; overflow-wrap: normal; line-height: 1.2; vertical-align: middle; }
     .subcon-contract-table td { overflow: hidden; text-overflow: ellipsis; }
     .subcon-contract-table td input { width: 100%; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
     .subcon-contract-table td input[type=date] { min-width: 0; }
     .subcon-contract-table .line-color-cell { text-align: center; color: #fff; font-weight: 500; border-radius: 4px; }
+    .subcon-contract-table th.subcon-sticky-col,
+    .subcon-contract-table td.subcon-sticky-col { position: sticky !important; }
+    .subcon-contract-table td.subcon-sticky-col { z-index: 3; background-color: #fff; }
+    .subcon-contract-table th.subcon-sticky-col { z-index: 30; background-color: #f8f9fa; }
+    .subcon-contract-table .subcon-sticky-1 { left: 0; }
+    .subcon-contract-table .subcon-sticky-2 { left: var(--subcon-sticky-1); }
+    .subcon-contract-table .subcon-sticky-3 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2)); }
+    .subcon-contract-table .subcon-sticky-4 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2) + var(--subcon-sticky-3)); }
+    .subcon-contract-table .subcon-sticky-5 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2) + var(--subcon-sticky-3) + var(--subcon-sticky-4)); }
+    .subcon-contract-table .subcon-sticky-6 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2) + var(--subcon-sticky-3) + var(--subcon-sticky-4) + var(--subcon-sticky-5)); }
+    .subcon-contract-table .subcon-sticky-7 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2) + var(--subcon-sticky-3) + var(--subcon-sticky-4) + var(--subcon-sticky-5) + var(--subcon-sticky-6)); }
+    .subcon-contract-table .subcon-sticky-8 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2) + var(--subcon-sticky-3) + var(--subcon-sticky-4) + var(--subcon-sticky-5) + var(--subcon-sticky-6) + var(--subcon-sticky-7)); box-shadow: 2px 0 0 rgba(0, 0, 0, .12); }
     .subcon-contract-scrollbar { position: fixed; z-index: 1040; left: 240px; right: 0; bottom: 0; height: 18px; overflow-x: auto; overflow-y: hidden; background: #f1f3f5; border-top: 1px solid #adb5bd; }
     .subcon-contract-scrollbar-inner { height: 1px; }
     @media (max-width: 991.98px) { .subcon-contract-scrollbar { left: 0; } }

@@ -8,10 +8,14 @@ use Illuminate\Support\Facades\Validator;
 
 class SubconContractController extends Controller
 {
-    private const PPIC_EDITABLE_FIELDS = ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes'];
-    private const IE_EDITABLE_FIELDS = ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'notes'];
-    private const ACCOUNTANT_EDITABLE_FIELDS = ['payment_date', 'notes'];
-    private const LIMITED_EDITABLE_FIELDS = ['notes'];
+    private const PPIC_EDITABLE_FIELDS = ['processing_stage'];
+    private const ACCOUNTANT_EDITABLE_FIELDS = ['payment_date'];
+    private const IE_EDITABLE_FIELDS = [
+        'unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage',
+        'customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date',
+        'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty',
+        'customs_declaration_date', 'notes',
+    ];
 
     public function index(Request $request)
     {
@@ -44,6 +48,8 @@ class SubconContractController extends Controller
 
     public function update(Request $request, int $mtpId)
     {
+        $this->authorizeEditing($request);
+
         $plan = DB::table('mtp')->where('id', $mtpId)->first();
         abort_unless($plan && DB::table('colors')->where('name', $plan->Line)->where('cate', 'Subcon')->where('is_active', 1)->exists(), 404);
 
@@ -51,6 +57,7 @@ class SubconContractController extends Controller
             'unit_price' => 'nullable|numeric|min:0|max:9999999999999.99',
             'contract_no' => 'nullable|string|max:191', 'contract_date' => 'nullable|date',
             'appendix_no' => 'nullable|string|max:191', 'appendix_date' => 'nullable|date', 'tax_code' => 'nullable|string|max:50',
+            'processing_stage' => 'nullable|string|max:191',
             'customs_doc_no' => 'nullable|string|max:191', 'customs_doc_date' => 'nullable|date',
             'form_12' => 'nullable|string|max:191', 'form_12_approved_date' => 'nullable|date',
             'form_18a' => 'nullable|string|max:191', 'form_18a_received_date' => 'nullable|date',
@@ -71,10 +78,13 @@ class SubconContractController extends Controller
 
     public function updateAll(Request $request)
     {
+        $this->authorizeEditing($request);
+
         $rows = $request->validate(['contracts' => 'required|array', 'contracts.*' => 'required|array'])['contracts'];
         $rules = [
             'unit_price' => 'nullable|numeric|min:0|max:9999999999999.99', 'contract_no' => 'nullable|string|max:191', 'contract_date' => 'nullable|date',
             'appendix_no' => 'nullable|string|max:191', 'appendix_date' => 'nullable|date', 'tax_code' => 'nullable|string|max:50',
+            'processing_stage' => 'nullable|string|max:191',
             'customs_doc_no' => 'nullable|string|max:191', 'customs_doc_date' => 'nullable|date', 'form_12' => 'nullable|string|max:191',
             'form_12_approved_date' => 'nullable|date', 'form_18a' => 'nullable|string|max:191', 'form_18a_received_date' => 'nullable|date',
             'out_date' => 'nullable|date', 'truck_plate' => 'nullable|string|max:50', 'in_date' => 'nullable|date',
@@ -109,9 +119,14 @@ class SubconContractController extends Controller
             'ppic' => self::PPIC_EDITABLE_FIELDS,
             'ie' => self::IE_EDITABLE_FIELDS,
             'accountant' => self::ACCOUNTANT_EDITABLE_FIELDS,
-            default => self::LIMITED_EDITABLE_FIELDS,
+            default => [],
         };
 
         return $fields === null ? $rules : array_intersect_key($rules, array_flip($fields));
+    }
+
+    private function authorizeEditing(Request $request): void
+    {
+        abort_unless(in_array($request->user()->role, ['admin', 'ie', 'ppic', 'accountant'], true), 403);
     }
 }

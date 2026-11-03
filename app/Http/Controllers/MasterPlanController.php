@@ -72,6 +72,7 @@ class MasterPlanController extends Controller
                 DB::raw(\App\Services\CustomerStyleService::imageSql('ocs', 'SNo').' as ocs_image_path'),
                 'ocs.SNo as Style',
                 'ocs.ONum as PO',
+                'ocs.Customer as Customer',
                 'ocs.Qty as Order_Qty',
                 'ocs.CMT as CMT',
                 'ocs.status as order_status',
@@ -153,9 +154,7 @@ class MasterPlanController extends Controller
                         ? Carbon::parse($item->FirstOPT)
                         : null;
                 } else {
-                    $firstOPT = $item->FirstOPT
-                        ? Carbon::parse($item->FirstOPT)
-                        : $this->calcExFact($previousFinish, 1, $holidays);
+                    $firstOPT = $this->calcExFact($previousFinish, 1, $holidays);
                 }
 
                 if (!$firstOPT || !$item->lt) {
@@ -1199,13 +1198,13 @@ class MasterPlanController extends Controller
         }
 
         $holidaySet = $this->normalizeHolidaySet($holidays);
-        // LT is added to FirstOPT; Sundays and holidays in that interval extend the finish date.
-        $totalDays = $baseDays;
+        // FirstOPT is day 1 of LT; Sundays and holidays after it extend the finish date.
+        $totalDays = $baseDays - 1;
 
         while (true) {
             $end = $start->copy()->addDays($totalDays);
             $extra = $this->countNonWorkingDays($start, $end, $holidaySet, false);
-            $newTotalDays = $baseDays + $extra;
+            $newTotalDays = ($baseDays - 1) + $extra;
 
             if ($newTotalDays === $totalDays) {
                 return $end;

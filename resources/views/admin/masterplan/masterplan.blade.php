@@ -707,10 +707,14 @@ $hideMidCols = $isAccountant;
             <th scope="col" class="col-line sticky-col sticky-2">Line</th>
             <th scope="col" class="col-style sticky-col sticky-3">Style</th>
             <th scope="col" class="col-po sticky-col sticky-4">PO</th>
+            <th scope="col">Customer</th>
             <th scope="col" class="col-qty">Order_Qty</th>
             <th scope="col" class="col-qty col-gap-right sticky-col sticky-5">Qty_dis</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-6">Require_date</th>
             <th scope="col" class="col-date col-date-sticky sticky-col sticky-7">Confirm_date</th>
+            @unless($hideMidCols)
+            <th scope="col" class="col-date">Norm_date</th>
+            @endunless
             @unless($isPpic)
             <th scope="col" class="col-status">MPS Status</th>
             @endunless
@@ -770,7 +774,7 @@ $hideMidCols = $isAccountant;
             return strtoupper((string) ($item->LineCate ?? 'SUBCON')) !== 'GSV';
         })->sum('Qty_dis');
         $actionCols = $canEditFabric ? 1 : 0;
-        $tableColspan = $canManage ? 28 : ($isPpic ? 26 : 20 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hidePpicExecShipCols ? 2 : 0));
+        $tableColspan = ($canManage ? 28 : ($isPpic ? 26 : 20 + $actionCols - ($hidePpicCols ? 6 : 0) - ($hidePpicExecShipCols ? 2 : 0))) + 1 + ($hideMidCols ? 0 : 1);
         @endphp
 
         @foreach($grouped as $line => $items)
@@ -836,6 +840,7 @@ $hideMidCols = $isAccountant;
             </td>
             <td class="col-style sticky-col sticky-3">{{ $item->Style }}</td>
             <td class="col-po sticky-col sticky-4">{{ $item->PO }}</td>
+            <td>{{ $item->Customer ?? '' }}</td>
             <td class="col-qty">{{ $item->Order_Qty }}</td>
             <td class="col-qty col-gap-right sticky-col sticky-5">
                 @if($canManage)<input form="{{ $inlineFormId }}" type="number" name="Qty_dis" class="form-control form-control-sm masterplan-inline-input" min="0" value="{{ $item->Qty_dis }}" aria-label="Distributed quantity for {{ $item->CU }}">
@@ -846,6 +851,9 @@ $hideMidCols = $isAccountant;
                 @if($canManage)<input form="{{ $inlineFormId }}" type="date" name="Confirm_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->Confirm_date ? \Carbon\Carbon::parse($item->Confirm_date)->format('Y-m-d') : '' }}" aria-label="Confirm date for {{ $item->CU }}">
                 @else{{ $item->Confirm_date ?? '' }}@endif
             </td>
+            @unless($hideMidCols)
+            <td>@if($canManage)<input form="{{ $inlineFormId }}" type="date" name="Norm_date" class="form-control form-control-sm masterplan-inline-input" value="{{ $item->Norm_date ? \Carbon\Carbon::parse($item->Norm_date)->format('Y-m-d') : '' }}" aria-label="Norm date for {{ $item->CU }}">@else{{ $item->Norm_date ?? '' }}@endif</td>
+            @endunless
             @unless($isPpic)
             <td class="col-status">
                 @if($canManage)
@@ -1002,7 +1010,7 @@ $hideMidCols = $isAccountant;
         @endif
         @else
         <tr>
-            <td colspan="{{ $canManage ? 33 : ($isPpic ? 27 : 25 + (($canEditFabric ? 1 : 0) + ($canManage ? 2 : 0)) - ($hidePpicCols ? 6 : 0) - ($hideMidCols ? 1 : 0)) }}" class="text-center">No data</td>
+            <td colspan="{{ ($canManage ? 28 : ($isPpic ? 26 : 20 + ($canEditFabric ? 1 : 0) - ($hidePpicCols ? 6 : 0) - ($hidePpicExecShipCols ? 2 : 0))) + 1 + ($hideMidCols ? 0 : 1) }}" class="text-center">No data</td>
         </tr>
         @endif
     </tbody>

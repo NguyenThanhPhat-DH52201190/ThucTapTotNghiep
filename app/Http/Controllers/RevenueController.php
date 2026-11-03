@@ -113,12 +113,13 @@ class RevenueController extends Controller
         }
 
         $holidaySet = $this->normalizeHolidaySet($holidays);
-        $totalDays = $baseDays;
+        // FirstOPT is day 1 of LT; Sundays and holidays after it extend the finish date.
+        $totalDays = $baseDays - 1;
 
         while (true) {
             $end = $start->copy()->addDays($totalDays);
             $extra = $this->countNonWorkingDays($start, $end, $holidaySet, false);
-            $newTotalDays = $baseDays + $extra;
+            $newTotalDays = ($baseDays - 1) + $extra;
 
             if ($newTotalDays === $totalDays) {
                 return $end;

@@ -34,12 +34,12 @@ $columns = [
 ];
 $columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 155, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245];
 $role = auth()->user()->role;
-$canEdit = in_array($role, ['admin', 'ie', 'ppic', 'accountant'], true);
+$canEdit = in_array($role, ['admin', 'ppic', 'accountant', 'imex'], true);
 $editableFields = match ($role) {
     'admin' => null,
-    'ppic' => ['processing_stage'],
-    'ie' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'customs_declaration_date', 'notes'],
+    'ppic' => ['contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty'],
     'accountant' => ['payment_date'],
+    'imex' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date'],
     default => [],
 };
 $groupedContracts = $contracts->groupBy('Line');
@@ -73,7 +73,7 @@ $groupedContracts = $contracts->groupBy('Line');
                         @if($editableFields === null || in_array($column['field'], $editableFields, true))
                             <input class="form-control form-control-sm" type="{{ $column['input'] }}" name="contracts[{{ $row->masterplan_id }}][{{ $column['field'] }}]" value="{{ old('contracts.'.$row->masterplan_id.'.'.$column['field'], $row->{$column['field']} ?? '') }}" @if($column['input'] === 'number') step="0.01" min="0" @endif aria-label="{{ $column['label'] }} for {{ $row->CU }}">
                         @else
-                            {{ $row->{$column['field']} ?? '' }}
+                            <input class="form-control form-control-sm" type="{{ $column['input'] }}" value="{{ $row->{$column['field']} ?? '' }}" @if($column['input'] === 'number') step="0.01" min="0" @endif readonly aria-label="{{ $column['label'] }} for {{ $row->CU }}">
                         @endif
                     @elseif(isset($column['date']))
                         {{ $row->{$column['source']} ? \Carbon\Carbon::parse($row->{$column['source']})->format('d/m/Y') : '' }}

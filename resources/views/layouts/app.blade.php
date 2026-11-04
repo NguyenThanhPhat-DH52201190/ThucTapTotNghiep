@@ -269,12 +269,12 @@
                 <i class="bi bi-rulers"></i>
                 Development Norms
             </a>
-            @elseif($role === 'ie' || $role === 'prod')
-            @if($role === 'ie')
+            @elseif($role === 'imex')
             <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.*') ? 'active' : '' }}">
-                <i class="bi bi-file-earmark-text"></i> Subcon Contract
+                <i class="bi bi-file-earmark-text"></i>
+                Subcon Contract
             </a>
-            @endif
+            @elseif($role === 'ie' || $role === 'prod')
             @if($role === 'prod')
             @if($showShopFloorModule)<a href="{{ route('admin.shopfloor.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-gear"></i>

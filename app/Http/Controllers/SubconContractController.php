@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Validator;
 
 class SubconContractController extends Controller
 {
-    private const PPIC_EDITABLE_FIELDS = ['processing_stage'];
+    private const PPIC_EDITABLE_FIELDS = [
+        'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code',
+        'processing_stage', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty',
+    ];
     private const ACCOUNTANT_EDITABLE_FIELDS = ['payment_date'];
-    private const IE_EDITABLE_FIELDS = [
-        'unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage',
+    private const IMEX_EDITABLE_FIELDS = [
         'customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date',
-        'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty',
-        'customs_declaration_date', 'notes',
     ];
 
     public function index(Request $request)
@@ -117,8 +117,8 @@ class SubconContractController extends Controller
         $fields = match ($request->user()->role) {
             'admin' => null,
             'ppic' => self::PPIC_EDITABLE_FIELDS,
-            'ie' => self::IE_EDITABLE_FIELDS,
             'accountant' => self::ACCOUNTANT_EDITABLE_FIELDS,
+            'imex' => self::IMEX_EDITABLE_FIELDS,
             default => [],
         };
 
@@ -127,6 +127,6 @@ class SubconContractController extends Controller
 
     private function authorizeEditing(Request $request): void
     {
-        abort_unless(in_array($request->user()->role, ['admin', 'ie', 'ppic', 'accountant'], true), 403);
+        abort_unless(in_array($request->user()->role, ['admin', 'ppic', 'accountant', 'imex'], true), 403);
     }
 }

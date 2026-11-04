@@ -22,6 +22,7 @@ class UserManagementController extends Controller
         User::ROLE_ACCOUNTANT,
         User::ROLE_DEVELOPMENT,
         User::ROLE_QA_QC,
+        User::ROLE_IMEX,
     ];
 
     public function index(): View

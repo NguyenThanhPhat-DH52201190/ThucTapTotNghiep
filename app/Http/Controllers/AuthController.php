@@ -17,6 +17,7 @@ class AuthController extends Controller
             User::ROLE_DEVELOPMENT => 'admin.development-norms.index',
             User::ROLE_PPIC => 'masterplan.view',
             User::ROLE_QA_QC => 'masterplan.view',
+            User::ROLE_IMEX => 'admin.subcon-contracts.index',
             User::ROLE_IE, User::ROLE_WAREHOUSE, User::ROLE_PROD, User::ROLE_ACCOUNTANT => 'masterplan.view',
             default => 'dashboard',
         };

@@ -17,6 +17,10 @@ class DashboardController extends Controller
             return redirect()->route('admin.development-norms.index');
         }
 
+        if ($role === User::ROLE_IMEX) {
+            return redirect()->route('admin.subcon-contracts.index');
+        }
+
         $route = match ($role) {
             User::ROLE_ADMIN => 'admin.ocs.index',
             User::ROLE_PPIC => 'admin.masterplan.index',

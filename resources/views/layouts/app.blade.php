@@ -21,8 +21,10 @@
 
         .sidebar {
             width: 240px;
+            flex: 0 0 240px;
             min-height: 100vh;
             background: #1e293b;
+            transition: width .2s ease, flex-basis .2s ease;
         }
 
         .sidebar a {
@@ -37,6 +39,38 @@
         .sidebar a.active {
             background: #334155;
             color: #fff;
+        }
+
+        .sidebar-toggle {
+            color: #cbd5f5;
+            background: transparent;
+            border: 0;
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+        }
+
+        .sidebar-toggle:hover { color: #fff; background: #334155; }
+
+        @media (min-width: 992px) {
+            .app-shell.sidebar-collapsed .sidebar {
+                width: 72px;
+                flex-basis: 72px;
+            }
+
+            .app-shell.sidebar-collapsed .sidebar .offcanvas-body { padding: .75rem !important; }
+            .app-shell.sidebar-collapsed .sidebar .sidebar-brand { display: none !important; }
+            .app-shell.sidebar-collapsed .sidebar a {
+                justify-content: center !important;
+                padding: 12px 8px !important;
+                font-size: 0;
+                gap: 0 !important;
+            }
+            .app-shell.sidebar-collapsed .sidebar a > span { font-size: 0; }
+            .app-shell.sidebar-collapsed .sidebar a .bi { font-size: 1.1rem; }
+            .app-shell.sidebar-collapsed .sidebar a .bi-chevron-down { display: none; }
+            .app-shell.sidebar-collapsed .sidebar .collapse { padding-left: 0 !important; }
+            .app-shell.sidebar-collapsed .sidebar-toggle { width: 100%; }
         }
 
         .topbar {
@@ -100,7 +134,12 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="Close navigation"></button>
             </div>
             <div class="offcanvas-body d-block p-3">
-            <h5 class="text-white mb-4 text-center d-none d-lg-block" aria-hidden="true">GSV</h5>
+            <div class="d-flex align-items-center justify-content-between mb-4 px-1">
+                <h5 class="sidebar-brand text-white mb-0 text-center flex-grow-1 d-none d-lg-block" aria-hidden="true">GSV</h5>
+                <button type="button" class="sidebar-toggle d-none d-lg-inline-flex align-items-center justify-content-center" id="sidebarToggle" aria-label="Thu nhỏ sidebar" aria-pressed="false" title="Thu nhỏ sidebar">
+                    <i class="bi bi-layout-sidebar-inset"></i>
+                </button>
+            </div>
 
             @if($role === 'admin')
             <a class="d-flex justify-content-between align-items-center text-white fw-semibold mb-2 px-3 py-2 rounded"
@@ -299,6 +338,10 @@
                 Inventory & Issue
             </a>
             @elseif($role === 'accountant')
+            <a href="{{ route('masterplan.view') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('masterplan.view') ? 'active' : '' }}">
+                <i class="bi bi-calendar-check"></i>
+                Master Plan
+            </a>
             @if($showFinanceModule)<a href="{{ route('admin.finance.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-graph-up-arrow"></i>
                 Finance & Costing
@@ -395,6 +438,29 @@
         </div>
     </div>
 
+    <script>
+        (() => {
+            const shell = document.querySelector('.app-shell');
+            const toggle = document.getElementById('sidebarToggle');
+            if (!shell || !toggle) return;
+
+            const storageKey = 'gsv-sidebar-collapsed';
+            const setCollapsed = (collapsed) => {
+                shell.classList.toggle('sidebar-collapsed', collapsed);
+                toggle.setAttribute('aria-pressed', String(collapsed));
+                toggle.setAttribute('aria-label', collapsed ? 'Mở rộng sidebar' : 'Thu nhỏ sidebar');
+                toggle.title = collapsed ? 'Mở rộng sidebar' : 'Thu nhỏ sidebar';
+                toggle.innerHTML = `<i class="bi ${collapsed ? 'bi-layout-sidebar' : 'bi-layout-sidebar-inset'}"></i>`;
+            };
+
+            setCollapsed(localStorage.getItem(storageKey) === 'true');
+            toggle.addEventListener('click', () => {
+                const collapsed = !shell.classList.contains('sidebar-collapsed');
+                localStorage.setItem(storageKey, String(collapsed));
+                setCollapsed(collapsed);
+            });
+        })();
+    </script>
     @stack('scripts')
 </body>
 

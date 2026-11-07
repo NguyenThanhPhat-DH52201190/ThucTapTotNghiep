@@ -167,7 +167,7 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('admin')->name('admin.')->middleware('module.access')->group(function () {
 
-        Route::get('subcon-contracts', [SubconContractController::class, 'index'])->middleware('role:admin,ppic,accountant,imex')->name('subcon-contracts.index');
+        Route::get('subcon-contracts', [SubconContractController::class, 'index'])->middleware('role:admin,ppic,accountant,imex,warehouse,ie,prod,development,qa_qc')->name('subcon-contracts.index');
         Route::put('subcon-contracts/{mtpId}', [SubconContractController::class, 'update'])->middleware('role:admin,ppic,accountant,imex')->name('subcon-contracts.update');
         Route::put('subcon-contracts', [SubconContractController::class, 'updateAll'])->middleware('role:admin,ppic,accountant,imex')->name('subcon-contracts.update-all');
 

@@ -105,6 +105,36 @@ $hideMidCols = $isAccountant;
         --sticky-col-7: 100px;
     }
 
+    .masterplan-accountant-table {
+        width: 100% !important;
+        min-width: 100% !important;
+        table-layout: fixed;
+    }
+
+    .masterplan-accountant-table th,
+    .masterplan-accountant-table td {
+        overflow-wrap: anywhere;
+    }
+
+    .masterplan-accountant-table th:nth-child(1),
+    .masterplan-accountant-table td:nth-child(1) { width: 9%; }
+    .masterplan-accountant-table th:nth-child(2),
+    .masterplan-accountant-table td:nth-child(2) { width: 11%; }
+    .masterplan-accountant-table th:nth-child(3),
+    .masterplan-accountant-table td:nth-child(3) { width: 12%; }
+    .masterplan-accountant-table th:nth-child(4),
+    .masterplan-accountant-table td:nth-child(4) { width: 12%; }
+    .masterplan-accountant-table th:nth-child(5),
+    .masterplan-accountant-table td:nth-child(5) { width: 10%; }
+    .masterplan-accountant-table th:nth-child(6),
+    .masterplan-accountant-table td:nth-child(6) { width: 12%; }
+    .masterplan-accountant-table th:nth-child(7),
+    .masterplan-accountant-table td:nth-child(7) { width: 12%; }
+    .masterplan-accountant-table th:nth-child(8),
+    .masterplan-accountant-table td:nth-child(8) { width: 8%; }
+    .masterplan-accountant-table th:nth-child(9),
+    .masterplan-accountant-table td:nth-child(9) { width: 14%; }
+
     .masterplan-table th.sticky-col,
     .masterplan-table td.sticky-col {
         position: sticky !important;
@@ -603,7 +633,7 @@ $hideMidCols = $isAccountant;
         : 'undated');
 @endphp
 <div class="table-responsive masterplan-scroll">
-    <table class="table masterplan-table">
+    <table class="table masterplan-table {{ $isAccountant ? 'masterplan-accountant-table' : '' }}">
         <thead>
             <tr>
                 <th scope="col" class="col-code sticky-col sticky-1">CU</th>

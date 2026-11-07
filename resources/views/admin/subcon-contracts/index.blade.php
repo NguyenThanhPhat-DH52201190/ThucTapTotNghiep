@@ -37,9 +37,9 @@ $role = auth()->user()->role;
 $canEdit = in_array($role, ['admin', 'ppic', 'accountant', 'imex'], true);
 $editableFields = match ($role) {
     'admin' => null,
-    'ppic' => ['contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty'],
+    'ppic' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes'],
     'accountant' => ['payment_date'],
-    'imex' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date'],
+    'imex' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'customs_declaration_date', 'notes'],
     default => [],
 };
 $groupedContracts = $contracts->groupBy('Line');

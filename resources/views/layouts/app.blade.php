@@ -342,6 +342,10 @@
                 <i class="bi bi-calendar-check"></i>
                 Master Plan
             </a>
+            <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text"></i>
+                Subcon Contract
+            </a>
             @if($showFinanceModule)<a href="{{ route('admin.finance.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-graph-up-arrow"></i>
                 Finance & Costing

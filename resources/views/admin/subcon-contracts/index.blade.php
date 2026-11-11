@@ -53,7 +53,7 @@ $groupedContracts = $contracts->groupBy('Line');
 <div class="table-responsive border rounded bg-white subcon-contract-scroll">
 <table class="table table-sm table-bordered table-hover align-middle mb-0 subcon-contract-table">
     <colgroup>@foreach($columnWidths as $width)<col style="width: {{ $width }}px">@endforeach</colgroup>
-    <thead class="table-light"><tr>@foreach($columns as $column)<th class="{{ $loop->index < 8 ? 'subcon-sticky-col subcon-sticky-' . ($loop->index + 1) : '' }}">{{ $column['label'] }}</th>@endforeach</tr></thead>
+    <thead class="table-light"><tr>@foreach($columns as $column)<th class="{{ $loop->index < 6 ? 'subcon-sticky-col subcon-sticky-' . ($loop->index + 1) : '' }}">{{ $column['label'] }}</th>@endforeach</tr></thead>
     <tbody>
     @forelse($groupedContracts as $line => $lineContracts)
       @foreach($lineContracts as $row)
@@ -61,7 +61,7 @@ $groupedContracts = $contracts->groupBy('Line');
             @foreach($columns as $column)
                     @php
                         $cellClasses = [];
-                        if ($loop->index < 8) $cellClasses[] = 'subcon-sticky-col subcon-sticky-' . ($loop->index + 1);
+                        if ($loop->index < 6) $cellClasses[] = 'subcon-sticky-col subcon-sticky-' . ($loop->index + 1);
                         if (isset($column['total'])) $cellClasses[] = 'text-end text-nowrap';
                         if (isset($column['source']) && $column['source'] === 'Line') $cellClasses[] = 'text-nowrap line-color-cell';
                         elseif (isset($column['date']) || isset($column['source'])) $cellClasses[] = 'text-nowrap';

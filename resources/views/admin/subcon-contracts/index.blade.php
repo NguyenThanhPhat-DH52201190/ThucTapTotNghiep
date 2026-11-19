@@ -33,9 +33,9 @@ $columns = [
     ['label' => 'NGAY TK', 'field' => 'customs_declaration_date', 'input' => 'date'], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
 ];
 $canHighlight = in_array(auth()->user()->role, ['admin', 'imex'], true);
-if ($canHighlight) $columns[] = ['label' => 'Highlight', 'highlight' => true];
+if ($canHighlight) array_splice($columns, 2, 0, [['label' => 'Highlight', 'highlight' => true]]);
 $columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 155, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 145, 155, 150, 150, 245];
-if ($canHighlight) $columnWidths[] = 125;
+if ($canHighlight) array_splice($columnWidths, 2, 0, [125]);
 $role = auth()->user()->role;
 $canEdit = in_array($role, ['admin', 'ppic', 'accountant', 'imex'], true);
 $editableFields = match ($role) {
@@ -69,7 +69,7 @@ $editableFields = match ($role) {
                     @endphp
                     <td class="{{ implode(' ', $cellClasses) }}" @if(isset($column['source']) && $column['source'] === 'Line') data-line-color="{{ $row->line_color ?? '#808080' }}" @endif>
                     @if(isset($column['highlight']))
-                        <select class="form-select form-select-sm" name="contracts[{{ $row->masterplan_id }}][highlight_color]" aria-label="Highlight {{ $row->CU }}">
+                        <select class="form-select form-select-sm subcon-highlight-select" name="contracts[{{ $row->masterplan_id }}][highlight_color]" aria-label="Highlight {{ $row->CU }}">
                             <option value="" @selected(empty($row->highlight_color))>Không đánh dấu</option>
                             <option value="yellow" @selected(($row->highlight_color ?? '') === 'yellow')>Đang làm (vàng)</option>
                             <option value="green" @selected(($row->highlight_color ?? '') === 'green')>Hoàn thành (xanh)</option>
@@ -113,11 +113,11 @@ $editableFields = match ($role) {
         border-spacing: 0;
         --subcon-sticky-1: 155px;
         --subcon-sticky-2: 100px;
-        --subcon-sticky-3: 120px;
-        --subcon-sticky-4: 125px;
-        --subcon-sticky-5: 180px;
-        --subcon-sticky-6: 75px;
-        --subcon-sticky-7: 125px;
+        --subcon-sticky-3: 125px;
+        --subcon-sticky-4: 120px;
+        --subcon-sticky-5: 125px;
+        --subcon-sticky-6: 180px;
+        --subcon-sticky-7: 75px;
     }
     .subcon-contract-table th { position: sticky; top: 0; z-index: 20; background: #f8f9fa; white-space: normal !important; word-break: keep-all; overflow-wrap: normal; line-height: 1.2; vertical-align: middle; }
     .subcon-contract-table td { overflow: hidden; text-overflow: ellipsis; }
@@ -130,6 +130,8 @@ $editableFields = match ($role) {
     .subcon-contract-table td.subcon-sticky-col { position: sticky !important; }
     .subcon-contract-table td.subcon-sticky-col { z-index: 3; background-color: #fff; }
     .subcon-contract-table th.subcon-sticky-col { z-index: 30; background-color: #f8f9fa; }
+    .subcon-contract-table tr.subcon-highlight-yellow > td.subcon-sticky-col { background-color: #fff3cd !important; }
+    .subcon-contract-table tr.subcon-highlight-green > td.subcon-sticky-col { background-color: #d1e7dd !important; }
     .subcon-contract-table .subcon-sticky-1 { left: 0; }
     .subcon-contract-table .subcon-sticky-2 { left: var(--subcon-sticky-1); }
     .subcon-contract-table .subcon-sticky-3 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2)); }
@@ -171,6 +173,14 @@ $editableFields = match ($role) {
         window.addEventListener('resize', syncWidth);
         document.querySelectorAll('.line-color-cell').forEach((cell) => {
             cell.style.backgroundColor = cell.dataset.lineColor || '#808080';
+        });
+        document.querySelectorAll('.subcon-highlight-select').forEach((select) => {
+            select.addEventListener('change', () => {
+                const row = select.closest('tr');
+                row.classList.remove('subcon-highlight-yellow', 'subcon-highlight-green');
+                if (select.value === 'yellow') row.classList.add('subcon-highlight-yellow');
+                if (select.value === 'green') row.classList.add('subcon-highlight-green');
+            });
         });
         syncWidth();
     })();

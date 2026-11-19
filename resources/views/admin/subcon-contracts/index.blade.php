@@ -27,22 +27,24 @@ $columns = [
     ['label' => 'Ngày duyệt mẫu 12', 'field' => 'form_12_approved_date', 'input' => 'date'], ['label' => 'Mẫu 18A', 'field' => 'form_18a', 'input' => 'text'],
     ['label' => 'Ngày nhận mẫu 18A', 'field' => 'form_18a_received_date', 'input' => 'date'], ['label' => 'OUT DATE', 'field' => 'out_date', 'input' => 'date'],
     ['label' => 'TRUCK PLATE', 'field' => 'truck_plate', 'input' => 'text'], ['label' => 'IN DATE', 'field' => 'in_date', 'input' => 'date'],
-    ['label' => 'TRUCK PLATE2', 'field' => 'truck_plate_2', 'input' => 'text'], ['label' => 'Invoice', 'field' => 'invoice_no', 'input' => 'text'],
+    ['label' => 'Invoice', 'field' => 'invoice_no', 'input' => 'text'],
     ['label' => 'INV Date', 'field' => 'invoice_date', 'input' => 'date'], ['label' => 'SL THUC NHAN', 'field' => 'actual_received_qty', 'input' => 'number'],
     ['label' => 'NGAY THANH TOAN', 'field' => 'payment_date', 'input' => 'date'], ['label' => 'STK XUAT', 'source' => 'masterplan_sotk'],
     ['label' => 'NGAY TK', 'field' => 'customs_declaration_date', 'input' => 'date'], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
 ];
-$columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 155, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 130, 145, 155, 150, 150, 245];
+$canHighlight = in_array(auth()->user()->role, ['admin', 'imex'], true);
+if ($canHighlight) $columns[] = ['label' => 'Highlight', 'highlight' => true];
+$columnWidths = [155, 100, 120, 125, 180, 75, 125, 155, 175, 155, 165, 150, 130, 155, 150, 150, 125, 155, 125, 155, 130, 145, 130, 145, 140, 145, 155, 150, 150, 245];
+if ($canHighlight) $columnWidths[] = 125;
 $role = auth()->user()->role;
 $canEdit = in_array($role, ['admin', 'ppic', 'accountant', 'imex'], true);
 $editableFields = match ($role) {
     'admin' => null,
-    'ppic' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes'],
+    'ppic' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'out_date', 'truck_plate', 'in_date', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes'],
     'accountant' => ['payment_date', 'notes'],
     'imex' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'customs_declaration_date', 'notes'],
     default => [],
 };
-$groupedContracts = $contracts->groupBy('Line');
 @endphp
 
 @if($canEdit)
@@ -55,9 +57,8 @@ $groupedContracts = $contracts->groupBy('Line');
     <colgroup>@foreach($columnWidths as $width)<col style="width: {{ $width }}px">@endforeach</colgroup>
     <thead class="table-light"><tr>@foreach($columns as $column)<th class="{{ $loop->index < 6 ? 'subcon-sticky-col subcon-sticky-' . ($loop->index + 1) : '' }}">{{ $column['label'] }}</th>@endforeach</tr></thead>
     <tbody>
-    @forelse($groupedContracts as $line => $lineContracts)
-      @foreach($lineContracts as $row)
-        <tr>
+    @forelse($contracts as $row)
+        <tr class="{{ ($row->highlight_color ?? '') === 'yellow' ? 'subcon-highlight-yellow' : (($row->highlight_color ?? '') === 'green' ? 'subcon-highlight-green' : '') }}">
             @foreach($columns as $column)
                     @php
                         $cellClasses = [];
@@ -67,7 +68,13 @@ $groupedContracts = $contracts->groupBy('Line');
                         elseif (isset($column['date']) || isset($column['source'])) $cellClasses[] = 'text-nowrap';
                     @endphp
                     <td class="{{ implode(' ', $cellClasses) }}" @if(isset($column['source']) && $column['source'] === 'Line') data-line-color="{{ $row->line_color ?? '#808080' }}" @endif>
-                    @if(isset($column['total']))
+                    @if(isset($column['highlight']))
+                        <select class="form-select form-select-sm" name="contracts[{{ $row->masterplan_id }}][highlight_color]" aria-label="Highlight {{ $row->CU }}">
+                            <option value="" @selected(empty($row->highlight_color))>Không đánh dấu</option>
+                            <option value="yellow" @selected(($row->highlight_color ?? '') === 'yellow')>Đang làm (vàng)</option>
+                            <option value="green" @selected(($row->highlight_color ?? '') === 'green')>Hoàn thành (xanh)</option>
+                        </select>
+                    @elseif(isset($column['total']))
                         {{ number_format((float) ($row->Qty_dis ?? 0) * (float) ($row->unit_price ?? 0), 2) }}
                     @elseif(isset($column['field']))
                         @if($editableFields === null || in_array($column['field'], $editableFields, true))
@@ -82,14 +89,6 @@ $groupedContracts = $contracts->groupBy('Line');
                     @endif
                 </td>
             @endforeach
-        </tr>
-      @endforeach
-        <tr class="table-secondary fw-bold">
-            <td colspan="5" class="text-end">Total Line {{ $line }}:</td>
-            <td class="text-end">{{ $lineContracts->sum('Qty_dis') }}</td>
-            <td></td>
-            <td class="text-end">{{ number_format($lineContracts->sum(fn ($item) => (float) ($item->Qty_dis ?? 0) * (float) ($item->unit_price ?? 0)), 2) }}</td>
-            <td colspan="{{ count($columns) - 8 }}"></td>
         </tr>
     @empty
         <tr><td colspan="{{ count($columns) }}" class="text-center text-muted py-4">No Subcon CU found.</td></tr>
@@ -124,6 +123,8 @@ $groupedContracts = $contracts->groupBy('Line');
     .subcon-contract-table td { overflow: hidden; text-overflow: ellipsis; }
     .subcon-contract-table td input { width: 100%; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
     .subcon-contract-table td input[type=date] { min-width: 0; }
+    .subcon-contract-table tr.subcon-highlight-yellow > td { background-color: #fff3cd !important; }
+    .subcon-contract-table tr.subcon-highlight-green > td { background-color: #d1e7dd !important; }
     .subcon-contract-table .line-color-cell { text-align: center; color: #fff; font-weight: 500; border-radius: 4px; }
     .subcon-contract-table th.subcon-sticky-col,
     .subcon-contract-table td.subcon-sticky-col { position: sticky !important; }

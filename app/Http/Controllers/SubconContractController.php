@@ -10,12 +10,12 @@ class SubconContractController extends Controller
 {
     private const PPIC_EDITABLE_FIELDS = [
         'unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code',
-        'processing_stage', 'out_date', 'truck_plate', 'in_date', 'truck_plate_2', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes',
+        'processing_stage', 'out_date', 'truck_plate', 'in_date', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes',
     ];
     private const ACCOUNTANT_EDITABLE_FIELDS = ['payment_date', 'notes'];
     private const IMEX_EDITABLE_FIELDS = [
         'customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date',
-        'customs_declaration_date', 'notes',
+        'customs_declaration_date', 'highlight_color', 'notes',
     ];
 
     public function index(Request $request)
@@ -42,7 +42,8 @@ class SubconContractController extends Controller
             ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.LineColor as line_color', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date', 'mtp.SoTK as masterplan_sotk',
                 'ocs.SNo as style', 'ocs.ONum as po', 'ocs.Customer as customer', 'ocs.Color as garment_color',
                 'subcon_contracts.*')
-            ->orderBy('mtp.Line')->orderBy('mtp.CU')->get();
+            ->orderByRaw("CASE WHEN subcon_contracts.out_date IS NULL THEN 0 WHEN subcon_contracts.truck_plate IS NULL OR TRIM(subcon_contracts.truck_plate) = '' THEN 1 ELSE 2 END")
+            ->orderBy('subcon_contracts.out_date')->orderBy('mtp.Line')->orderBy('mtp.CU')->get();
 
         return view('admin.subcon-contracts.index', compact('contracts', 'subconLines'));
     }
@@ -63,9 +64,10 @@ class SubconContractController extends Controller
             'form_12' => 'nullable|string|max:191', 'form_12_approved_date' => 'nullable|date',
             'form_18a' => 'nullable|string|max:191', 'form_18a_received_date' => 'nullable|date',
             'out_date' => 'nullable|date', 'truck_plate' => 'nullable|string|max:50', 'in_date' => 'nullable|date',
-            'truck_plate_2' => 'nullable|string|max:50', 'invoice_no' => 'nullable|string|max:191', 'invoice_date' => 'nullable|date',
+            'invoice_no' => 'nullable|string|max:191', 'invoice_date' => 'nullable|date',
             'actual_received_qty' => 'nullable|numeric|min:0', 'payment_date' => 'nullable|date',
             'customs_declaration_date' => 'nullable|date', 'notes' => 'nullable|string|max:5000',
+            'highlight_color' => 'nullable|in:yellow,green',
         ];
         $rules = $this->editableRulesForRole($request, $rules);
         $data = $request->validate($rules);
@@ -89,9 +91,10 @@ class SubconContractController extends Controller
             'customs_doc_no' => 'nullable|string|max:191', 'customs_doc_date' => 'nullable|date', 'form_12' => 'nullable|string|max:191',
             'form_12_approved_date' => 'nullable|date', 'form_18a' => 'nullable|string|max:191', 'form_18a_received_date' => 'nullable|date',
             'out_date' => 'nullable|date', 'truck_plate' => 'nullable|string|max:50', 'in_date' => 'nullable|date',
-            'truck_plate_2' => 'nullable|string|max:50', 'invoice_no' => 'nullable|string|max:191', 'invoice_date' => 'nullable|date',
+            'invoice_no' => 'nullable|string|max:191', 'invoice_date' => 'nullable|date',
             'actual_received_qty' => 'nullable|numeric|min:0', 'payment_date' => 'nullable|date', 'customs_declaration_date' => 'nullable|date',
             'notes' => 'nullable|string|max:5000',
+            'highlight_color' => 'nullable|in:yellow,green',
         ];
         $rules = $this->editableRulesForRole($request, $rules);
         $validated = [];

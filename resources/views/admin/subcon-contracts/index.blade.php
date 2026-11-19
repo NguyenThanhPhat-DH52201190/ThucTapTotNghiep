@@ -5,6 +5,7 @@
 @section('content')
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div><h4 class="mb-1">Subcon Contract</h4><div class="text-muted small">CU đang nằm trên line có loại Subcon trong Line Master.</div></div>
+    <div class="d-flex gap-2"><a class="btn btn-success" href="{{ route('admin.subcon-contracts.export', request()->only('line', 'search')) }}"><i class="bi bi-file-earmark-excel me-1"></i>Export Excel</a><a class="btn btn-outline-primary" href="{{ route('admin.subcon-contracts-manual.index') }}">Manual Subcon Contract</a></div>
 </div>
 
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -123,15 +124,15 @@ $editableFields = match ($role) {
     .subcon-contract-table td { overflow: hidden; text-overflow: ellipsis; }
     .subcon-contract-table td input { width: 100%; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
     .subcon-contract-table td input[type=date] { min-width: 0; }
-    .subcon-contract-table tr.subcon-highlight-yellow > td { background-color: #fff3cd !important; }
-    .subcon-contract-table tr.subcon-highlight-green > td { background-color: #d1e7dd !important; }
+    .subcon-contract-table tr.subcon-highlight-yellow > td { background-color: #ffd54f !important; }
+    .subcon-contract-table tr.subcon-highlight-green > td { background-color: #81c784 !important; }
     .subcon-contract-table .line-color-cell { text-align: center; color: #fff; font-weight: 500; border-radius: 4px; }
     .subcon-contract-table th.subcon-sticky-col,
     .subcon-contract-table td.subcon-sticky-col { position: sticky !important; }
     .subcon-contract-table td.subcon-sticky-col { z-index: 3; background-color: #fff; }
     .subcon-contract-table th.subcon-sticky-col { z-index: 30; background-color: #f8f9fa; }
-    .subcon-contract-table tr.subcon-highlight-yellow > td.subcon-sticky-col { background-color: #fff3cd !important; }
-    .subcon-contract-table tr.subcon-highlight-green > td.subcon-sticky-col { background-color: #d1e7dd !important; }
+    .subcon-contract-table tr.subcon-highlight-yellow > td.subcon-sticky-col { background-color: #ffd54f !important; }
+    .subcon-contract-table tr.subcon-highlight-green > td.subcon-sticky-col { background-color: #81c784 !important; }
     .subcon-contract-table .subcon-sticky-1 { left: 0; }
     .subcon-contract-table .subcon-sticky-2 { left: var(--subcon-sticky-1); }
     .subcon-contract-table .subcon-sticky-3 { left: calc(var(--subcon-sticky-1) + var(--subcon-sticky-2)); }

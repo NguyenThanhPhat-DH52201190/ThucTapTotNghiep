@@ -193,6 +193,9 @@
                 <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.*') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-text"></i> Subcon Contract
                 </a>
+                <a href="{{ route('admin.subcon-contracts-manual.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts-manual.*') ? 'active' : '' }}">
+                    <i class="bi bi-pencil-square"></i> Manual Subcon Contract
+                </a>
 
                 <a href="{{ route('admin.masterplan.index') }}"
                     class="d-flex align-items-center gap-2 mb-1">
@@ -288,6 +291,9 @@
             <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.*') ? 'active' : '' }}">
                 <i class="bi bi-file-earmark-text"></i> Subcon Contract
             </a>
+            <a href="{{ route('admin.subcon-contracts-manual.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts-manual.*') ? 'active' : '' }}">
+                <i class="bi bi-pencil-square"></i> Manual Subcon Contract
+            </a>
             <a class="d-flex justify-content-between align-items-center gap-2 mb-1 {{ request()->routeIs('admin.norm.*') ? 'active' : '' }}"
                 data-bs-toggle="collapse" href="#ppicNormMenu" role="button" aria-expanded="{{ request()->routeIs('admin.norm.*') ? 'true' : 'false' }}" aria-controls="ppicNormMenu">
                 <span class="d-flex align-items-center gap-2"><i class="bi bi-rulers"></i>NORM</span>
@@ -312,6 +318,10 @@
             <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.*') ? 'active' : '' }}">
                 <i class="bi bi-file-earmark-text"></i>
                 Subcon Contract
+            </a>
+            <a href="{{ route('admin.subcon-contracts-manual.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts-manual.*') ? 'active' : '' }}">
+                <i class="bi bi-pencil-square"></i>
+                Manual Subcon Contract
             </a>
             @elseif($role === 'ie' || $role === 'prod')
             @if($role === 'prod')
@@ -346,10 +356,22 @@
                 <i class="bi bi-file-earmark-text"></i>
                 Subcon Contract
             </a>
+            <a href="{{ route('admin.subcon-contracts-manual.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts-manual.*') ? 'active' : '' }}">
+                <i class="bi bi-pencil-square"></i>
+                Manual Subcon Contract
+            </a>
             @if($showFinanceModule)<a href="{{ route('admin.finance.dashboard') }}" class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-graph-up-arrow"></i>
                 Finance & Costing
             </a>@endif
+            @endif
+            @if(in_array($role, ['warehouse', 'ie', 'prod', 'development', 'qa_qc'], true))
+            <a href="{{ route('admin.subcon-contracts.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts.index') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text"></i> Subcon Contract
+            </a>
+            <a href="{{ route('admin.subcon-contracts-manual.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.subcon-contracts-manual.*') ? 'active' : '' }}">
+                <i class="bi bi-pencil-square"></i> Manual Subcon Contract
+            </a>
             @endif
             @if(!in_array($role, ['admin', 'qa_qc'], true))
             <a href="{{ route('admin.bom.index') }}" class="d-flex align-items-center gap-2 mb-1 {{ request()->routeIs('admin.bom.*', 'bom.view') ? 'active' : '' }}">

@@ -21,6 +21,7 @@ use App\Http\Controllers\NormController;
 use App\Http\Controllers\DevelopmentNormController;
 use App\Http\Controllers\StockRecordController;
 use App\Http\Controllers\SubconContractController;
+use App\Http\Controllers\ManualSubconContractController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
@@ -168,8 +169,13 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin')->name('admin.')->middleware('module.access')->group(function () {
 
         Route::get('subcon-contracts', [SubconContractController::class, 'index'])->middleware('role:admin,ppic,accountant,imex,warehouse,ie,prod,development,qa_qc')->name('subcon-contracts.index');
+        Route::get('subcon-contracts/export', [SubconContractController::class, 'export'])->middleware('role:admin,ppic,accountant,imex,warehouse,ie,prod,development,qa_qc')->name('subcon-contracts.export');
         Route::put('subcon-contracts/{mtpId}', [SubconContractController::class, 'update'])->middleware('role:admin,ppic,accountant,imex')->name('subcon-contracts.update');
         Route::put('subcon-contracts', [SubconContractController::class, 'updateAll'])->middleware('role:admin,ppic,accountant,imex')->name('subcon-contracts.update-all');
+        Route::get('subcon-contracts-manual', [ManualSubconContractController::class, 'index'])->middleware('role:admin,ppic,accountant,imex,warehouse,ie,prod,development,qa_qc')->name('subcon-contracts-manual.index');
+        Route::get('subcon-contracts-manual/export', [ManualSubconContractController::class, 'export'])->middleware('role:admin,ppic,accountant,imex,warehouse,ie,prod,development,qa_qc')->name('subcon-contracts-manual.export');
+        Route::post('subcon-contracts-manual', [ManualSubconContractController::class, 'store'])->middleware('role:admin,ppic')->name('subcon-contracts-manual.store');
+        Route::put('subcon-contracts-manual', [ManualSubconContractController::class, 'updateAll'])->middleware('role:admin,ppic,accountant,imex')->name('subcon-contracts-manual.update-all');
 
         Route::get('users', [UserManagementController::class, 'index'])->middleware('role:admin')->name('users.index');
         Route::post('users', [UserManagementController::class, 'store'])->middleware('role:admin')->name('users.store');

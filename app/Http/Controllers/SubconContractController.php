@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class SubconContractController extends Controller
 {
@@ -46,6 +49,63 @@ class SubconContractController extends Controller
             ->orderBy('subcon_contracts.out_date')->orderBy('mtp.Line')->orderBy('mtp.CU')->get();
 
         return view('admin.subcon-contracts.index', compact('contracts', 'subconLines'));
+    }
+
+    public function export(Request $request)
+    {
+        $rows = DB::table('mtp')
+            ->join('colors', function ($join) {
+                $join->on('mtp.Line', '=', 'colors.name')->where('colors.cate', '=', 'Subcon')->where('colors.is_active', '=', 1);
+            })
+            ->leftJoin('ocs', 'mtp.CU', '=', 'ocs.CS')
+            ->leftJoin('subcon_contracts', 'mtp.id', '=', 'subcon_contracts.mtp_id')
+            ->when($request->filled('line'), fn ($q) => $q->where('mtp.Line', $request->input('line')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = trim($request->input('search'));
+                $q->where(function ($query) use ($search) {
+                    $query->where('mtp.CU', 'like', "%{$search}%")
+                        ->orWhere('ocs.SNo', 'like', "%{$search}%")
+                        ->orWhere('ocs.ONum', 'like', "%{$search}%")
+                        ->orWhere('ocs.Customer', 'like', "%{$search}%");
+                });
+            })
+            ->select('mtp.Line as subcon_line', 'mtp.CU as cs_no', 'ocs.SNo as style', 'ocs.ONum as po', 'ocs.Customer as customer',
+                'mtp.Qty_dis as qty', 'mtp.SoTK as masterplan_sotk', 'subcon_contracts.*')
+            ->orderBy('mtp.Line')->orderBy('mtp.CU')->get();
+        $columns = [
+            'subcon_line' => 'Subcon / Line', 'cs_no' => 'CS#', 'style' => 'Style', 'po' => 'PO#', 'customer' => 'Customer', 'qty' => 'Qty',
+            'unit_price' => 'Unit Price', 'total_amount' => 'Total Amount', 'contract_no' => 'Số Hợp Đồng', 'contract_date' => 'Ngày Hợp Đồng',
+            'appendix_no' => 'Số Phụ lục HĐ', 'appendix_date' => 'Ngày phụ lục', 'tax_code' => 'MST', 'processing_stage' => 'Công đoạn gia công',
+            'customs_doc_no' => 'Số KLKX', 'customs_doc_date' => 'Ngày KLKX', 'form_12' => 'Mẫu 12', 'form_12_approved_date' => 'Ngày duyệt mẫu 12',
+            'form_18a' => 'Mẫu 18A', 'form_18a_received_date' => 'Ngày nhận mẫu 18A', 'out_date' => 'OUT DATE', 'truck_plate' => 'TRUCK PLATE',
+            'in_date' => 'IN DATE', 'invoice_no' => 'Invoice', 'invoice_date' => 'INV Date', 'actual_received_qty' => 'SL THUC NHAN',
+            'payment_date' => 'NGAY THANH TOAN', 'masterplan_sotk' => 'STK XUAT', 'customs_declaration_date' => 'NGAY TK',
+            'notes' => 'Ghi chú', 'highlight_color' => 'Highlight',
+        ];
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Subcon Contract');
+        $columnIndex = 1;
+        foreach ($columns as $label) $sheet->setCellValue(Coordinate::stringFromColumnIndex($columnIndex++).'1', $label);
+        $rowIndex = 2;
+        foreach ($rows as $row) {
+            $columnIndex = 1;
+            foreach ($columns as $key => $label) {
+                $value = match ($key) {
+                    'total_amount' => (float) ($row->qty ?? 0) * (float) ($row->unit_price ?? 0),
+                    'highlight_color' => ($row->highlight_color ?? '') === 'yellow' ? 'Đang làm (vàng)' : ((($row->highlight_color ?? '') === 'green') ? 'Hoàn thành (xanh)' : ''),
+                    default => $row->{$key} ?? '',
+                };
+                $sheet->setCellValue(Coordinate::stringFromColumnIndex($columnIndex++).$rowIndex, $value);
+            }
+            $rowIndex++;
+        }
+        $sheet->getStyle('1:1')->getFont()->setBold(true);
+        $path = tempnam(sys_get_temp_dir(), 'subcon-');
+        (new Xlsx($spreadsheet))->save($path);
+        $spreadsheet->disconnectWorksheets();
+
+        return response()->download($path, 'subcon-contracts.xlsx')->deleteFileAfterSend(true);
     }
 
     public function update(Request $request, int $mtpId)

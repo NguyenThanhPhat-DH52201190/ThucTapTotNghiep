@@ -39,6 +39,7 @@ class ModuleAccessMiddleware
             'stock-records' => ['warehouse', 'ppic'],
             'finance' => ['accountant'],
             'subcon-contracts' => ['ppic', 'accountant', 'imex', 'warehouse', 'ie', 'prod', 'development', 'qa_qc'],
+            'subcon-contracts-manual' => ['ppic', 'accountant', 'imex', 'warehouse', 'ie', 'prod', 'development', 'qa_qc'],
             'revenue' => ['prod'],
         ];
 
@@ -57,6 +58,9 @@ class ModuleAccessMiddleware
         if ($segment === 'finance' && !in_array($request->method(), ['GET', 'HEAD'], true)) abort(403);
         // These roles may view Subcon Contracts but cannot submit changes.
         if ($segment === 'subcon-contracts' && in_array($role, ['warehouse', 'ie', 'prod', 'development', 'qa_qc'], true)) {
+            abort_unless(in_array($request->method(), ['GET', 'HEAD'], true), 403);
+        }
+        if ($segment === 'subcon-contracts-manual' && in_array($role, ['warehouse', 'ie', 'prod', 'development', 'qa_qc'], true)) {
             abort_unless(in_array($request->method(), ['GET', 'HEAD'], true), 403);
         }
         return $next($request);

@@ -54,9 +54,12 @@ class ManualSubconContractController extends Controller
     public function store(Request $request)
     {
         abort_unless(in_array($request->user()->role, ['admin', 'ppic'], true), 403);
-        DB::table('manual_subcon_contracts')->insert(['created_at' => now(), 'updated_at' => now()]);
+        $count = $request->validate(['count' => 'required|integer|min:1|max:100'])['count'];
+        $now = now();
+        $rows = array_fill(0, $count, ['created_at' => $now, 'updated_at' => $now]);
+        DB::table('manual_subcon_contracts')->insert($rows);
 
-        return redirect()->route('admin.subcon-contracts-manual.index')->with('success', 'A manual Subcon Contract row was added.');
+        return redirect()->route('admin.subcon-contracts-manual.index')->with('success', $count.' manual Subcon Contract row(s) added.');
     }
 
     public function updateAll(Request $request)

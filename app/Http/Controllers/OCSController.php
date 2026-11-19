@@ -47,7 +47,7 @@ class OCSController extends Controller
             'CS' => 'required|unique:ocs,CS' . ($id ? ',' . $id : ''),
             'CsDate' => 'required|date', 'SNo' => 'required', 'Sname' => 'required',
             'Customer' => 'required', 'customer_id' => 'required|exists:customer_info,id', 'Color' => 'required', 'ONum' => 'required',
-            'CMT' => 'nullable|numeric|min:0', 'Qty' => 'required|integer|min:1',
+            'CMT' => ($id ? 'nullable' : 'required') . '|numeric|min:0', 'Qty' => 'required|integer|min:1',
             'order_type' => 'required|in:cmt,fob', 'material_ownership' => 'required|in:factory,customer',
             'unit_price' => 'nullable|numeric|decimal:0,4|min:0',
             'bom_header_id' => 'nullable|exists:bom_headers,id',
@@ -245,11 +245,7 @@ class OCSController extends Controller
                 }
                 return [$orderId, $mappingStatus];
             });
-            if ($request->filled('bom_header_id')) {
-                return redirect()->route('admin.norm.materials.show', $orderId)
-                    ->with('success', 'OCS and material requirements created successfully.');
-            }
-            return redirect()->route('admin.ocs.index')->with('success', 'Order and size breakdown saved successfully.');
+            return redirect()->route('admin.ocs.create')->with('success', 'Order and size breakdown saved successfully. You can add the next CS.');
         } catch (\Throwable $e) {
             $this->deleteImage($imagePath);
             Log::error('Failed to create OCS order', ['message' => $e->getMessage()]);

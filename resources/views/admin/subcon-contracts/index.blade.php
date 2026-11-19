@@ -106,6 +106,7 @@ $editableFields = match ($role) {
 </div>
 <style>
     .subcon-contract-scroll { position: relative; overflow-x: auto !important; overflow-y: auto !important; width: 100%; max-width: 100%; max-height: calc(100vh - 220px); isolation: isolate; }
+    .subcon-contract-scroll::-webkit-scrollbar:horizontal { height: 0; display: none; }
     .subcon-contract-table {
         table-layout: fixed;
         width: max-content;

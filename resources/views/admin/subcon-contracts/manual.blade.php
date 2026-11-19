@@ -9,12 +9,17 @@
         <a class="btn btn-outline-primary" href="{{ route('admin.subcon-contracts.index') }}">Master Plan Subcon Contract</a>
         <a class="btn btn-success" href="{{ route('admin.subcon-contracts-manual.export', request()->only('line', 'search')) }}"><i class="bi bi-file-earmark-excel me-1"></i>Export Excel</a>
         @if(in_array(auth()->user()->role, ['admin', 'ppic'], true))
-            <form method="POST" action="{{ route('admin.subcon-contracts-manual.store', request()->only('line', 'search')) }}">@csrf<button class="btn btn-primary">Add row</button></form>
+            <form method="POST" action="{{ route('admin.subcon-contracts-manual.store') }}" class="d-flex gap-2 align-items-center">
+                @csrf
+                <input class="form-control" type="number" name="count" value="1" min="1" max="100" required aria-label="Số dòng cần thêm" style="width: 90px">
+                <button class="btn btn-primary">Add rows</button>
+            </form>
         @endif
     </div>
 </div>
 
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+@if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 <form method="GET" class="row g-2 mb-3">
     <div class="col-sm-4"><input class="form-control" name="search" value="{{ request('search') }}" placeholder="Tìm CU, style, PO, customer"></div>
     <div class="col-sm-3"><select class="form-select" name="line"><option value="">All Subcon lines</option>@foreach($subconLines as $line)<option value="{{ $line }}" @selected(request('line') === $line)>{{ $line }}</option>@endforeach</select></div>
@@ -112,6 +117,7 @@ $editableFields = match ($role) {
 </div>
 <style>
     .subcon-contract-scroll { position: relative; overflow-x: auto !important; overflow-y: auto !important; width: 100%; max-width: 100%; max-height: calc(100vh - 220px); isolation: isolate; }
+    .subcon-contract-scroll::-webkit-scrollbar:horizontal { height: 0; display: none; }
     .subcon-contract-table {
         table-layout: fixed;
         width: max-content;

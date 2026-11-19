@@ -3,6 +3,9 @@
 @section('content')
 
 <div class="container-fluid px-0">
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
     @if(session('error'))
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
@@ -68,8 +71,8 @@
                         <input type="number" name="Qty" class="form-control" value="{{ old('Qty') }}" required>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label">CMT</label>
-                        <input type="number" name="CMT" step="0.01" class="form-control" value="{{ old('CMT') }}">
+                        <label class="form-label">CMT <span class="text-danger">*</span></label>
+                        <input type="number" name="CMT" step="0.01" min="0" class="form-control" value="{{ old('CMT') }}" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Expected Ship Date</label>

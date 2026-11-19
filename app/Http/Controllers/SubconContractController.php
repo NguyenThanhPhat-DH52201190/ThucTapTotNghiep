@@ -18,7 +18,7 @@ class SubconContractController extends Controller
     private const ACCOUNTANT_EDITABLE_FIELDS = ['payment_date', 'notes'];
     private const IMEX_EDITABLE_FIELDS = [
         'customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date',
-        'customs_declaration_date', 'highlight_color', 'notes',
+        'highlight_color', 'notes',
     ];
 
     public function index(Request $request)
@@ -42,7 +42,7 @@ class SubconContractController extends Controller
             })
             // Keep the source plan id distinct from subcon_contracts.mtp_id. The
             // left-joined table's mtp_id is NULL for rows not saved yet.
-            ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.LineColor as line_color', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date', 'mtp.SoTK as masterplan_sotk',
+            ->select('mtp.id as masterplan_id', 'mtp.CU', 'mtp.Line', 'mtp.LineColor as line_color', 'mtp.Qty_dis', 'mtp.Norm_date', 'mtp.fabric_issue_date', 'mtp.SoTK as masterplan_sotk', 'mtp.ShipDate2 as masterplan_ship_date',
                 'ocs.SNo as style', 'ocs.ONum as po', 'ocs.Customer as customer', 'ocs.Color as garment_color',
                 'subcon_contracts.*')
             ->orderByRaw("CASE WHEN subcon_contracts.out_date IS NULL THEN 0 WHEN subcon_contracts.truck_plate IS NULL OR TRIM(subcon_contracts.truck_plate) = '' THEN 1 ELSE 2 END")
@@ -70,7 +70,7 @@ class SubconContractController extends Controller
                 });
             })
             ->select('mtp.Line as subcon_line', 'mtp.CU as cs_no', 'ocs.SNo as style', 'ocs.ONum as po', 'ocs.Customer as customer',
-                'mtp.Qty_dis as qty', 'mtp.SoTK as masterplan_sotk', 'subcon_contracts.*')
+                'mtp.Qty_dis as qty', 'mtp.SoTK as masterplan_sotk', 'mtp.ShipDate2 as masterplan_ship_date', 'subcon_contracts.*')
             ->orderBy('mtp.Line')->orderBy('mtp.CU')->get();
         $columns = [
             'subcon_line' => 'Subcon / Line', 'cs_no' => 'CS#', 'style' => 'Style', 'po' => 'PO#', 'customer' => 'Customer', 'qty' => 'Qty',
@@ -79,7 +79,7 @@ class SubconContractController extends Controller
             'customs_doc_no' => 'Số KLKX', 'customs_doc_date' => 'Ngày KLKX', 'form_12' => 'Mẫu 12', 'form_12_approved_date' => 'Ngày duyệt mẫu 12',
             'form_18a' => 'Mẫu 18A', 'form_18a_received_date' => 'Ngày nhận mẫu 18A', 'out_date' => 'OUT DATE', 'truck_plate' => 'TRUCK PLATE',
             'in_date' => 'IN DATE', 'invoice_no' => 'Invoice', 'invoice_date' => 'INV Date', 'actual_received_qty' => 'SL THUC NHAN',
-            'payment_date' => 'NGAY THANH TOAN', 'masterplan_sotk' => 'STK XUAT', 'customs_declaration_date' => 'NGAY TK',
+            'payment_date' => 'NGAY THANH TOAN', 'masterplan_sotk' => 'STK XUAT', 'masterplan_ship_date' => 'NGAY TK',
             'notes' => 'Ghi chú', 'highlight_color' => 'Highlight',
         ];
         $spreadsheet = new Spreadsheet();
@@ -126,7 +126,7 @@ class SubconContractController extends Controller
             'out_date' => 'nullable|date', 'truck_plate' => 'nullable|string|max:50', 'in_date' => 'nullable|date',
             'invoice_no' => 'nullable|string|max:191', 'invoice_date' => 'nullable|date',
             'actual_received_qty' => 'nullable|numeric|min:0', 'payment_date' => 'nullable|date',
-            'customs_declaration_date' => 'nullable|date', 'notes' => 'nullable|string|max:5000',
+            'notes' => 'nullable|string|max:5000',
             'highlight_color' => 'nullable|in:yellow,green',
         ];
         $rules = $this->editableRulesForRole($request, $rules);
@@ -152,7 +152,7 @@ class SubconContractController extends Controller
             'form_12_approved_date' => 'nullable|date', 'form_18a' => 'nullable|string|max:191', 'form_18a_received_date' => 'nullable|date',
             'out_date' => 'nullable|date', 'truck_plate' => 'nullable|string|max:50', 'in_date' => 'nullable|date',
             'invoice_no' => 'nullable|string|max:191', 'invoice_date' => 'nullable|date',
-            'actual_received_qty' => 'nullable|numeric|min:0', 'payment_date' => 'nullable|date', 'customs_declaration_date' => 'nullable|date',
+            'actual_received_qty' => 'nullable|numeric|min:0', 'payment_date' => 'nullable|date',
             'notes' => 'nullable|string|max:5000',
             'highlight_color' => 'nullable|in:yellow,green',
         ];

@@ -31,7 +31,7 @@ $columns = [
     ['label' => 'Invoice', 'field' => 'invoice_no', 'input' => 'text'],
     ['label' => 'INV Date', 'field' => 'invoice_date', 'input' => 'date'], ['label' => 'SL THUC NHAN', 'field' => 'actual_received_qty', 'input' => 'number'],
     ['label' => 'NGAY THANH TOAN', 'field' => 'payment_date', 'input' => 'date'], ['label' => 'STK XUAT', 'source' => 'masterplan_sotk'],
-    ['label' => 'NGAY TK', 'field' => 'customs_declaration_date', 'input' => 'date'], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
+    ['label' => 'NGAY TK', 'source' => 'masterplan_ship_date', 'date' => true], ['label' => 'Ghi chú', 'field' => 'notes', 'input' => 'text'],
 ];
 $canHighlight = in_array(auth()->user()->role, ['admin', 'imex'], true);
 if ($canHighlight) array_splice($columns, 2, 0, [['label' => 'Highlight', 'highlight' => true]]);
@@ -43,7 +43,7 @@ $editableFields = match ($role) {
     'admin' => null,
     'ppic' => ['unit_price', 'contract_no', 'contract_date', 'appendix_no', 'appendix_date', 'tax_code', 'processing_stage', 'out_date', 'truck_plate', 'in_date', 'invoice_no', 'invoice_date', 'actual_received_qty', 'notes'],
     'accountant' => ['payment_date', 'notes'],
-    'imex' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'customs_declaration_date', 'notes'],
+    'imex' => ['customs_doc_no', 'customs_doc_date', 'form_12', 'form_12_approved_date', 'form_18a', 'form_18a_received_date', 'notes'],
     default => [],
 };
 @endphp
